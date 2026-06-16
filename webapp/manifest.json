@@ -1,0 +1,188 @@
+{
+  "_version": "1.60.0",
+  "sap.app": {
+    "id": "zui5_zle_aust_mon",
+    "type": "application",
+    "i18n": "i18n/i18n.properties",
+    "applicationVersion": {
+      "version": "0.0.1"
+    },
+    "title": "{{appTitle}}",
+    "description": "{{appDescription}}",
+    "resources": "resources.json",
+    "sourceTemplate": {
+      "id": "@sap/generator-fiori:ovp",
+      "version": "1.22.0",
+      "toolsId": "cfa738a0-28c4-42c3-844f-746d983e50ff"
+    },
+    "dataSources": {
+      "annotation": {
+        "type": "ODataAnnotation",
+        "uri": "annotations/annotation.xml",
+        "settings": {
+          "localUri": "annotations/annotation.xml"
+        }
+      },
+      "mainService": {
+        "uri": "/sap/opu/odata4/sap/zle_aust_sb_appl_log/srvd/sap/zle_aust_sd_appl_log/0001/",
+        "type": "OData",
+        "settings": {
+          "annotations": [
+            "annotation"
+          ],
+          "localUri": "localService/mainService/metadata.xml",
+          "odataVersion": "4.0"
+        }
+      }
+    }
+  },
+  "sap.ui": {
+    "technology": "UI5",
+    "icons": {
+      "icon": "",
+      "favIcon": "",
+      "phone": "",
+      "phone@2": "",
+      "tablet": "",
+      "tablet@2": ""
+    },
+    "deviceTypes": {
+      "desktop": true,
+      "tablet": true,
+      "phone": true
+    }
+  },
+  "sap.ui5": {
+    "flexEnabled": true,
+    "dependencies": {
+      "minUI5Version": "1.120.14",
+      "libs": {
+        "sap.m": {},
+        "sap.ui.core": {},
+        "sap.fe.templates": {},
+        "sap.ovp": {},
+        "sap.ui.rta": {},
+        "sap.ui.layout": {}
+      }
+    },
+    "contentDensities": {
+      "compact": true,
+      "cozy": true
+    },
+    "models": {
+      "i18n": {
+        "type": "sap.ui.model.resource.ResourceModel",
+        "settings": {
+          "bundleName": "zui5_zle_aust_mon.i18n.i18n",
+          "supportedLocales": [""],
+          "fallbackLocale": ""
+        }
+      },
+      "mainModel": {
+        "dataSource": "mainService",
+        "preload": true,
+        "settings": {
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": true
+        }
+      },
+      "@i18n": {
+        "type": "sap.ui.model.resource.ResourceModel",
+        "uri": "i18n/i18n.properties"
+      }
+    },
+    "resources": {
+      "css": []
+    },
+    "routing": {
+      "config": {},
+      "routes": [],
+      "targets": {}
+    }
+  },
+  "sap.ovp": {
+    "globalFilterModel": "mainModel",
+    "globalFilterEntitySet": "AppLog",
+    "containerLayout": "resizable",
+    "enableLiveFilter": true,
+    "considerAnalyticalParameters": false,
+    "globalFilterControlType": "MacroFilterBar",
+    "cards": {
+      "appLogCard": {
+        "model": "mainModel",
+        "template": "sap.ovp.cards.v4.table",
+        "settings": {
+          "title": "{{appLogCardTitle}}",
+          "subTitle": "{{appLogCardSubTitle}}",
+          "entitySet": "AppLog",
+          "presentationAnnotationPath": "UI.PresentationVariant#AppLogCard",
+          "identificationAnnotationPath": "UI.LineItem#AppLogCard",
+          "dataStep": 5,
+          "defaultSpan": {
+            "rows": 15,
+            "cols": 2
+          }
+        }
+      },
+      "abbruchCard": {
+        "model": "mainModel",
+        "template": "sap.ovp.cards.v4.table",
+        "settings": {
+          "title": "{{abbruchCardTitle}}",
+          "subTitle": "{{abbruchCardSubTitle}}",
+          "entitySet": "AppLog",
+          "presentationAnnotationPath": "UI.PresentationVariant#AbbruchCard",
+          "identificationAnnotationPath": "UI.LineItem#AbbruchCard",
+          "selectionAnnotationPath": "UI.SelectionVariant#AbbruchCard",
+          "dataStep": 5,
+          "defaultSpan": {
+            "rows": 15,
+            "cols": 2
+          }
+        }
+      },
+      "kontakteCard": {
+        "template": "sap.ovp.cards.linklist",
+        "settings": {
+          "title": "{{kontakteCardTitle}}",
+          "subTitle": "{{kontakteCardSubTitle}}",
+          "listFlavor": "standard",
+          "defaultSpan": {
+            "rows": 10,
+            "cols": 1
+          },
+          "staticContent": [
+            {
+              "title": "Hörmann PM",
+              "subTitle": "Projektmanagement HiLIS",
+              "icon": "sap-icon://person-placeholder",
+              "targetUri": "mailto:pm@hoermann.de"
+            },
+            {
+              "title": "WMS-Support",
+              "subTitle": "Hörmann Logistik Systeme",
+              "icon": "sap-icon://headset",
+              "targetUri": "mailto:wms-support@hoermann.de"
+            },
+            {
+              "title": "Kroschke IT",
+              "subTitle": "SAP-Basis / Schnittstellen",
+              "icon": "sap-icon://it-system",
+              "targetUri": "mailto:it@kroschke.com"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "sap.fiori": {
+    "registrationIds": [],
+    "archeType": "analytical"
+  },
+  "sap.fe": {
+    "app": {
+      "enableLazyLoading": true
+    }
+  }
+}
