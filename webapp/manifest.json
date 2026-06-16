@@ -23,6 +23,13 @@
           "localUri": "annotations/annotation.xml"
         }
       },
+      "tpaAnnotation": {
+        "type": "ODataAnnotation",
+        "uri": "annotations/tpaAnnotation.xml",
+        "settings": {
+          "localUri": "annotations/tpaAnnotation.xml"
+        }
+      },
       "mainService": {
         "uri": "/sap/opu/odata4/sap/zle_aust_sb_appl_log/srvd/sap/zle_aust_sd_appl_log/0001/",
         "type": "OData",
@@ -31,6 +38,17 @@
             "annotation"
           ],
           "localUri": "localService/mainService/metadata.xml",
+          "odataVersion": "4.0"
+        }
+      },
+      "tpaService": {
+        "uri": "/sap/opu/odata4/sap/zle_aust_sb_tpa/srvd/sap/zle_aust_sd_tpa/0001/",
+        "type": "OData",
+        "settings": {
+          "annotations": [
+            "tpaAnnotation"
+          ],
+          "localUri": "localService/tpaService/metadata.xml",
           "odataVersion": "4.0"
         }
       }
@@ -87,6 +105,15 @@
           "earlyRequests": true
         }
       },
+      "tpaModel": {
+        "dataSource": "tpaService",
+        "preload": true,
+        "settings": {
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": true
+        }
+      },
       "@i18n": {
         "type": "sap.ui.model.resource.ResourceModel",
         "uri": "i18n/i18n.properties"
@@ -135,6 +162,22 @@
           "presentationAnnotationPath": "UI.PresentationVariant#AbbruchCard",
           "identificationAnnotationPath": "UI.LineItem#AbbruchCard",
           "selectionAnnotationPath": "UI.SelectionVariant#AbbruchCard",
+          "dataStep": 5,
+          "defaultSpan": {
+            "rows": 15,
+            "cols": 2
+          }
+        }
+      },
+      "tpaCard": {
+        "model": "tpaModel",
+        "template": "sap.ovp.cards.v4.table",
+        "settings": {
+          "title": "{{tpaCardTitle}}",
+          "subTitle": "{{tpaCardSubTitle}}",
+          "entitySet": "Tpa",
+          "presentationAnnotationPath": "UI.PresentationVariant#TpaCard",
+          "identificationAnnotationPath": "UI.LineItem#TpaCard",
           "dataStep": 5,
           "defaultSpan": {
             "rows": 15,

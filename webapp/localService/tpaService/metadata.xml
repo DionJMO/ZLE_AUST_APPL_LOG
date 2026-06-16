@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="4.0" xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx">
+    <edmx:DataServices>
+        <Schema Namespace="com.sap.gateway.srvd.zle_aust_sd_tpa.v0001"
+                xmlns="http://docs.oasis-open.org/odata/ns/edm">
+            <EntityType Name="TpaType">
+                <Key>
+                    <PropertyRef Name="OrderNumber"/>
+                    <PropertyRef Name="OrderLineNumber"/>
+                </Key>
+                <Property Name="OrderNumber"      Type="Edm.String" Nullable="false" MaxLength="10"/>
+                <Property Name="OrderLineNumber"  Type="Edm.String" Nullable="false" MaxLength="10"/>
+                <Property Name="Werk"             Type="Edm.String" MaxLength="4"/>
+                <Property Name="OrderType"        Type="Edm.String" MaxLength="20"/>
+                <Property Name="OrderStatus"      Type="Edm.String" MaxLength="50"/>
+                <Property Name="ReferenceNumber"  Type="Edm.String" MaxLength="50"/>
+                <Property Name="ReferenceDate"    Type="Edm.Date"/>
+                <Property Name="CreationDate"     Type="Edm.DateTimeOffset"/>
+                <Property Name="ItemNumber"       Type="Edm.String" MaxLength="50"/>
+                <Property Name="Menge"            Type="Edm.Decimal" Precision="13" Scale="3"/>
+                <Property Name="MeasurementUnit"  Type="Edm.String" MaxLength="10"/>
+                <Property Name="BatchNumber"      Type="Edm.String" MaxLength="20"/>
+                <Property Name="BestBeforeDate"   Type="Edm.Date"/>
+                <Property Name="LineStatus"       Type="Edm.String" MaxLength="50"/>
+                <Property Name="LastSyncAt"       Type="Edm.DateTimeOffset"/>
+                <Property Name="StatusCriticality" Type="Edm.Int32"/>
+            </EntityType>
+            <EntityContainer Name="EntityContainer">
+                <EntitySet Name="Tpa" EntityType="com.sap.gateway.srvd.zle_aust_sd_tpa.v0001.TpaType"/>
+            </EntityContainer>
+        </Schema>
+    </edmx:DataServices>
+</edmx:Edmx>
