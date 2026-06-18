@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://sap.github.io/ui5-tooling/schema/ui5.yaml.json
+
+specVersion: "4.0"
+metadata:
+  name: project2
+type: application
+builder:
+  customTasks:
+    - name: ui5-tooling-transpile-task
+      afterTask: replaceVersion
+      configuration:
+        debug: true
+        transformModulesToUI5:
+          overridesToOverride: true
+    - name: deploy-to-abap
+      afterTask: generateCachebusterInfo
+      configuration:
+        target:
+          url: https://c01ap.kroschke.com:52201/
+          client: '001'
+        app:
+          name: ZLE_AUST_AP_LOG
+          package: ZLE_AUST
+          transport: C01K9B00TQ
+        exclude:
+          - /test/
+  resources:
+    excludes:
+      - /test/**
+      - /localService/**

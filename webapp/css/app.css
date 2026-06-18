@@ -1,0 +1,50 @@
+/* OVP Horizontal Scroll Layout
+   Konvertiert das DashboardLayout von vertikalem Grid zu horizontaler Flex-Zeile */
+
+/* Dashboard: Flex-Row statt Grid-Wrapping */
+.sapOVPDashboardLayout {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: flex-start !important;
+    width: max-content !important;
+    min-height: 600px;
+    padding: 0.5rem;
+    gap: 0.5rem;
+    box-sizing: border-box;
+}
+
+/* Karten-Container: absolute Positionierung aufheben, feste Höhe für Scroll */
+.sapOVPDashboardLayout > div {
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    flex: 0 0 480px !important;
+    width: 480px !important;
+    height: 560px !important;
+}
+
+/* OVP Card: füllt Container, clippt Overflow */
+.sapOVPCard {
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Content-Bereich der Karte: scrollt vertikal und horizontal */
+.sapOVPCardContentContainer,
+.sapOVPCard .sapMScrollContainer,
+.sapOVPCard .sapMScrollContainerScroll {
+    flex: 1 1 0 !important;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+    min-height: 0 !important;
+}
+
+/* Scroll-Container der Page horizontal scrollbar machen */
+.sapMScrollContainer > .sapMScrollContainerScroll,
+.sapMPage > .sapMPageScroll {
+    overflow-x: auto !important;
+}

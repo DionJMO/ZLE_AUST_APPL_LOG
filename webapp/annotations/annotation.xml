@@ -8,14 +8,11 @@
     <edmx:Reference Uri="https://sap.github.io/odata-vocabularies/vocabularies/Communication.xml">
         <edmx:Include Namespace="com.sap.vocabularies.Communication.v1" Alias="Communication"/>
     </edmx:Reference>
-    <edmx:Reference Uri="/sap/opu/odata4/sap/zle_aust_sb_appl_log/srvd/sap/zle_aust_sd_appl_log/0001/$metadata">
-        <edmx:Include Namespace="com.sap.gateway.srvd.zle_aust_sd_appl_log.v0001" Alias="SAP__self"/>
-    </edmx:Reference>
     <edmx:DataServices>
         <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="local">
-            <Annotations Target="SAP__self.AppLogType">
+            <Annotations Target="com.sap.gateway.srvd.zle_aust_sd_appl_log.v0001.AppLogType">
 
-                <Annotation Term="UI.LineItem" Qualifier="AppLogCard">
+                <Annotation Term="UI.LineItem">
                     <Collection>
                         <Record Type="UI.DataField">
                             <PropertyValue Property="Label" String="Zeitstempel"/>
@@ -27,20 +24,61 @@
                             <PropertyValue Property="Criticality" Path="LogTypeCriticality"/>
                         </Record>
                         <Record Type="UI.DataField">
-                            <PropertyValue Property="Label" String="Prozess"/>
-                            <PropertyValue Property="Value" Path="HistoryType"/>
-                        </Record>
-                        <Record Type="UI.DataField">
-                            <PropertyValue Property="Label" String="TPA-Nummer"/>
-                            <PropertyValue Property="Value" Path="TpaNumber"/>
+                            <PropertyValue Property="Label" String="Meldung"/>
+                            <PropertyValue Property="Value" Path="Message"/>
                         </Record>
                         <Record Type="UI.DataField">
                             <PropertyValue Property="Label" String="Material"/>
                             <PropertyValue Property="Value" Path="ItemNumber"/>
                         </Record>
                         <Record Type="UI.DataField">
-                            <PropertyValue Property="Label" String="HTTP"/>
+                            <PropertyValue Property="Label" String="TPA-Nummer"/>
+                            <PropertyValue Property="Value" Path="TpaNumber"/>
+                        </Record>
+                        <Record Type="UI.DataField">
+                            <PropertyValue Property="Label" String="Prozess"/>
+                            <PropertyValue Property="Value" Path="HistoryType"/>
+                        </Record>
+                        <Record Type="UI.DataField">
+                            <PropertyValue Property="Label" String="Position"/>
+                            <PropertyValue Property="Value" Path="OrderLineNr"/>
+                        </Record>
+                        <Record Type="UI.DataField">
+                            <PropertyValue Property="Label" String="HTTP-Status"/>
                             <PropertyValue Property="Value" Path="HttpStatus"/>
+                        </Record>
+                    </Collection>
+                </Annotation>
+
+                <Annotation Term="UI.PresentationVariant">
+                    <Record Type="UI.PresentationVariantType">
+                        <PropertyValue Property="MaxItems" Int="10"/>
+                        <PropertyValue Property="SortOrder">
+                            <Collection>
+                                <Record Type="Common.SortOrderType">
+                                    <PropertyValue Property="Property" PropertyPath="CreatedAt"/>
+                                    <PropertyValue Property="Descending" Bool="true"/>
+                                </Record>
+                            </Collection>
+                        </PropertyValue>
+                        <PropertyValue Property="Visualizations">
+                            <Collection>
+                                <AnnotationPath>@UI.LineItem</AnnotationPath>
+                            </Collection>
+                        </PropertyValue>
+                    </Record>
+                </Annotation>
+
+                <Annotation Term="UI.LineItem" Qualifier="AppLogCard">
+                    <Collection>
+                        <Record Type="UI.DataField">
+                            <PropertyValue Property="Label" String="Zeitstempel"/>
+                            <PropertyValue Property="Value" Path="CreatedAt"/>
+                        </Record>
+                        <Record Type="UI.DataFieldWithCriticality">
+                            <PropertyValue Property="Label" String="Typ"/>
+                            <PropertyValue Property="Value" Path="LogType"/>
+                            <PropertyValue Property="Criticality" Path="LogTypeCriticality"/>
                         </Record>
                         <Record Type="UI.DataField">
                             <PropertyValue Property="Label" String="Meldung"/>
@@ -76,16 +114,8 @@
                             <PropertyValue Property="Value" Path="CreatedAt"/>
                         </Record>
                         <Record Type="UI.DataField">
-                            <PropertyValue Property="Label" String="TPA-Nummer"/>
-                            <PropertyValue Property="Value" Path="TpaNumber"/>
-                        </Record>
-                        <Record Type="UI.DataField">
                             <PropertyValue Property="Label" String="Material"/>
                             <PropertyValue Property="Value" Path="ItemNumber"/>
-                        </Record>
-                        <Record Type="UI.DataField">
-                            <PropertyValue Property="Label" String="Prozess"/>
-                            <PropertyValue Property="Value" Path="HistoryType"/>
                         </Record>
                         <Record Type="UI.DataField">
                             <PropertyValue Property="Label" String="HTTP"/>

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__sap-cc__sapObjName",
+      "Bash(python3 -c ' *)"
+    ]
+  }
+}

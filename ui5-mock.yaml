@@ -45,7 +45,9 @@ server:
           - urlPath: /sap/opu/odata4/sap/zle_aust_sb_appl_log/srvd/sap/zle_aust_sd_appl_log/0001
             metadataPath: ./webapp/localService/mainService/metadata.xml
             mockdataPath: ./webapp/localService/mainService/data
-            generateMockData: true
+          - urlPath: /sap/opu/odata4/sap/zle_aust_sb_tpa/srvd/sap/zle_aust_sd_tpa/0001
+            metadataPath: ./webapp/localService/tpaService/metadata.xml
+            mockdataPath: ./webapp/localService/tpaService/data
         annotations: []
 builder:
   customTasks:

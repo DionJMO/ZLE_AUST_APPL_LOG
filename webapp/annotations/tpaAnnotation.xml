@@ -47,6 +47,34 @@
                             <PropertyValue Property="Value" Path="LineStatus"/>
                             <PropertyValue Property="Criticality" Path="StatusCriticality"/>
                         </Record>
+                        <Record Type="UI.DataField">
+                            <PropertyValue Property="Label" String="Werk"/>
+                            <PropertyValue Property="Value" Path="Werk"/>
+                        </Record>
+                        <Record Type="UI.DataField">
+                            <PropertyValue Property="Label" String="Auftragstyp"/>
+                            <PropertyValue Property="Value" Path="OrderType"/>
+                        </Record>
+                        <Record Type="UI.DataField">
+                            <PropertyValue Property="Label" String="Auftragsstatus"/>
+                            <PropertyValue Property="Value" Path="OrderStatus"/>
+                        </Record>
+                        <Record Type="UI.DataField">
+                            <PropertyValue Property="Label" String="WE-Nummer"/>
+                            <PropertyValue Property="Value" Path="ReferenceNumber"/>
+                        </Record>
+                        <Record Type="UI.DataField">
+                            <PropertyValue Property="Label" String="WE-Datum"/>
+                            <PropertyValue Property="Value" Path="ReferenceDate"/>
+                        </Record>
+                        <Record Type="UI.DataField">
+                            <PropertyValue Property="Label" String="Angelegt am"/>
+                            <PropertyValue Property="Value" Path="CreationDate"/>
+                        </Record>
+                        <Record Type="UI.DataField">
+                            <PropertyValue Property="Label" String="Letzter Sync"/>
+                            <PropertyValue Property="Value" Path="LastSyncAt"/>
+                        </Record>
                     </Collection>
                 </Annotation>
 

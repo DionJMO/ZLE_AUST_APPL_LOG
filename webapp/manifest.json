@@ -120,7 +120,7 @@
       }
     },
     "resources": {
-      "css": []
+      "css": [{ "uri": "css/app.css" }]
     },
     "routing": {
       "config": {},
@@ -131,10 +131,8 @@
   "sap.ovp": {
     "globalFilterModel": "mainModel",
     "globalFilterEntitySet": "AppLog",
+    "globalFilterControlType": "SmartFilterBar",
     "containerLayout": "resizable",
-    "enableLiveFilter": true,
-    "considerAnalyticalParameters": false,
-    "globalFilterControlType": "MacroFilterBar",
     "cards": {
       "appLogCard": {
         "model": "mainModel",
@@ -143,12 +141,12 @@
           "title": "{{appLogCardTitle}}",
           "subTitle": "{{appLogCardSubTitle}}",
           "entitySet": "AppLog",
-          "presentationAnnotationPath": "UI.PresentationVariant#AppLogCard",
-          "identificationAnnotationPath": "UI.LineItem#AppLogCard",
+          "presentationAnnotationPath": "UI.PresentationVariant",
+          "identificationAnnotationPath": "UI.LineItem",
           "dataStep": 5,
           "defaultSpan": {
             "rows": 15,
-            "cols": 2
+            "cols": 3
           }
         }
       },
@@ -159,13 +157,13 @@
           "title": "{{abbruchCardTitle}}",
           "subTitle": "{{abbruchCardSubTitle}}",
           "entitySet": "AppLog",
-          "presentationAnnotationPath": "UI.PresentationVariant#AbbruchCard",
-          "identificationAnnotationPath": "UI.LineItem#AbbruchCard",
+          "presentationAnnotationPath": "UI.PresentationVariant",
+          "identificationAnnotationPath": "UI.LineItem",
           "selectionAnnotationPath": "UI.SelectionVariant#AbbruchCard",
           "dataStep": 5,
           "defaultSpan": {
             "rows": 15,
-            "cols": 2
+            "cols": 3
           }
         }
       },
@@ -181,7 +179,7 @@
           "dataStep": 5,
           "defaultSpan": {
             "rows": 15,
-            "cols": 2
+            "cols": 3
           }
         }
       },
