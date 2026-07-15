@@ -80,7 +80,8 @@
         "sap.fe.templates": {},
         "sap.ovp": {},
         "sap.ui.rta": {},
-        "sap.ui.layout": {}
+        "sap.ui.layout": {},
+        "sap.suite.ui.microchart": {}
       }
     },
     "contentDensities": {
