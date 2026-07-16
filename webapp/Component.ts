@@ -104,8 +104,9 @@ export default class Component extends BaseComponent {
 		const cs = window.getComputedStyle(oRefCard);
 		oDiv.style.flex = cs.flex;
 		oDiv.style.width = cs.width;
-		oDiv.style.height = cs.height;
 		oDiv.style.margin = cs.margin;
+		// No forced height — the chart card takes its content height (no blank box);
+		// tops align with the table cards via the flex row.
 		oContainer.insertBefore(oDiv, oRefCard);
 
 		// Render the chart shell right away, so it always shows
@@ -235,8 +236,17 @@ export default class Component extends BaseComponent {
 			// Verhindert Kartenexpansion: zu viele Spalten → Pop-in statt Breite
 			oTable.setAutoPopinMode(false);
 
+			// Lazy Loading: initial 25 Zeilen, beim Scroll ans Ende weitere nachladen
+			oTable.setGrowing(true);
+			oTable.setGrowingScrollToLoad(true);
+			oTable.setGrowingThreshold(25);
+
 			this._setupTableTooltips(oTable);
-			oTable.attachUpdateFinished(() => { this._setupTableTooltips(oTable); });
+			this._applyRowColors(oTable);
+			oTable.attachUpdateFinished(() => {
+				this._setupTableTooltips(oTable);
+				this._applyRowColors(oTable);
+			});
 
 			const storageKey = "colVis_" + oTable.getId();
 
@@ -257,11 +267,13 @@ export default class Component extends BaseComponent {
 				tooltip: "Spalten konfigurieren",
 				type:    "Transparent"
 			});
+			oBtn.attachPress(() => { this._openColumnDialog(oTable, storageKey); });
+
+			// Only the column-config gear; card resizing is handled by OVP's
+			// native drag&drop (which reflows neighbours without overlap).
 			oTable.setHeaderToolbar(new OverflowToolbar({
 				content: [new ToolbarSpacer(), oBtn]
 			}) as unknown as Toolbar);
-
-			oBtn.attachPress(() => { this._openColumnDialog(oTable, storageKey); });
 		});
 	}
 
@@ -292,6 +304,60 @@ export default class Component extends BaseComponent {
 			afterClose: () => oDialog.destroy()
 		});
 		oDialog.open();
+	}
+
+	private mLogTypeByUuid: Record<string, string> = {};
+	private mLogTypeMapPromise?: Promise<void>;
+
+	private _ensureLogTypeMap(): Promise<void> {
+		if (!this.mLogTypeMapPromise) {
+			this.mLogTypeMapPromise = (async () => {
+				try {
+					const oModel = (this as any).getModel("mainModel") as any;
+					const oBinding = oModel.bindList(
+						"/AppLog", null, [new Sorter("CreatedAt", true)], undefined,
+						{ $select: "LogUuid,LogType" }
+					);
+					const aCtx: any[] = await oBinding.requestContexts(0, 2000);
+					for (const oCtx of aCtx) {
+						const oRow = oCtx.getObject() as Record<string, string> | undefined;
+						if (oRow?.LogUuid) { this.mLogTypeByUuid[oRow.LogUuid] = oRow.LogType; }
+					}
+				} catch (e) {
+					// eslint-disable-next-line no-console
+					console.error("[Rows] LogType-Map konnte nicht geladen werden:", e);
+				}
+			})();
+		}
+		return this.mLogTypeMapPromise;
+	}
+
+	private _applyRowColors(oTable: Table): void {
+		type RowLike = {
+			getBindingContext(m?: string): { getProperty(p: string): unknown } | null;
+			addStyleClass(s: string): void;
+			removeStyleClass(s: string): void;
+		};
+
+		void this._ensureLogTypeMap().then(() => {
+			(oTable.getItems() as unknown as RowLike[]).forEach((oRow) => {
+				if (typeof oRow.getBindingContext !== "function" || typeof oRow.addStyleClass !== "function") {
+					return;
+				}
+				oRow.removeStyleClass("zleRowE");
+				oRow.removeStyleClass("zleRowW");
+				oRow.removeStyleClass("zleRowS");
+
+				const oCtx = oRow.getBindingContext() ?? oRow.getBindingContext("mainModel");
+				const sUuid = oCtx?.getProperty("LogUuid") as string | undefined;
+				if (!sUuid) { return; }
+
+				const sType = this.mLogTypeByUuid[sUuid];
+				if (sType === "E" || sType === "W" || sType === "S") {
+					oRow.addStyleClass("zleRow" + sType);
+				}
+			});
+		});
 	}
 
 	private _setupTableTooltips(oTable: Table): void {

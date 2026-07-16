@@ -80,7 +80,7 @@
 
                 <Annotation Term="UI.PresentationVariant" Qualifier="TpaCard">
                     <Record Type="UI.PresentationVariantType">
-                        <PropertyValue Property="MaxItems" Int="20"/>
+                        <PropertyValue Property="MaxItems" Int="200"/>
                         <PropertyValue Property="SortOrder">
                             <Collection>
                                 <Record Type="Common.SortOrderType">

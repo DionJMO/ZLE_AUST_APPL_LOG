@@ -144,9 +144,9 @@
           "entitySet": "AppLog",
           "presentationAnnotationPath": "UI.PresentationVariant",
           "identificationAnnotationPath": "UI.LineItem",
-          "dataStep": 5,
+          "dataStep": 25,
           "defaultSpan": {
-            "rows": 15,
+            "rows": 10,
             "cols": 3
           }
         }
@@ -161,9 +161,9 @@
           "presentationAnnotationPath": "UI.PresentationVariant",
           "identificationAnnotationPath": "UI.LineItem",
           "selectionAnnotationPath": "UI.SelectionVariant#AbbruchCard",
-          "dataStep": 5,
+          "dataStep": 25,
           "defaultSpan": {
-            "rows": 15,
+            "rows": 10,
             "cols": 3
           }
         }
@@ -177,9 +177,9 @@
           "entitySet": "Tpa",
           "presentationAnnotationPath": "UI.PresentationVariant#TpaCard",
           "identificationAnnotationPath": "UI.LineItem#TpaCard",
-          "dataStep": 5,
+          "dataStep": 25,
           "defaultSpan": {
-            "rows": 15,
+            "rows": 10,
             "cols": 3
           }
         }
@@ -191,7 +191,7 @@
           "subTitle": "{{kontakteCardSubTitle}}",
           "listFlavor": "standard",
           "defaultSpan": {
-            "rows": 10,
+            "rows": 6,
             "cols": 1
           },
           "staticContent": [

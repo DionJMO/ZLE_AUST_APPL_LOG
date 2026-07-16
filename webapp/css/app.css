@@ -1,57 +1,4 @@
-/* OVP Horizontal Scroll Layout
-   Konvertiert das DashboardLayout von vertikalem Grid zu horizontaler Flex-Zeile */
-
-/* Dashboard: Flex-Row statt Grid-Wrapping */
-.sapOVPDashboardLayout {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: flex-start !important;
-    width: max-content !important;
-    min-height: 600px;
-    padding: 0.5rem;
-    gap: 0.5rem;
-    box-sizing: border-box;
-}
-
-/* Karten-Container: absolute Positionierung aufheben, feste Höhe für Scroll */
-.sapOVPDashboardLayout > div {
-    position: relative !important;
-    left: auto !important;
-    top: auto !important;
-    flex: 0 0 480px !important;
-    width: 480px !important;
-    height: 560px !important;
-}
-
-/* OVP Card: füllt Container, clippt Overflow */
-.sapOVPCard {
-    width: 100% !important;
-    height: 100% !important;
-    overflow: hidden !important;
-    display: flex !important;
-    flex-direction: column !important;
-}
-
-/* Content-Bereich der Karte: scrollt vertikal und horizontal */
-.sapOVPCardContentContainer,
-.sapOVPCard .sapMScrollContainer,
-.sapOVPCard .sapMScrollContainerScroll {
-    flex: 1 1 0 !important;
-    overflow-y: auto !important;
-    overflow-x: auto !important;
-    min-height: 0 !important;
-}
-
-/* Scroll-Container der Page horizontal scrollbar machen */
-.sapMScrollContainer > .sapMScrollContainerScroll,
-.sapMPage > .sapMPageScroll {
-    overflow-x: auto !important;
-}
-
-/* Typ-Verteilung Donut-Chart als Kachel in der OVP-Kachelreihe.
-   Die generische Regel `.sapOVPDashboardLayout > div` gibt bereits
-   flex: 0 0 480px + height: 560px vor — hier nur das Karten-Aussehen. */
+/* Typ-Verteilung Donut-Chart als Kachel in der OVP-Kachelreihe (Karten-Aussehen). */
 .zleChartCard {
     background: var(--sapTile_Background, #ffffff) !important;
     border: 1px solid var(--sapTile_BorderColor, #e5e5e5);
@@ -74,3 +21,17 @@
 .zleTypeDonut {
     width: 100%;
 }
+
+/* Scroll-Container für sap.m.Table-„growing": OVPs Content-Container hat eine
+   feste Höhe (von OVP gesetzt) → overflow:auto macht ihn scrollbar; growing
+   lädt beim Scroll ans Ende die nächsten Zeilen nach (Lazy Loading). */
+.sapOvpCardContentContainer {
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+}
+
+/* Application-Log-Zeilen je Meldungstyp dezent hinterlegen
+   (Hintergrund auf Zeile UND Zellen, sonst überdecken die <td>). */
+.sapMListTblRow.zleRowE, .zleRowE > td { background-color: rgba(187, 0, 0, 0.18) !important; }
+.sapMListTblRow.zleRowW, .zleRowW > td { background-color: rgba(233, 115, 12, 0.18) !important; }
+.sapMListTblRow.zleRowS, .zleRowS > td { background-color: rgba(24, 137, 24, 0.18) !important; }
