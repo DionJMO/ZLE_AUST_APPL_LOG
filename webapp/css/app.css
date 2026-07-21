@@ -1,33 +1,17 @@
-/* Typ-Verteilung Donut-Chart als Kachel in der OVP-Kachelreihe (Karten-Aussehen). */
-.zleChartCard {
-    background: var(--sapTile_Background, #ffffff) !important;
-    border: 1px solid var(--sapTile_BorderColor, #e5e5e5);
-    border-radius: 0.5rem;
-    box-shadow: var(--sapContent_Shadow0, 0 0 2px 0 rgba(0,0,0,0.16));
-    box-sizing: border-box;
-    overflow: hidden;
-}
-
-.zleChartBox {
-    height: 100%;
-    padding: 1rem;
-    box-sizing: border-box;
-}
-
-.zleChartTitle {
-    margin-bottom: 1rem;
-}
-
-.zleTypeDonut {
-    width: 100%;
-}
-
 /* Scroll-Container für sap.m.Table-„growing": OVPs Content-Container hat eine
    feste Höhe (von OVP gesetzt) → overflow:auto macht ihn scrollbar; growing
    lädt beim Scroll ans Ende die nächsten Zeilen nach (Lazy Loading). */
 .sapOvpCardContentContainer {
     overflow-y: auto !important;
     overflow-x: auto !important;
+}
+
+/* Platz unterhalb der untersten Karten, damit deren Resize-Griff nicht am
+   Seitenrand klebt und die Seite beim Vergrößern voll mitscrollt. margin (nicht
+   padding) → box-sizing-unabhängig, verschiebt die absolut positionierten
+   Karten nicht. 90vh → skaliert mit der Fensterhöhe (auch bei 1148×1304). */
+.sapOvpDashboardLayout {
+    margin-bottom: 90vh !important;
 }
 
 /* Application-Log-Zeilen je Meldungstyp dezent hinterlegen

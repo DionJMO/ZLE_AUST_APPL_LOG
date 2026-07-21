@@ -1,0 +1,18 @@
+<core:FragmentDefinition
+	xmlns:core="sap.ui.core"
+	xmlns="sap.m"
+	xmlns:mc="sap.suite.ui.microchart">
+	<FlexBox id="donutBox" width="25rem" height="12rem" alignItems="Start" justifyContent="SpaceBetween" class="sapUiSmallMargin">
+		<mc:InteractiveDonutChart
+			id="donut"
+			selectionEnabled="true"
+			selectionChanged=".onSelectionChanged"
+			press=".onPress">
+			<mc:segments>
+				<mc:InteractiveDonutChartSegment id="segE" label="Fehler"    color="Error"    value="0" displayedValue="…"/>
+				<mc:InteractiveDonutChartSegment id="segW" label="Warnungen" color="Critical" value="0" displayedValue="…"/>
+				<mc:InteractiveDonutChartSegment id="segS" label="Erfolg"    color="Good"     value="0" displayedValue="…"/>
+			</mc:segments>
+		</mc:InteractiveDonutChart>
+	</FlexBox>
+</core:FragmentDefinition>

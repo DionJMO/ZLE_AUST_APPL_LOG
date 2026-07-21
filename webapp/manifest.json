@@ -135,6 +135,19 @@
     "globalFilterControlType": "SmartFilterBar",
     "containerLayout": "resizable",
     "cards": {
+      "donutCard": {
+        "model": "mainModel",
+        "template": "zui5_zle_aust_mon.ext.donut",
+        "settings": {
+          "title": "Typ-Verteilung",
+          "subTitle": "Fehler / Warnung / Erfolg (14 Tage)",
+          "entitySet": "AppLog",
+          "defaultSpan": {
+            "rows": 10,
+            "cols": 3
+          }
+        }
+      },
       "appLogCard": {
         "model": "mainModel",
         "template": "sap.ovp.cards.v4.table",
