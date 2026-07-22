@@ -14,8 +14,3 @@
     margin-bottom: 90vh !important;
 }
 
-/* Application-Log-Zeilen je Meldungstyp dezent hinterlegen
-   (Hintergrund auf Zeile UND Zellen, sonst überdecken die <td>). */
-.sapMListTblRow.zleRowE, .zleRowE > td { background-color: rgba(187, 0, 0, 0.18) !important; }
-.sapMListTblRow.zleRowW, .zleRowW > td { background-color: rgba(233, 115, 12, 0.18) !important; }
-.sapMListTblRow.zleRowS, .zleRowS > td { background-color: rgba(24, 137, 24, 0.18) !important; }

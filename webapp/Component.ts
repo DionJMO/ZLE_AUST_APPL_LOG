@@ -8,7 +8,6 @@ import Toolbar from "sap/m/Toolbar";
 import Dialog from "sap/m/Dialog";
 import CheckBox from "sap/m/CheckBox";
 import VBox from "sap/m/VBox";
-import Sorter from "sap/ui/model/Sorter";
 
 interface ModelLike {
 	getMetaModel(): Record<string, unknown>;
@@ -42,19 +41,14 @@ export default class Component extends BaseComponent {
 		});
 	}
 
-	private _initColumnPersonalization(iRetry: number): void {
+	private _initColumnPersonalization(iPass: number): void {
 		const aTables = UI5Element.registry.filter(
 			(oEl) => oEl.isA("sap.m.Table")
 		) as unknown as Table[];
 
-		if (aTables.length === 0 && iRetry < 8) {
-			setTimeout(() => { this._initColumnPersonalization(iRetry + 1); }, 500);
-			return;
-		}
-
 		aTables.forEach((oTable) => {
-			if (oTable.getHeaderToolbar()) { return; }
-			if (oTable.getColumns().length === 0) { return; }
+			if (oTable.getHeaderToolbar()) { return; }          // schon verdrahtet → skip
+			if (oTable.getColumns().length === 0) { return; }   // noch nicht bereit → nächster Pass
 
 			// Verhindert Kartenexpansion: zu viele Spalten → Pop-in statt Breite
 			oTable.setAutoPopinMode(false);
@@ -65,10 +59,8 @@ export default class Component extends BaseComponent {
 			oTable.setGrowingThreshold(25);
 
 			this._setupTableTooltips(oTable);
-			this._applyRowColors(oTable);
 			oTable.attachUpdateFinished(() => {
 				this._setupTableTooltips(oTable);
-				this._applyRowColors(oTable);
 			});
 
 			const storageKey = "colVis_" + oTable.getId();
@@ -98,6 +90,13 @@ export default class Component extends BaseComponent {
 				content: [new ToolbarSpacer(), oBtn]
 			}) as unknown as Toolbar);
 		});
+
+		// Mehrere Durchläufe: spät erzeugte Karten (Abbruch/TPA laden async nach
+		// der Donut-Custom-Card) werden so ebenfalls verdrahtet. Bereits
+		// verdrahtete Tabellen überspringt der getHeaderToolbar()-Guard.
+		if (iPass < 15) {
+			setTimeout(() => { this._initColumnPersonalization(iPass + 1); }, 700);
+		}
 	}
 
 	private _openColumnDialog(oTable: Table, storageKey: string): void {
@@ -127,60 +126,6 @@ export default class Component extends BaseComponent {
 			afterClose: () => oDialog.destroy()
 		});
 		oDialog.open();
-	}
-
-	private mLogTypeByUuid: Record<string, string> = {};
-	private mLogTypeMapPromise?: Promise<void>;
-
-	private _ensureLogTypeMap(): Promise<void> {
-		if (!this.mLogTypeMapPromise) {
-			this.mLogTypeMapPromise = (async () => {
-				try {
-					const oModel = (this as any).getModel("mainModel") as any;
-					const oBinding = oModel.bindList(
-						"/AppLog", null, [new Sorter("CreatedAt", true)], undefined,
-						{ $select: "LogUuid,LogType" }
-					);
-					const aCtx: any[] = await oBinding.requestContexts(0, 2000);
-					for (const oCtx of aCtx) {
-						const oRow = oCtx.getObject() as Record<string, string> | undefined;
-						if (oRow?.LogUuid) { this.mLogTypeByUuid[oRow.LogUuid] = oRow.LogType; }
-					}
-				} catch (e) {
-					// eslint-disable-next-line no-console
-					console.error("[Rows] LogType-Map konnte nicht geladen werden:", e);
-				}
-			})();
-		}
-		return this.mLogTypeMapPromise;
-	}
-
-	private _applyRowColors(oTable: Table): void {
-		type RowLike = {
-			getBindingContext(m?: string): { getProperty(p: string): unknown } | null;
-			addStyleClass(s: string): void;
-			removeStyleClass(s: string): void;
-		};
-
-		void this._ensureLogTypeMap().then(() => {
-			(oTable.getItems() as unknown as RowLike[]).forEach((oRow) => {
-				if (typeof oRow.getBindingContext !== "function" || typeof oRow.addStyleClass !== "function") {
-					return;
-				}
-				oRow.removeStyleClass("zleRowE");
-				oRow.removeStyleClass("zleRowW");
-				oRow.removeStyleClass("zleRowS");
-
-				const oCtx = oRow.getBindingContext() ?? oRow.getBindingContext("mainModel");
-				const sUuid = oCtx?.getProperty("LogUuid") as string | undefined;
-				if (!sUuid) { return; }
-
-				const sType = this.mLogTypeByUuid[sUuid];
-				if (sType === "E" || sType === "W" || sType === "S") {
-					oRow.addStyleClass("zleRow" + sType);
-				}
-			});
-		});
 	}
 
 	private _setupTableTooltips(oTable: Table): void {

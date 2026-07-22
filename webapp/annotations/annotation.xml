@@ -12,16 +12,22 @@
         <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="local">
             <Annotations Target="com.sap.gateway.srvd.zle_aust_sd_appl_log.v0001.AppLogType">
 
+                <Annotation Term="UI.DataPoint" Qualifier="LogTypeStatus">
+                    <Record Type="UI.DataPointType">
+                        <PropertyValue Property="Value" Path="LogType"/>
+                        <PropertyValue Property="Criticality" Path="LogTypeCriticality"/>
+                    </Record>
+                </Annotation>
+
                 <Annotation Term="UI.LineItem">
                     <Collection>
                         <Record Type="UI.DataField">
                             <PropertyValue Property="Label" String="Zeitstempel"/>
                             <PropertyValue Property="Value" Path="CreatedAt"/>
                         </Record>
-                        <Record Type="UI.DataFieldWithCriticality">
+                        <Record Type="UI.DataFieldForAnnotation">
                             <PropertyValue Property="Label" String="Typ"/>
-                            <PropertyValue Property="Value" Path="LogType"/>
-                            <PropertyValue Property="Criticality" Path="LogTypeCriticality"/>
+                            <PropertyValue Property="Target" AnnotationPath="@UI.DataPoint#LogTypeStatus"/>
                         </Record>
                         <Record Type="UI.DataField">
                             <PropertyValue Property="Label" String="Meldung"/>
@@ -75,10 +81,9 @@
                             <PropertyValue Property="Label" String="Zeitstempel"/>
                             <PropertyValue Property="Value" Path="CreatedAt"/>
                         </Record>
-                        <Record Type="UI.DataFieldWithCriticality">
+                        <Record Type="UI.DataFieldForAnnotation">
                             <PropertyValue Property="Label" String="Typ"/>
-                            <PropertyValue Property="Value" Path="LogType"/>
-                            <PropertyValue Property="Criticality" Path="LogTypeCriticality"/>
+                            <PropertyValue Property="Target" AnnotationPath="@UI.DataPoint#LogTypeStatus"/>
                         </Record>
                         <Record Type="UI.DataField">
                             <PropertyValue Property="Label" String="Meldung"/>
