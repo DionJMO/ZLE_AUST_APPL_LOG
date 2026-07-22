@@ -210,21 +210,18 @@
           "staticContent": [
             {
               "title": "Hörmann PM",
-              "subTitle": "Projektmanagement HiLIS",
-              "icon": "sap-icon://person-placeholder",
-              "targetUri": "mailto:pm@hoermann.de"
+              "subTitle": "Projektmanagement HiLIS · pm@hoermann.de",
+              "icon": "sap-icon://person-placeholder"
             },
             {
               "title": "WMS-Support",
-              "subTitle": "Hörmann Logistik Systeme",
-              "icon": "sap-icon://headset",
-              "targetUri": "mailto:wms-support@hoermann.de"
+              "subTitle": "Hörmann Logistik Systeme · wms-support@hoermann.de",
+              "icon": "sap-icon://headset"
             },
             {
               "title": "Kroschke IT",
-              "subTitle": "SAP-Basis / Schnittstellen",
-              "icon": "sap-icon://it-system",
-              "targetUri": "mailto:it@kroschke.com"
+              "subTitle": "SAP-Basis / Schnittstellen · it@kroschke.com",
+              "icon": "sap-icon://it-system"
             }
           ]
         }
