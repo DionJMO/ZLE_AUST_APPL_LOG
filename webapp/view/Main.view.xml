@@ -3,7 +3,9 @@
 	xmlns="sap.m"
 	xmlns:mvc="sap.ui.core.mvc"
 	xmlns:core="sap.ui.core"
-	xmlns:f="sap.f">
+	xmlns:f="sap.f"
+	xmlns:t="sap.ui.table"
+	xmlns:rm="sap.ui.table.rowmodes">
 	<f:DynamicPage id="mainPage" headerExpanded="true" showFooter="false">
 
 		<f:title>
@@ -186,10 +188,86 @@
 								<Avatar id="appLogAvatar" src="sap-icon://activity-items" displaySize="XS" backgroundColor="Accent5"/>
 								<Title id="appLogTitle" text="{i18n>appLogCardTitle}" level="H3"/>
 								<ToolbarSpacer id="appLogSpacer"/>
+								<Button
+									id="appLogColumnsButton"
+									icon="sap-icon://action-settings"
+									tooltip="{i18n>columnsTooltip}"
+									type="Transparent"
+									press=".onOpenAppLogColumns"/>
 							</OverflowToolbar>
 						</headerToolbar>
 						<content>
-							<Text id="appLogPlaceholder" text="{i18n>panelPlaceholder}" class="sapUiSmallMargin"/>
+							<!--
+								sap.ui.table.Table statt sap.m.Table: nur diese hat einen
+								eigenen Scrollbar und dauerhaft fixierte Spaltenkoepfe.
+								sap.m.Table scrollt mit der Seite, und ihr sticky-Feature
+								wird von Grid-Layout-Containern unterdrueckt.
+								rowMode-Aggregation statt visibleRowCountMode - Letzteres
+								ist seit UI5 1.119 deprecated.
+							-->
+							<t:Table
+								id="idAppLogTable"
+								rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, sorter: {path: 'CreatedAt', descending: true}}"
+								selectionMode="None"
+								ariaLabelledBy="appLogTitle">
+								<t:rowMode>
+									<rm:Auto maxRowCount="12"/>
+								</t:rowMode>
+								<t:columns>
+									<t:Column id="idAppLogCreatedAtColumn" width="8rem" sortProperty="CreatedAt">
+										<Label id="alLblCreatedAt" text="{i18n>colCreatedAt}"/>
+										<t:template>
+											<Text id="alTxtCreatedAt" text="{mainModel>CreatedAt}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idAppLogTypeColumn" width="7rem" sortProperty="LogType">
+										<Label id="alLblLogType" text="{i18n>colLogType}"/>
+										<t:template>
+											<ObjectStatus
+												id="alStatLogType"
+												text="{mainModel>LogType}"
+												state="{path: 'mainModel>LogTypeCriticality', formatter: '.formatter.criticalityState'}"
+												icon="{path: 'mainModel>LogTypeCriticality', formatter: '.formatter.criticalityIcon'}"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idAppLogMessageColumn" width="30rem">
+										<Label id="alLblMessage" text="{i18n>colMessage}"/>
+										<t:template>
+											<Text id="alTxtMessage" text="{mainModel>Message}" wrapping="false" tooltip="{mainModel>Message}"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idAppLogItemColumn" width="12rem" sortProperty="ItemNumber">
+										<Label id="alLblItemNumber" text="{i18n>colItemNumber}"/>
+										<t:template>
+											<Text id="alTxtItemNumber" text="{mainModel>ItemNumber}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idAppLogTpaColumn" width="11rem" sortProperty="TpaNumber">
+										<Label id="alLblTpaNumber" text="{i18n>colTpaNumber}"/>
+										<t:template>
+											<Text id="alTxtTpaNumber" text="{mainModel>TpaNumber}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idAppLogHistoryColumn" width="10rem" sortProperty="HistoryType">
+										<Label id="alLblHistoryType" text="{i18n>colHistoryType}"/>
+										<t:template>
+											<Text id="alTxtHistoryType" text="{mainModel>HistoryType}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idAppLogLineColumn" width="7rem">
+										<Label id="alLblOrderLineNr" text="{i18n>colOrderLineNr}"/>
+										<t:template>
+											<Text id="alTxtOrderLineNr" text="{mainModel>OrderLineNr}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idAppLogHttpColumn" width="7rem" hAlign="End">
+										<Label id="alLblHttpStatus" text="{i18n>colHttpStatus}"/>
+										<t:template>
+											<Text id="alTxtHttpStatus" text="{mainModel>HttpStatus}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+								</t:columns>
+							</t:Table>
 						</content>
 					</Panel>
 
@@ -202,10 +280,128 @@
 								<Avatar id="tpaAvatar" src="sap-icon://shipping-status" displaySize="XS" backgroundColor="Accent7"/>
 								<Title id="tpaTitle" text="{i18n>tpaCardTitle}" level="H3"/>
 								<ToolbarSpacer id="tpaSpacer"/>
+								<Button
+									id="tpaColumnsButton"
+									icon="sap-icon://action-settings"
+									tooltip="{i18n>columnsTooltip}"
+									type="Transparent"
+									press=".onOpenTpaColumns"/>
 							</OverflowToolbar>
 						</headerToolbar>
 						<content>
-							<Text id="tpaPlaceholder" text="{i18n>panelPlaceholder}" class="sapUiSmallMargin"/>
+							<!--
+								Spaltenreihenfolge bewusst nach Befuellung sortiert: die
+								ersten acht Spalten sind standardmaessig sichtbar. Werk,
+								MeasurementUnit, BestBeforeDate, ReferenceNumber,
+								ReferenceDate und CreationDate werden vom Sync-Report nie
+								befuellt (HiLIS liefert sie nicht, siehe CLAUDE.md O-01)
+								und stehen deshalb hinten in der ausgeblendeten Gruppe.
+							-->
+							<t:Table
+								id="idTpaTable"
+								rows="{path: 'tpaModel>/Tpa', parameters: {$count: true}, sorter: {path: 'OrderNumber'}}"
+								selectionMode="None"
+								ariaLabelledBy="tpaTitle">
+								<t:rowMode>
+									<rm:Auto maxRowCount="12"/>
+								</t:rowMode>
+								<t:columns>
+									<t:Column id="idTpaOrderNumberColumn" width="10rem" sortProperty="OrderNumber">
+										<Label id="tpaLblOrderNumber" text="{i18n>colOrderNumber}"/>
+										<t:template>
+											<Text id="tpaTxtOrderNumber" text="{tpaModel>OrderNumber}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idTpaOrderLineColumn" width="7rem">
+										<Label id="tpaLblOrderLine" text="{i18n>colOrderLineNumber}"/>
+										<t:template>
+											<Text id="tpaTxtOrderLine" text="{tpaModel>OrderLineNumber}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idTpaItemColumn" width="12rem" sortProperty="ItemNumber">
+										<Label id="tpaLblItem" text="{i18n>colItemNumber}"/>
+										<t:template>
+											<Text id="tpaTxtItem" text="{tpaModel>ItemNumber}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idTpaMengeColumn" width="8rem" hAlign="End">
+										<Label id="tpaLblMenge" text="{i18n>colMenge}"/>
+										<t:template>
+											<Text id="tpaTxtMenge" text="{tpaModel>Menge}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idTpaBatchColumn" width="9rem">
+										<Label id="tpaLblBatch" text="{i18n>colBatchNumber}"/>
+										<t:template>
+											<Text id="tpaTxtBatch" text="{tpaModel>BatchNumber}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idTpaLineStatusColumn" width="10rem" sortProperty="LineStatus">
+										<Label id="tpaLblLineStatus" text="{i18n>colLineStatus}"/>
+										<t:template>
+											<ObjectStatus
+												id="tpaStatLineStatus"
+												text="{tpaModel>LineStatus}"
+												state="{path: 'tpaModel>StatusCriticality', formatter: '.formatter.criticalityState'}"
+												icon="{path: 'tpaModel>StatusCriticality', formatter: '.formatter.criticalityIcon'}"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idTpaOrderStatusColumn" width="10rem" sortProperty="OrderStatus">
+										<Label id="tpaLblOrderStatus" text="{i18n>colOrderStatus}"/>
+										<t:template>
+											<Text id="tpaTxtOrderStatus" text="{tpaModel>OrderStatus}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idTpaLastSyncColumn" width="12rem" sortProperty="LastSyncAt">
+										<Label id="tpaLblLastSync" text="{i18n>colLastSyncAt}"/>
+										<t:template>
+											<Text id="tpaTxtLastSync" text="{tpaModel>LastSyncAt}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idTpaOrderTypeColumn" width="9rem">
+										<Label id="tpaLblOrderType" text="{i18n>colOrderType}"/>
+										<t:template>
+											<Text id="tpaTxtOrderType" text="{tpaModel>OrderType}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idTpaWerkColumn" width="6rem">
+										<Label id="tpaLblWerk" text="{i18n>colWerk}"/>
+										<t:template>
+											<Text id="tpaTxtWerk" text="{tpaModel>Werk}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idTpaUomColumn" width="8rem">
+										<Label id="tpaLblUom" text="{i18n>colMeasurementUnit}"/>
+										<t:template>
+											<Text id="tpaTxtUom" text="{tpaModel>MeasurementUnit}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idTpaBbdColumn" width="8rem">
+										<Label id="tpaLblBbd" text="{i18n>colBestBeforeDate}"/>
+										<t:template>
+											<Text id="tpaTxtBbd" text="{tpaModel>BestBeforeDate}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idTpaRefNumberColumn" width="10rem">
+										<Label id="tpaLblRefNumber" text="{i18n>colReferenceNumber}"/>
+										<t:template>
+											<Text id="tpaTxtRefNumber" text="{tpaModel>ReferenceNumber}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idTpaRefDateColumn" width="9rem">
+										<Label id="tpaLblRefDate" text="{i18n>colReferenceDate}"/>
+										<t:template>
+											<Text id="tpaTxtRefDate" text="{tpaModel>ReferenceDate}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idTpaCreationDateColumn" width="11rem">
+										<Label id="tpaLblCreationDate" text="{i18n>colCreationDate}"/>
+										<t:template>
+											<Text id="tpaTxtCreationDate" text="{tpaModel>CreationDate}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+								</t:columns>
+							</t:Table>
 						</content>
 					</Panel>
 				</f:GridContainer>
