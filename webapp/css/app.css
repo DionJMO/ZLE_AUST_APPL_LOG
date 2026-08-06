@@ -1,16 +1,12 @@
-/* Scroll-Container für sap.m.Table-„growing": OVPs Content-Container hat eine
-   feste Höhe (von OVP gesetzt) → overflow:auto macht ihn scrollbar; growing
-   lädt beim Scroll ans Ende die nächsten Zeilen nach (Lazy Loading). */
-.sapOvpCardContentContainer {
-    overflow-y: auto !important;
-    overflow-x: auto !important;
-}
-
-/* Platz unterhalb der untersten Karten, damit deren Resize-Griff nicht am
-   Seitenrand klebt und die Seite beim Vergrößern voll mitscrollt. margin (nicht
-   padding) → box-sizing-unabhängig, verschiebt die absolut positionierten
-   Karten nicht. 90vh → skaliert mit der Fensterhöhe (auch bei 1148×1304). */
-.sapOvpDashboardLayout {
-    margin-bottom: 90vh !important;
-}
-
+/* Bewusst leer.
+ *
+ * Die frueheren Regeln (.sapOvpCardContentContainer, .sapOvpDashboardLayout)
+ * waren OVP-spezifische Workarounds und sind mit dem Umbau auf Freestyle
+ * gegenstandslos geworden.
+ *
+ * Groessen und Hoehen werden ausschliesslich ueber
+ * sap.f.GridContainerSettings (rowSize / columnSize) und
+ * GridContainerItemLayoutData (minRows / columns) gesteuert - nicht per CSS.
+ * In diesem Projekt haben eigene CSS-Eingriffe ins Layout wiederholt Scroll
+ * und Anordnung zerstoert. Jede neue Regel hier braucht eine Begruendung.
+ */

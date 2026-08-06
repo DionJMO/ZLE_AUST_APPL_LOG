@@ -71,16 +71,15 @@
     }
   },
   "sap.ui5": {
-    "flexEnabled": true,
+    "flexEnabled": false,
     "dependencies": {
       "minUI5Version": "1.120.14",
       "libs": {
         "sap.m": {},
         "sap.ui.core": {},
-        "sap.fe.templates": {},
-        "sap.fe.macros": {},
-        "sap.ovp": {},
-        "sap.ui.rta": {},
+        "sap.f": {},
+        "sap.ui.table": {},
+        "sap.viz": {},
         "sap.ui.layout": {},
         "sap.suite.ui.microchart": {}
       }
@@ -94,7 +93,9 @@
         "type": "sap.ui.model.resource.ResourceModel",
         "settings": {
           "bundleName": "zui5_zle_aust_mon.i18n.i18n",
-          "supportedLocales": [""],
+          "supportedLocales": [
+            ""
+          ],
           "fallbackLocale": ""
         }
       },
@@ -122,122 +123,40 @@
       }
     },
     "resources": {
-      "css": [{ "uri": "css/app.css" }]
+      "css": [
+        {
+          "uri": "css/app.css"
+        }
+      ]
+    },
+    "rootView": {
+      "viewName": "zui5_zle_aust_mon.view.App",
+      "type": "XML",
+      "id": "app"
     },
     "routing": {
-      "config": {},
-      "routes": [],
-      "targets": {}
-    }
-  },
-  "sap.ovp": {
-    "globalFilterModel": "mainModel",
-    "globalFilterEntitySet": "AppLog",
-    "globalFilterControlType": "SmartFilterBar",
-    "containerLayout": "resizable",
-    "cards": {
-      "kpiCard": {
-        "model": "mainModel",
-        "template": "zui5_zle_aust_mon.ext.kpi",
-        "settings": {
-          "title": "Kennzahlen",
-          "subTitle": "Gesamt / Offen / Fehler / Abbrüche",
-          "entitySet": "AppLog",
-          "defaultSpan": {
-            "rows": 6,
-            "cols": 3
-          }
-        }
+      "config": {
+        "routerClass": "sap.m.routing.Router",
+        "type": "View",
+        "viewType": "XML",
+        "path": "zui5_zle_aust_mon.view",
+        "controlId": "app",
+        "controlAggregation": "pages",
+        "transition": "slide"
       },
-      "donutCard": {
-        "model": "mainModel",
-        "template": "zui5_zle_aust_mon.ext.donut",
-        "settings": {
-          "title": "Typ-Verteilung",
-          "subTitle": "Fehler / Warnung / Erfolg (14 Tage)",
-          "entitySet": "AppLog",
-          "defaultSpan": {
-            "rows": 10,
-            "cols": 3
-          }
-        }
-      },
-      "appLogCard": {
-        "model": "mainModel",
-        "template": "sap.ovp.cards.v4.table",
-        "settings": {
-          "title": "{{appLogCardTitle}}",
-          "subTitle": "{{appLogCardSubTitle}}",
-          "entitySet": "AppLog",
-          "presentationAnnotationPath": "UI.PresentationVariant",
-          "identificationAnnotationPath": "UI.LineItem",
-          "dataStep": 25,
-          "defaultSpan": {
-            "rows": 10,
-            "cols": 3
-          }
-        }
-      },
-      "abbruchCard": {
-        "model": "mainModel",
-        "template": "sap.ovp.cards.v4.table",
-        "settings": {
-          "title": "{{abbruchCardTitle}}",
-          "subTitle": "{{abbruchCardSubTitle}}",
-          "entitySet": "AppLog",
-          "presentationAnnotationPath": "UI.PresentationVariant",
-          "identificationAnnotationPath": "UI.LineItem",
-          "selectionAnnotationPath": "UI.SelectionVariant#AbbruchCard",
-          "dataStep": 25,
-          "defaultSpan": {
-            "rows": 10,
-            "cols": 3
-          }
-        }
-      },
-      "tpaCard": {
-        "model": "tpaModel",
-        "template": "sap.ovp.cards.v4.table",
-        "settings": {
-          "title": "{{tpaCardTitle}}",
-          "subTitle": "{{tpaCardSubTitle}}",
-          "entitySet": "Tpa",
-          "presentationAnnotationPath": "UI.PresentationVariant#TpaCard",
-          "identificationAnnotationPath": "UI.LineItem#TpaCard",
-          "dataStep": 25,
-          "defaultSpan": {
-            "rows": 10,
-            "cols": 3
-          }
-        }
-      },
-      "kontakteCard": {
-        "template": "sap.ovp.cards.linklist",
-        "settings": {
-          "title": "{{kontakteCardTitle}}",
-          "subTitle": "{{kontakteCardSubTitle}}",
-          "listFlavor": "standard",
-          "defaultSpan": {
-            "rows": 6,
-            "cols": 1
-          },
-          "staticContent": [
-            {
-              "title": "Hörmann PM",
-              "subTitle": "Projektmanagement HiLIS · pm@hoermann.de",
-              "icon": "sap-icon://person-placeholder"
-            },
-            {
-              "title": "WMS-Support",
-              "subTitle": "Hörmann Logistik Systeme · wms-support@hoermann.de",
-              "icon": "sap-icon://headset"
-            },
-            {
-              "title": "Kroschke IT",
-              "subTitle": "SAP-Basis / Schnittstellen · it@kroschke.com",
-              "icon": "sap-icon://it-system"
-            }
+      "routes": [
+        {
+          "name": "RouteMain",
+          "pattern": "",
+          "target": [
+            "TargetMain"
           ]
+        }
+      ],
+      "targets": {
+        "TargetMain": {
+          "id": "Main",
+          "name": "Main"
         }
       }
     }
@@ -245,10 +164,5 @@
   "sap.fiori": {
     "registrationIds": [],
     "archeType": "analytical"
-  },
-  "sap.fe": {
-    "app": {
-      "enableLazyLoading": true
-    }
   }
 }

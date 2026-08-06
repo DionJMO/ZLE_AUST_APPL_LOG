@@ -1,0 +1,44 @@
+<mvc:View
+	controllerName="zui5_zle_aust_mon.controller.Main"
+	xmlns="sap.m"
+	xmlns:mvc="sap.ui.core.mvc"
+	xmlns:f="sap.f">
+	<f:DynamicPage id="mainPage" headerExpanded="true" showFooter="false">
+
+		<f:title>
+			<f:DynamicPageTitle id="mainTitle">
+				<f:heading>
+					<HBox id="titleBox" alignItems="Center">
+						<Avatar
+							id="titleAvatar"
+							src="sap-icon://overview-chart"
+							displaySize="S"
+							backgroundColor="Accent6"
+							class="sapUiTinyMarginEnd"/>
+						<VBox id="titleTextBox">
+							<Title id="appTitleText" text="{i18n>appTitle}" level="H1"/>
+							<Text id="appSubtitleText" text="{i18n>appSubTitle}"/>
+						</VBox>
+					</HBox>
+				</f:heading>
+				<f:actions>
+					<ObjectStatus
+						id="lastRefreshStatus"
+						icon="sap-icon://history"
+						text="{i18n>lastRefreshLabel} {ui>/lastRefreshText}"/>
+					<Button
+						id="refreshButton"
+						icon="sap-icon://refresh"
+						tooltip="{i18n>refreshTooltip}"
+						type="Transparent"
+						press=".onRefresh"/>
+				</f:actions>
+			</f:DynamicPageTitle>
+		</f:title>
+
+		<f:content>
+			<VBox id="groupContainer" class="sapUiSmallMargin" renderType="Bare"/>
+		</f:content>
+
+	</f:DynamicPage>
+</mvc:View>
