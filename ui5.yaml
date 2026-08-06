@@ -2,7 +2,7 @@
 
 specVersion: "3.0"
 metadata:
-  name: project2
+  name: project1
 type: application
 server:
   customMiddleware:

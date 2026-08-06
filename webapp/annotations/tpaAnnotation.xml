@@ -12,6 +12,13 @@
         <Schema xmlns="http://docs.oasis-open.org/odata/ns/edm" Namespace="local">
             <Annotations Target="SAP__tpa.TpaType">
 
+                <Annotation Term="UI.DataPoint" Qualifier="StatusStatus">
+                    <Record Type="UI.DataPointType">
+                        <PropertyValue Property="Value" Path="LineStatus"/>
+                        <PropertyValue Property="Criticality" Path="StatusCriticality"/>
+                    </Record>
+                </Annotation>
+
                 <Annotation Term="UI.LineItem" Qualifier="TpaCard">
                     <Collection>
                         <Record Type="UI.DataField">
@@ -42,10 +49,9 @@
                             <PropertyValue Property="Label" String="MHD"/>
                             <PropertyValue Property="Value" Path="BestBeforeDate"/>
                         </Record>
-                        <Record Type="UI.DataFieldWithCriticality">
+                        <Record Type="UI.DataFieldForAnnotation">
                             <PropertyValue Property="Label" String="Status"/>
-                            <PropertyValue Property="Value" Path="LineStatus"/>
-                            <PropertyValue Property="Criticality" Path="StatusCriticality"/>
+                            <PropertyValue Property="Target" AnnotationPath="@UI.DataPoint#StatusStatus"/>
                         </Record>
                         <Record Type="UI.DataField">
                             <PropertyValue Property="Label" String="Werk"/>

@@ -12,3 +12,8 @@ CLAUDE.md
 abap_files/
 extra/
 
+
+# Debug-Artefakte
+localhost.har.txt
+*.har
+*.har.txt

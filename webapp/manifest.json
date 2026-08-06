@@ -78,6 +78,7 @@
         "sap.m": {},
         "sap.ui.core": {},
         "sap.fe.templates": {},
+        "sap.fe.macros": {},
         "sap.ovp": {},
         "sap.ui.rta": {},
         "sap.ui.layout": {},
@@ -135,6 +136,19 @@
     "globalFilterControlType": "SmartFilterBar",
     "containerLayout": "resizable",
     "cards": {
+      "kpiCard": {
+        "model": "mainModel",
+        "template": "zui5_zle_aust_mon.ext.kpi",
+        "settings": {
+          "title": "Kennzahlen",
+          "subTitle": "Gesamt / Offen / Fehler / Abbrüche",
+          "entitySet": "AppLog",
+          "defaultSpan": {
+            "rows": 6,
+            "cols": 3
+          }
+        }
+      },
       "donutCard": {
         "model": "mainModel",
         "template": "zui5_zle_aust_mon.ext.donut",

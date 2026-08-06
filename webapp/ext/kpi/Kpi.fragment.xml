@@ -1,0 +1,22 @@
+<core:FragmentDefinition
+	xmlns:core="sap.ui.core"
+	xmlns="sap.m">
+	<FlexBox id="idKpiFlexBox" wrap="Wrap" justifyContent="SpaceBetween" alignItems="Start" class="sapUiSmallMargin">
+		<VBox id="idGesamtVBox" class="sapUiSmallMarginEnd sapUiSmallMarginBottom" alignItems="Center">
+			<NumericContent id="idGesamtNumericContent" value="0" withMargin="false"/>
+			<Label id="idGesamtLabel" text="Gesamt" design="Bold"/>
+		</VBox>
+		<VBox id="idOffenVBox" class="sapUiSmallMarginEnd sapUiSmallMarginBottom" alignItems="Center">
+			<NumericContent id="idOffenNumericContent" value="0" valueColor="Critical" withMargin="false"/>
+			<Label id="idOffenLabel" text="Offen" design="Bold"/>
+		</VBox>
+		<VBox id="idFehlerVBox" class="sapUiSmallMarginEnd sapUiSmallMarginBottom" alignItems="Center">
+			<NumericContent id="idFehlerNumericContent" value="0" valueColor="Error" withMargin="false"/>
+			<Label id="idFehlerLabel" text="Fehler" design="Bold"/>
+		</VBox>
+		<VBox id="idAbbruecheVBox" class="sapUiSmallMarginBottom" alignItems="Center">
+			<NumericContent id="idAbbruecheNumericContent" value="0" valueColor="Critical" withMargin="false"/>
+			<Label id="idAbbruecheLabel" text="Abbrüche" design="Bold"/>
+		</VBox>
+	</FlexBox>
+</core:FragmentDefinition>

@@ -10,11 +10,6 @@
         "rootDir": "./webapp",
         "outDir": "./dist",
         "baseUrl": "./",
-        "paths": {
-            "project1/*": [
-                "./webapp/*"
-            ]
-        },
         "typeRoots": [
             "./node_modules/@types",
             "./node_modules/@sapui5/types"

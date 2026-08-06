@@ -15,6 +15,7 @@ framework:
     - name: sap.ovp
     - name: sap.ui.rta
     - name: sap.ui.layout
+    - name: sap.suite.ui.microchart
     - name: themelib_sap_horizon
 server:
   customMiddleware:
@@ -52,6 +53,10 @@ server:
           - urlPath: /sap/opu/odata4/sap/zle_aust_sb_appl_log/srvd/sap/zle_aust_sd_appl_log/0001
             metadataPath: ./webapp/localService/mainService/metadata.xml
             mockdataPath: ./webapp/localService/mainService/data
+            generateMockData: true
+          - urlPath: /sap/opu/odata4/sap/zle_aust_sb_tpa/srvd/sap/zle_aust_sd_tpa/0001
+            metadataPath: ./webapp/localService/tpaService/metadata.xml
+            mockdataPath: ./webapp/localService/tpaService/data
             generateMockData: true
         annotations: []
 builder:

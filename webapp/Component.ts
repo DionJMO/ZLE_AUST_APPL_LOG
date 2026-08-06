@@ -3,8 +3,8 @@ import Button from "sap/m/Button";
 import OverflowToolbar from "sap/m/OverflowToolbar";
 import ToolbarSpacer from "sap/m/ToolbarSpacer";
 import UI5Element from "sap/ui/core/Element";
+import ElementRegistry from "sap/ui/core/ElementRegistry";
 import Table from "sap/m/Table";
-import Toolbar from "sap/m/Toolbar";
 import Dialog from "sap/m/Dialog";
 import CheckBox from "sap/m/CheckBox";
 import VBox from "sap/m/VBox";
@@ -27,6 +27,45 @@ export default class Component extends BaseComponent {
 		super.init();
 		this._shimV4MetaModels();
 		setTimeout(() => { this._initColumnPersonalization(0); }, 1000);
+		setTimeout(() => { this._hideGlobalFilterBarWithToggle(0); }, 1000);
+	}
+
+	private _hideGlobalFilterBarWithToggle(iRetry: number): void {
+		type FilterBarApiLike = {
+			setVisible(b: boolean): void;
+			getVisible(): boolean;
+			getDomRef(): Element | null;
+		};
+
+		const aApi = ElementRegistry.filter(
+			(oEl) => oEl.isA("sap.fe.macros.filterBar.FilterBarAPI")
+		) as unknown as FilterBarApiLike[];
+
+		if (aApi.length === 0 && iRetry < 8) {
+			setTimeout(() => { this._hideGlobalFilterBarWithToggle(iRetry + 1); }, 500);
+			return;
+		}
+		if (aApi.length === 0) { return; }
+
+		const oApi = aApi[0];
+		oApi.setVisible(false);
+
+		const oToggle = new Button({
+			icon: "sap-icon://slim-arrow-down",
+			tooltip: "Filter einblenden",
+			type: "Transparent"
+		});
+		oToggle.attachPress(() => {
+			const bNowVisible = !oApi.getVisible();
+			oApi.setVisible(bNowVisible);
+			oToggle.setIcon(bNowVisible ? "sap-icon://slim-arrow-up" : "sap-icon://slim-arrow-down");
+			oToggle.setTooltip(bNowVisible ? "Filter ausblenden" : "Filter einblenden");
+		});
+
+		const oDomRef = oApi.getDomRef();
+		if (oDomRef?.parentElement) {
+			oToggle.placeAt(oDomRef, "before");
+		}
 	}
 
 	private _shimV4MetaModels(): void {
@@ -42,7 +81,7 @@ export default class Component extends BaseComponent {
 	}
 
 	private _initColumnPersonalization(iPass: number): void {
-		const aTables = UI5Element.registry.filter(
+		const aTables = ElementRegistry.filter(
 			(oEl) => oEl.isA("sap.m.Table")
 		) as unknown as Table[];
 
@@ -88,7 +127,7 @@ export default class Component extends BaseComponent {
 			// native drag&drop (which reflows neighbours without overlap).
 			oTable.setHeaderToolbar(new OverflowToolbar({
 				content: [new ToolbarSpacer(), oBtn]
-			}) as unknown as Toolbar);
+			}));
 		});
 
 		// Mehrere Durchläufe: spät erzeugte Karten (Abbruch/TPA laden async nach
@@ -102,10 +141,12 @@ export default class Component extends BaseComponent {
 	private _openColumnDialog(oTable: Table, storageKey: string): void {
 		const aColumns = oTable.getColumns();
 
+		type HeaderWithText = { getText?: () => string };
+
 		const aCheckBoxes = aColumns.map((oCol, i) => {
-			const oHeader = oCol.getHeader();
-			const sText = oHeader && typeof (oHeader as any).getText === "function"
-				? (oHeader as any).getText() as string
+			const oHeader = oCol.getHeader() as unknown as HeaderWithText | null;
+			const sText = typeof oHeader?.getText === "function"
+				? oHeader.getText()
 				: `Spalte ${i + 1}`;
 			return new CheckBox({ text: sText, selected: oCol.getVisible() });
 		});
