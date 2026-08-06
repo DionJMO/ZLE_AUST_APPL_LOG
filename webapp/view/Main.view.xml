@@ -5,7 +5,10 @@
 	xmlns:core="sap.ui.core"
 	xmlns:f="sap.f"
 	xmlns:t="sap.ui.table"
-	xmlns:rm="sap.ui.table.rowmodes">
+	xmlns:rm="sap.ui.table.rowmodes"
+	xmlns:viz="sap.viz.ui5.controls"
+	xmlns:vizData="sap.viz.ui5.data"
+	xmlns:vizFeeds="sap.viz.ui5.controls.common.feeds">
 	<f:DynamicPage id="mainPage" headerExpanded="true" showFooter="false">
 
 		<f:title>
@@ -26,7 +29,7 @@
 				</f:heading>
 				<f:actions>
 					<ObjectStatus
-						id="lastRefreshStatus"
+						id="idLastRefreshObjectStatus"
 						icon="sap-icon://history"
 						text="{i18n>lastRefreshLabel} {ui>/lastRefreshText}"/>
 					<Button
@@ -74,10 +77,51 @@
 								<Avatar id="chartAvatar" src="sap-icon://vertical-bar-chart" displaySize="XS" backgroundColor="Accent6"/>
 								<Title id="chartTitle" text="{i18n>chartPanelTitle}" level="H3"/>
 								<ToolbarSpacer id="chartSpacer"/>
+								<ObjectStatus
+									id="idChartTruncatedObjectStatus"
+									state="Warning"
+									icon="sap-icon://alert"
+									text="{i18n>chartTruncated}"
+									visible="{ui>/chartTruncated}"/>
 							</OverflowToolbar>
 						</headerToolbar>
 						<content>
-							<Text id="chartPlaceholder" text="{i18n>panelPlaceholder}" class="sapUiSmallMargin"/>
+							<!--
+								Gestapeltes Saeulendiagramm ueber die letzten sieben Tage.
+								Bewusst VizFrame und NICHT sap.ui.comp.smartchart: das vom
+								Kollegen verlinkte SmartChart-Sample setzt OData V2 mit
+								sap:semantics="aggregate", sap:aggregation-role und
+								UI.Chart-Annotationen voraus. Unser Service ist V4 und hat
+								keine davon (s. CLAUDE.md, Abschnitt UI-Redesign).
+
+								Die Namen von Dimension und Measures stehen als Literale und
+								nicht als i18n-Verweis: FeedItem/values referenziert sie
+								ueber genau diese Zeichenketten, und die App hat ohnehin nur
+								ein Sprachbuendel (supportedLocales: [""]).
+							-->
+							<viz:VizFrame
+								id="idTrendVizFrame"
+								vizType="stacked_column"
+								width="100%"
+								height="100%"
+								uiConfig="{applicationSet:'fiori'}">
+								<viz:dataset>
+									<vizData:FlattenedDataset data="{chart>/days}">
+										<vizData:dimensions>
+											<vizData:DimensionDefinition name="Tag" value="{chart>label}"/>
+										</vizData:dimensions>
+										<vizData:measures>
+											<vizData:MeasureDefinition name="Fehler" value="{chart>error}"/>
+											<vizData:MeasureDefinition name="Warnungen" value="{chart>warning}"/>
+											<vizData:MeasureDefinition name="Erfolg" value="{chart>success}"/>
+										</vizData:measures>
+									</vizData:FlattenedDataset>
+								</viz:dataset>
+								<viz:feeds>
+									<vizFeeds:FeedItem uid="valueAxis" type="Measure" values="Fehler,Warnungen,Erfolg"/>
+									<vizFeeds:FeedItem uid="categoryAxis" type="Dimension" values="Tag"/>
+								</viz:feeds>
+							</viz:VizFrame>
 						</content>
 					</Panel>
 
@@ -93,7 +137,53 @@
 							</OverflowToolbar>
 						</headerToolbar>
 						<content>
-							<Text id="kpiPlaceholder" text="{i18n>panelPlaceholder}" class="sapUiSmallMargin"/>
+							<!--
+								Zahlen kommen aus model/KpiLoader.ts (serverseitiges $count),
+								Filter und Pfade unveraendert aus der frueheren OVP-Karte -
+								damit sich die Werte gegenueber dem alten Stand nicht still
+								aendern. Jede Zahl mit Icon, nicht nur mit Farbe.
+							-->
+							<VBox id="idKpiVBox" class="sapUiSmallMargin">
+								<HBox id="idKpiTopHBox" justifyContent="SpaceAround" class="sapUiSmallMarginBottom">
+									<VBox id="idGesamtVBox" alignItems="Center">
+										<NumericContent
+											id="idGesamtNumericContent"
+											value="{ui>/kpi/gesamt}"
+											icon="sap-icon://sum"
+											withMargin="false"/>
+										<Label id="idGesamtLabel" text="{i18n>kpiGesamt}" design="Bold"/>
+									</VBox>
+									<VBox id="idOffenVBox" alignItems="Center">
+										<NumericContent
+											id="idOffenNumericContent"
+											value="{ui>/kpi/offen}"
+											icon="sap-icon://pending"
+											valueColor="Critical"
+											withMargin="false"/>
+										<Label id="idOffenLabel" text="{i18n>kpiOffen}" design="Bold"/>
+									</VBox>
+								</HBox>
+								<HBox id="idKpiBottomHBox" justifyContent="SpaceAround">
+									<VBox id="idFehlerVBox" alignItems="Center">
+										<NumericContent
+											id="idFehlerNumericContent"
+											value="{ui>/kpi/fehler}"
+											icon="sap-icon://error"
+											valueColor="Error"
+											withMargin="false"/>
+										<Label id="idFehlerLabel" text="{i18n>kpiFehler}" design="Bold"/>
+									</VBox>
+									<VBox id="idAbbruecheVBox" alignItems="Center">
+										<NumericContent
+											id="idAbbruecheNumericContent"
+											value="{ui>/kpi/abbrueche}"
+											icon="sap-icon://cancel"
+											valueColor="Critical"
+											withMargin="false"/>
+										<Label id="idAbbruecheLabel" text="{i18n>kpiAbbrueche}" design="Bold"/>
+									</VBox>
+								</HBox>
+							</VBox>
 						</content>
 					</Panel>
 				</f:GridContainer>
@@ -224,7 +314,7 @@
 										<Label id="alLblLogType" text="{i18n>colLogType}"/>
 										<t:template>
 											<ObjectStatus
-												id="alStatLogType"
+												id="idAppLogTypeObjectStatus"
 												text="{mainModel>LogType}"
 												state="{path: 'mainModel>LogTypeCriticality', formatter: '.formatter.criticalityState'}"
 												icon="{path: 'mainModel>LogTypeCriticality', formatter: '.formatter.criticalityIcon'}"/>
@@ -340,7 +430,7 @@
 										<Label id="tpaLblLineStatus" text="{i18n>colLineStatus}"/>
 										<t:template>
 											<ObjectStatus
-												id="tpaStatLineStatus"
+												id="idTpaLineStatusObjectStatus"
 												text="{tpaModel>LineStatus}"
 												state="{path: 'tpaModel>StatusCriticality', formatter: '.formatter.criticalityState'}"
 												icon="{path: 'tpaModel>StatusCriticality', formatter: '.formatter.criticalityIcon'}"/>

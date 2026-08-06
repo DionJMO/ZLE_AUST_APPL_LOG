@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "mcp__sap-cc__sapObjName",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(awk '/declare module \"sap\\\\/m\\\\/NumericContent\"/,/declare module \"sap\\\\/m\\\\/ObjectAttribute\"/' sap.m.d.ts)",
+      "Bash(awk '/declare module \"sap\\\\/viz\\\\/ui5\\\\/data\\\\/FlattenedDataset\"/,/declare module \"sap\\\\/viz\\\\/ui5\\\\/data\\\\/MeasureDefinition\"/' sap.viz.d.ts)",
+      "Bash(awk '/declare module \"sap\\\\/viz\\\\/ui5\\\\/data\\\\/DimensionDefinition\"/,/declare module \"sap\\\\/viz\\\\/ui5\\\\/data\\\\/Dataset\"/' sap.viz.d.ts)",
+      "Bash(echo \"tsc=$?\")"
     ]
   }
 }

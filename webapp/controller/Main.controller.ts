@@ -1,7 +1,12 @@
 import DateFormat from "sap/ui/core/format/DateFormat";
 import Table from "sap/ui/table/Table";
+import JSONModel from "sap/ui/model/json/JSONModel";
+import VizFrame from "sap/viz/ui5/controls/VizFrame";
 import BaseController from "./BaseController";
 import * as TableColumnState from "../util/TableColumnState";
+import * as LogAggregator from "../model/LogAggregator";
+import * as KpiLoader from "../model/KpiLoader";
+import * as ChartColors from "../model/ChartColors";
 
 /**
  * @namespace zui5_zle_aust_mon.controller
@@ -18,21 +23,28 @@ export default class Main extends BaseController {
 		idTpaTable: 8
 	};
 
+	/** Zeitfenster des Verlaufs-Charts in Tagen. */
+	private static readonly CHART_DAYS = 7;
+
 	public onInit(): void {
-		this._stampRefresh();
+		this.getView()?.setModel(new JSONModel({ days: [] }), "chart");
+
 		Object.keys(Main.DEFAULT_VISIBLE).forEach((sTableId) => {
 			const oTable = this._table(sTableId);
 			if (oTable) {
 				TableColumnState.restore(oTable, sTableId, Main.DEFAULT_VISIBLE[sTableId]);
 			}
 		});
+
+		this._applyChartColors();
+		this._loadData();
 	}
 
 	public onRefresh(): void {
-		this._stampRefresh();
 		Object.keys(Main.DEFAULT_VISIBLE).forEach((sTableId) => {
 			this._table(sTableId)?.getBinding("rows")?.refresh();
 		});
+		this._loadData();
 	}
 
 	public onOpenAppLogColumns(): void {
@@ -41,6 +53,61 @@ export default class Main extends BaseController {
 
 	public onOpenTpaColumns(): void {
 		this._openColumns("idTpaTable");
+	}
+
+	private _loadData(): void {
+		this._stampRefresh();
+		void this._loadChart();
+		void this._loadKpis();
+	}
+
+	private async _loadChart(): Promise<void> {
+		try {
+			const oData = await LogAggregator.loadLastDays(
+				this.getODataModel("mainModel"),
+				Main.CHART_DAYS
+			);
+			(this.getView()?.getModel("chart") as JSONModel).setData(oData);
+			this.getUiModel().setProperty("/chartTruncated", oData.truncated);
+		} catch (oError) {
+			// eslint-disable-next-line no-console
+			console.error("[Verlauf] Aggregation fehlgeschlagen:", oError);
+		}
+	}
+
+	private async _loadKpis(): Promise<void> {
+		await Promise.all(KpiLoader.metrics.map(async (oDefinition) => {
+			try {
+				const nCount = await KpiLoader.loadCount(
+					this.getODataModel(oDefinition.model),
+					oDefinition
+				);
+				this.getUiModel().setProperty("/kpi/" + oDefinition.key, String(nCount));
+			} catch (oError) {
+				// eslint-disable-next-line no-console
+				console.error("[KPI] " + oDefinition.key + " fehlgeschlagen:", oError);
+			}
+		}));
+	}
+
+	/**
+	 * Setzt die Stapelfarben auf die semantischen Theme-Farben, damit sie zur
+	 * Kritikalitaets-Darstellung in den Tabellen passen.
+	 */
+	private _applyChartColors(): void {
+		const oVizFrame = this.byId("idTrendVizFrame") as VizFrame | undefined;
+		if (!oVizFrame) {
+			return;
+		}
+		ChartColors.resolvePalette((aColors) => {
+			oVizFrame.setVizProperties({
+				plotArea: { colorPalette: aColors, dataLabel: { visible: false } },
+				legend: { title: { visible: false } },
+				title: { visible: false },
+				valueAxis: { title: { visible: false } },
+				categoryAxis: { title: { visible: false } }
+			});
+		});
 	}
 
 	private _table(sTableId: string): Table | undefined {
