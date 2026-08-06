@@ -2,6 +2,7 @@
 	controllerName="zui5_zle_aust_mon.controller.Main"
 	xmlns="sap.m"
 	xmlns:mvc="sap.ui.core.mvc"
+	xmlns:core="sap.ui.core"
 	xmlns:f="sap.f">
 	<f:DynamicPage id="mainPage" headerExpanded="true" showFooter="false">
 
@@ -37,7 +38,179 @@
 		</f:title>
 
 		<f:content>
-			<VBox id="groupContainer" class="sapUiSmallMargin" renderType="Bare"/>
+			<!--
+				Je Gruppe ein eigener GridContainer, gestapelt in einer VBox.
+				Damit ist "Chart oben" strukturell erzwungen statt durch eine
+				Sortierkonvention. Kein dragDropConfig an den Grids -> die
+				Anordnung ist fuer den Anwender nicht verschiebbar
+				(Feedback-Punkt 6). Eine GridContainerSettings-Instanz laesst
+				sich NICHT zwischen Layouts teilen, deshalb steht sie je Grid
+				und Breakpoint einzeln im XML.
+			-->
+			<VBox id="groupContainer" class="sapUiSmallMargin" renderType="Bare">
+
+				<core:Fragment fragmentName="zui5_zle_aust_mon.view.fragment.KontaktBar" type="XML"/>
+
+				<Title id="overviewHeading" text="{i18n>groupOverview}" level="H2" class="sapUiSmallMarginTop sapUiTinyMarginBottom"/>
+				<f:GridContainer id="overviewGrid" snapToRow="true">
+					<f:layout>
+						<f:GridContainerSettings rowSize="2rem" columnSize="4.5rem" gap="0.75rem"/>
+					</f:layout>
+					<f:layoutM>
+						<f:GridContainerSettings rowSize="2rem" columnSize="4rem" gap="0.5rem"/>
+					</f:layoutM>
+					<f:layoutS>
+						<f:GridContainerSettings rowSize="2rem" columnSize="4rem" gap="0.5rem"/>
+					</f:layoutS>
+
+					<Panel id="chartPanel" height="100%">
+						<layoutData>
+							<f:GridContainerItemLayoutData columns="8" minRows="12"/>
+						</layoutData>
+						<headerToolbar>
+							<OverflowToolbar id="chartToolbar">
+								<Avatar id="chartAvatar" src="sap-icon://vertical-bar-chart" displaySize="XS" backgroundColor="Accent6"/>
+								<Title id="chartTitle" text="{i18n>chartPanelTitle}" level="H3"/>
+								<ToolbarSpacer id="chartSpacer"/>
+							</OverflowToolbar>
+						</headerToolbar>
+						<content>
+							<Text id="chartPlaceholder" text="{i18n>panelPlaceholder}" class="sapUiSmallMargin"/>
+						</content>
+					</Panel>
+
+					<Panel id="kpiPanel" height="100%">
+						<layoutData>
+							<f:GridContainerItemLayoutData columns="4" minRows="12"/>
+						</layoutData>
+						<headerToolbar>
+							<OverflowToolbar id="kpiToolbar">
+								<Avatar id="kpiAvatar" src="sap-icon://kpi-corporate-performance" displaySize="XS" backgroundColor="Accent8"/>
+								<Title id="kpiTitle" text="{i18n>kpiPanelTitle}" level="H3"/>
+								<ToolbarSpacer id="kpiSpacer"/>
+							</OverflowToolbar>
+						</headerToolbar>
+						<content>
+							<Text id="kpiPlaceholder" text="{i18n>panelPlaceholder}" class="sapUiSmallMargin"/>
+						</content>
+					</Panel>
+				</f:GridContainer>
+
+				<Title id="errorHeading" text="{i18n>groupErrors}" level="H2" class="sapUiSmallMarginTop sapUiTinyMarginBottom"/>
+				<f:GridContainer id="errorGrid" snapToRow="true">
+					<f:layout>
+						<f:GridContainerSettings rowSize="2rem" columnSize="4.5rem" gap="0.75rem"/>
+					</f:layout>
+					<f:layoutM>
+						<f:GridContainerSettings rowSize="2rem" columnSize="4rem" gap="0.5rem"/>
+					</f:layoutM>
+					<f:layoutS>
+						<f:GridContainerSettings rowSize="2rem" columnSize="4rem" gap="0.5rem"/>
+					</f:layoutS>
+
+					<!--
+						WE- und WA-Panel sind bewusst ausgeblendet: das Backend
+						protokolliert kein Merkmal, das Wareneingang von
+						Warenausgang unterscheidet (CLAUDE.md, O-27). Zwei
+						garantiert leere Panels waeren eine Verschlechterung.
+						Das Flag ui>/showInOutSplit schaltet sie scharf, sobald
+						die Daten es hergeben.
+					-->
+					<Panel id="inboundPanel" height="100%" visible="{ui>/showInOutSplit}">
+						<layoutData>
+							<f:GridContainerItemLayoutData columns="4" minRows="10"/>
+						</layoutData>
+						<headerToolbar>
+							<OverflowToolbar id="inboundToolbar">
+								<Avatar id="inboundAvatar" src="sap-icon://inbox" displaySize="XS" backgroundColor="Accent1"/>
+								<Title id="inboundTitle" text="{i18n>inboundPanelTitle}" level="H3"/>
+								<ToolbarSpacer id="inboundSpacer"/>
+							</OverflowToolbar>
+						</headerToolbar>
+						<content>
+							<Text id="inboundPlaceholder" text="{i18n>panelPlaceholder}" class="sapUiSmallMargin"/>
+						</content>
+					</Panel>
+
+					<Panel id="outboundPanel" height="100%" visible="{ui>/showInOutSplit}">
+						<layoutData>
+							<f:GridContainerItemLayoutData columns="4" minRows="10"/>
+						</layoutData>
+						<headerToolbar>
+							<OverflowToolbar id="outboundToolbar">
+								<Avatar id="outboundAvatar" src="sap-icon://outbox" displaySize="XS" backgroundColor="Accent2"/>
+								<Title id="outboundTitle" text="{i18n>outboundPanelTitle}" level="H3"/>
+								<ToolbarSpacer id="outboundSpacer"/>
+							</OverflowToolbar>
+						</headerToolbar>
+						<content>
+							<Text id="outboundPlaceholder" text="{i18n>panelPlaceholder}" class="sapUiSmallMargin"/>
+						</content>
+					</Panel>
+
+					<Panel id="abbruchPanel" height="100%">
+						<layoutData>
+							<f:GridContainerItemLayoutData columns="12" minRows="10"/>
+						</layoutData>
+						<headerToolbar>
+							<OverflowToolbar id="abbruchToolbar">
+								<Avatar id="abbruchAvatar" src="sap-icon://cancel" displaySize="XS" backgroundColor="Accent4"/>
+								<Title id="abbruchTitle" text="{i18n>abbruchCardTitle}" level="H3"/>
+								<ToolbarSpacer id="abbruchSpacer"/>
+							</OverflowToolbar>
+						</headerToolbar>
+						<content>
+							<Text id="abbruchPlaceholder" text="{i18n>panelPlaceholder}" class="sapUiSmallMargin"/>
+						</content>
+					</Panel>
+				</f:GridContainer>
+
+				<Title id="dataHeading" text="{i18n>groupData}" level="H2" class="sapUiSmallMarginTop sapUiTinyMarginBottom"/>
+				<f:GridContainer id="dataGrid" snapToRow="true">
+					<f:layout>
+						<f:GridContainerSettings rowSize="2rem" columnSize="4.5rem" gap="0.75rem"/>
+					</f:layout>
+					<f:layoutM>
+						<f:GridContainerSettings rowSize="2rem" columnSize="4rem" gap="0.5rem"/>
+					</f:layoutM>
+					<f:layoutS>
+						<f:GridContainerSettings rowSize="2rem" columnSize="4rem" gap="0.5rem"/>
+					</f:layoutS>
+
+					<Panel id="appLogPanel" height="100%">
+						<layoutData>
+							<f:GridContainerItemLayoutData columns="12" minRows="14"/>
+						</layoutData>
+						<headerToolbar>
+							<OverflowToolbar id="appLogToolbar">
+								<Avatar id="appLogAvatar" src="sap-icon://activity-items" displaySize="XS" backgroundColor="Accent5"/>
+								<Title id="appLogTitle" text="{i18n>appLogCardTitle}" level="H3"/>
+								<ToolbarSpacer id="appLogSpacer"/>
+							</OverflowToolbar>
+						</headerToolbar>
+						<content>
+							<Text id="appLogPlaceholder" text="{i18n>panelPlaceholder}" class="sapUiSmallMargin"/>
+						</content>
+					</Panel>
+
+					<Panel id="tpaPanel" height="100%">
+						<layoutData>
+							<f:GridContainerItemLayoutData columns="12" minRows="14"/>
+						</layoutData>
+						<headerToolbar>
+							<OverflowToolbar id="tpaToolbar">
+								<Avatar id="tpaAvatar" src="sap-icon://shipping-status" displaySize="XS" backgroundColor="Accent7"/>
+								<Title id="tpaTitle" text="{i18n>tpaCardTitle}" level="H3"/>
+								<ToolbarSpacer id="tpaSpacer"/>
+							</OverflowToolbar>
+						</headerToolbar>
+						<content>
+							<Text id="tpaPlaceholder" text="{i18n>panelPlaceholder}" class="sapUiSmallMargin"/>
+						</content>
+					</Panel>
+				</f:GridContainer>
+
+			</VBox>
 		</f:content>
 
 	</f:DynamicPage>

@@ -1,0 +1,46 @@
+<!--
+	SICHERHEITSAUFLAGE (Vorfall 22.07.2026) - BITTE NICHT AUFWEICHEN:
+
+	Die E-Mail-Adressen werden ausschliesslich als Text angezeigt.
+	Kein sap.m.Link, kein href, kein targetUri, kein press-Handler,
+	kein sap.m.URLHelper.triggerEmail, kein DOM-Zugriff.
+
+	Grund: Ein mailto:-Klick aus dieser Kachel hat einen bereits offenen,
+	unabhaengigen Outlook-Entwurf an einen anderen Empfaenger tatsaechlich
+	VERSENDET (bestaetigter Vorfall). Ursache liegt in Outlooks DDE/COM-
+	Handshake und ist von hier aus nicht kontrollierbar.
+
+	Der Anwender kopiert die Adresse manuell.
+-->
+<core:FragmentDefinition
+	xmlns="sap.m"
+	xmlns:core="sap.ui.core">
+	<Panel
+		id="contactPanel"
+		width="100%"
+		backgroundDesign="Transparent"
+		class="sapUiTinyMarginBottom">
+		<headerToolbar>
+			<OverflowToolbar id="contactToolbar" height="2.75rem">
+				<Avatar
+					id="contactAvatar"
+					src="sap-icon://group"
+					displaySize="XS"
+					backgroundColor="Accent8"/>
+				<Title id="contactTitle" text="{i18n>kontakteCardTitle}" level="H3"/>
+				<ToolbarSeparator id="contactSeparator"/>
+
+				<core:Icon id="contactIconPm" src="sap-icon://person-placeholder" class="sapUiTinyMarginEnd"/>
+				<Text id="contactTextPm" text="{i18n>kontaktHoermannPm}"/>
+
+				<core:Icon id="contactIconWms" src="sap-icon://headset" class="sapUiSmallMarginBegin sapUiTinyMarginEnd"/>
+				<Text id="contactTextWms" text="{i18n>kontaktWmsSupport}"/>
+
+				<core:Icon id="contactIconIt" src="sap-icon://it-system" class="sapUiSmallMarginBegin sapUiTinyMarginEnd"/>
+				<Text id="contactTextIt" text="{i18n>kontaktKroschkeIt}"/>
+
+				<ToolbarSpacer id="contactSpacer"/>
+			</OverflowToolbar>
+		</headerToolbar>
+	</Panel>
+</core:FragmentDefinition>
