@@ -1,12 +1,35 @@
-/* Bewusst leer.
+/* Diese Datei war nach dem Umbau auf Freestyle leer.
  *
  * Die frueheren Regeln (.sapOvpCardContentContainer, .sapOvpDashboardLayout)
- * waren OVP-spezifische Workarounds und sind mit dem Umbau auf Freestyle
- * gegenstandslos geworden.
+ * waren OVP-spezifische Workarounds und sind gegenstandslos geworden.
  *
  * Groessen und Hoehen werden ausschliesslich ueber
- * sap.f.GridContainerSettings (rowSize / columnSize) und
- * GridContainerItemLayoutData (minRows / columns) gesteuert - nicht per CSS.
+ * sap.f.GridContainerSettings (rowSize, gap, min-/maxColumnSize) und
+ * GridContainerItemLayoutData (minRows, columns) gesteuert - nicht per CSS.
  * In diesem Projekt haben eigene CSS-Eingriffe ins Layout wiederholt Scroll
- * und Anordnung zerstoert. Jede neue Regel hier braucht eine Begruendung.
+ * und Anordnung zerstoert. Jede Regel hier braucht eine Begruendung.
  */
+
+/* BEGRUENDUNG fuer diese eine Regel:
+ * Vereinbarte Layout-Konstante - der Inhaltsbereich wird nie breiter als
+ * 1280px und ist auf breiteren Monitoren horizontal zentriert.
+ *
+ * Control-seitig ist das nicht loesbar: sap.m.VBox kennt kein maxWidth, und
+ * ein Zentrieren per "margin: auto" gibt es als Property nicht.
+ *
+ * Anders als die frueheren OVP-Regeln kaempft das nicht gegen per JavaScript
+ * gesetzte Geometrie - es begrenzt nur den aeusseren Rahmen. Die Aufteilung
+ * innerhalb bleibt vollstaendig Sache des GridContainers.
+ *
+ * Der horizontale Abstand steckt bewusst hier im padding und nicht in einer
+ * sapUiMedium*-Klasse: eine Margin-Klasse wuerde die auto-Raender
+ * ueberschreiben und die Zentrierung aushebeln.
+ */
+.zleContentMaxWidth {
+    max-width: 1280px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 2rem;
+    padding-right: 2rem;
+    box-sizing: border-box;
+}
