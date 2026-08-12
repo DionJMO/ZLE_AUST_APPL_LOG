@@ -259,7 +259,7 @@
 					-->
 					<Panel id="abbruchPanel" height="100%">
 						<layoutData>
-							<f:GridContainerItemLayoutData columns="6" minRows="10"/>
+							<f:GridContainerItemLayoutData columns="12" minRows="10"/>
 						</layoutData>
 						<headerToolbar>
 							<OverflowToolbar id="abbruchToolbar" height="3.25rem">
@@ -301,7 +301,7 @@
 											<Text id="abTxtItem" text="{mainModel>ItemNumber}" wrapping="false"/>
 										</t:template>
 									</t:Column>
-									<t:Column id="idAbortMessageColumn" width="26rem">
+									<t:Column id="idAbortMessageColumn" width="30rem">
 										<Label id="abLblMessage" text="{i18n>colMessage}"/>
 										<t:template>
 											<Text id="abTxtMessage" text="{mainModel>Message}" wrapping="false" tooltip="{mainModel>Message}"/>
@@ -332,7 +332,7 @@
 
 					<Panel id="techErrorPanel" height="100%">
 						<layoutData>
-							<f:GridContainerItemLayoutData columns="6" minRows="10"/>
+							<f:GridContainerItemLayoutData columns="12" minRows="10"/>
 						</layoutData>
 						<headerToolbar>
 							<OverflowToolbar id="techErrorToolbar" height="3.25rem">
@@ -374,7 +374,7 @@
 											<Text id="teTxtHttp" text="{mainModel>HttpStatus}" wrapping="false"/>
 										</t:template>
 									</t:Column>
-									<t:Column id="idTechErrorMessageColumn" width="26rem">
+									<t:Column id="idTechErrorMessageColumn" width="30rem">
 										<Label id="teLblMessage" text="{i18n>colMessage}"/>
 										<t:template>
 											<Text id="teTxtMessage" text="{mainModel>Message}" wrapping="false" tooltip="{mainModel>Message}"/>
