@@ -20,7 +20,9 @@ export default class Main extends BaseController {
 	 */
 	private static readonly DEFAULT_VISIBLE: Record<string, number> = {
 		idAppLogTable: 4,
-		idTpaTable: 8
+		idTpaTable: 8,
+		idAbortTable: 3,
+		idTechErrorTable: 3
 	};
 
 	/** Zeitfenster des Verlaufs-Charts in Tagen. */
@@ -53,6 +55,14 @@ export default class Main extends BaseController {
 
 	public onOpenTpaColumns(): void {
 		this._openColumns("idTpaTable");
+	}
+
+	public onOpenAbortColumns(): void {
+		this._openColumns("idAbortTable");
+	}
+
+	public onOpenTechErrorColumns(): void {
+		this._openColumns("idTechErrorTable");
 	}
 
 	private _loadData(): void {

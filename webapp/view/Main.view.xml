@@ -247,19 +247,153 @@
 						</content>
 					</Panel>
 
+					<!--
+						Die Trennung laeuft ueber LogType, nicht ueber Textmuster:
+						die fachlichen Abbrueche werden im Backend als 'W' geloggt
+						(fuenf von sechs Abbruchstellen), technische Fehler als 'E'.
+						Die alte OVP-Kachel filterte 'E' und zeigte damit genau die
+						Komplementaermenge - daher die Rueckmeldung "man erkennt es
+						nicht am Fehlertext". Siehe CLAUDE.md, O-25.
+						Beide Filter laufen serverseitig, die Zaehler in den
+						Kopfzeilen kommen aus model/KpiLoader.ts.
+					-->
 					<Panel id="abbruchPanel" height="100%">
 						<layoutData>
-							<f:GridContainerItemLayoutData columns="12" minRows="10"/>
+							<f:GridContainerItemLayoutData columns="6" minRows="10"/>
 						</layoutData>
 						<headerToolbar>
 							<OverflowToolbar id="abbruchToolbar" height="3.25rem">
 								<Avatar id="abbruchAvatar" src="sap-icon://cancel" displaySize="XS" backgroundColor="Accent4"/>
-								<Title id="abbruchTitle" text="{i18n>abbruchCardTitle}" level="H3" titleStyle="H3"/>
+								<Title id="abbruchTitle" text="{i18n>abortPanelTitle}" level="H3" titleStyle="H3"/>
 								<ToolbarSpacer id="abbruchSpacer"/>
+								<ObjectStatus
+									id="idAbortCountObjectStatus"
+									state="Warning"
+									icon="sap-icon://alert"
+									text="{ui>/kpi/nichtUebertragen} {i18n>abortPanelHint}"/>
+								<Button
+									id="abortColumnsButton"
+									icon="sap-icon://action-settings"
+									tooltip="{i18n>columnsTooltip}"
+									type="Transparent"
+									press=".onOpenAbortColumns"/>
 							</OverflowToolbar>
 						</headerToolbar>
 						<content>
-							<Text id="abbruchPlaceholder" text="{i18n>panelPlaceholder}" class="sapUiSmallMargin"/>
+							<t:Table
+								id="idAbortTable"
+								rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, filters: [{path: 'LogType', operator: 'EQ', value1: 'W'}], sorter: {path: 'CreatedAt', descending: true}}"
+								selectionMode="None"
+								ariaLabelledBy="abbruchTitle">
+								<t:rowMode>
+									<rm:Auto maxRowCount="12"/>
+								</t:rowMode>
+								<t:columns>
+									<t:Column id="idAbortCreatedAtColumn" width="8rem" sortProperty="CreatedAt">
+										<Label id="abLblCreatedAt" text="{i18n>colCreatedAt}"/>
+										<t:template>
+											<Text id="abTxtCreatedAt" text="{mainModel>CreatedAt}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idAbortItemColumn" width="12rem" sortProperty="ItemNumber">
+										<Label id="abLblItem" text="{i18n>colItemNumber}"/>
+										<t:template>
+											<Text id="abTxtItem" text="{mainModel>ItemNumber}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idAbortMessageColumn" width="26rem">
+										<Label id="abLblMessage" text="{i18n>colMessage}"/>
+										<t:template>
+											<Text id="abTxtMessage" text="{mainModel>Message}" wrapping="false" tooltip="{mainModel>Message}"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idAbortTpaColumn" width="11rem" sortProperty="TpaNumber">
+										<Label id="abLblTpa" text="{i18n>colTpaNumber}"/>
+										<t:template>
+											<Text id="abTxtTpa" text="{mainModel>TpaNumber}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idAbortLineColumn" width="7rem">
+										<Label id="abLblLine" text="{i18n>colOrderLineNr}"/>
+										<t:template>
+											<Text id="abTxtLine" text="{mainModel>OrderLineNr}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idAbortHistoryColumn" width="10rem" sortProperty="HistoryType">
+										<Label id="abLblHistory" text="{i18n>colHistoryType}"/>
+										<t:template>
+											<Text id="abTxtHistory" text="{mainModel>HistoryType}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+								</t:columns>
+							</t:Table>
+						</content>
+					</Panel>
+
+					<Panel id="techErrorPanel" height="100%">
+						<layoutData>
+							<f:GridContainerItemLayoutData columns="6" minRows="10"/>
+						</layoutData>
+						<headerToolbar>
+							<OverflowToolbar id="techErrorToolbar" height="3.25rem">
+								<Avatar id="techErrorAvatar" src="sap-icon://error" displaySize="XS" backgroundColor="Accent3"/>
+								<Title id="techErrorTitle" text="{i18n>techErrorPanelTitle}" level="H3" titleStyle="H3"/>
+								<ToolbarSpacer id="techErrorSpacer"/>
+								<ObjectStatus
+									id="idTechErrorCountObjectStatus"
+									state="Error"
+									icon="sap-icon://error"
+									text="{ui>/kpi/fehler} {i18n>techErrorPanelHint}"/>
+								<Button
+									id="techErrorColumnsButton"
+									icon="sap-icon://action-settings"
+									tooltip="{i18n>columnsTooltip}"
+									type="Transparent"
+									press=".onOpenTechErrorColumns"/>
+							</OverflowToolbar>
+						</headerToolbar>
+						<content>
+							<t:Table
+								id="idTechErrorTable"
+								rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, filters: [{path: 'LogType', operator: 'EQ', value1: 'E'}], sorter: {path: 'CreatedAt', descending: true}}"
+								selectionMode="None"
+								ariaLabelledBy="techErrorTitle">
+								<t:rowMode>
+									<rm:Auto maxRowCount="12"/>
+								</t:rowMode>
+								<t:columns>
+									<t:Column id="idTechErrorCreatedAtColumn" width="8rem" sortProperty="CreatedAt">
+										<Label id="teLblCreatedAt" text="{i18n>colCreatedAt}"/>
+										<t:template>
+											<Text id="teTxtCreatedAt" text="{mainModel>CreatedAt}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idTechErrorHttpColumn" width="7rem" hAlign="End" sortProperty="HttpStatus">
+										<Label id="teLblHttp" text="{i18n>colHttpStatus}"/>
+										<t:template>
+											<Text id="teTxtHttp" text="{mainModel>HttpStatus}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idTechErrorMessageColumn" width="26rem">
+										<Label id="teLblMessage" text="{i18n>colMessage}"/>
+										<t:template>
+											<Text id="teTxtMessage" text="{mainModel>Message}" wrapping="false" tooltip="{mainModel>Message}"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idTechErrorItemColumn" width="12rem" sortProperty="ItemNumber">
+										<Label id="teLblItem" text="{i18n>colItemNumber}"/>
+										<t:template>
+											<Text id="teTxtItem" text="{mainModel>ItemNumber}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+									<t:Column id="idTechErrorTpaColumn" width="11rem" sortProperty="TpaNumber">
+										<Label id="teLblTpa" text="{i18n>colTpaNumber}"/>
+										<t:template>
+											<Text id="teTxtTpa" text="{mainModel>TpaNumber}" wrapping="false"/>
+										</t:template>
+									</t:Column>
+								</t:columns>
+							</t:Table>
 						</content>
 					</Panel>
 				</f:GridContainer>

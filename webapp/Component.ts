@@ -34,7 +34,8 @@ export default class Component extends UIComponent {
 				gesamt: "0",
 				offen: "0",
 				fehler: "0",
-				abbrueche: "0"
+				abbrueche: "0",
+				nichtUebertragen: "0"
 			}
 		}), "ui");
 

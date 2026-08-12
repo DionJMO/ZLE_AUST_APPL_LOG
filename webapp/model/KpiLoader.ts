@@ -34,7 +34,15 @@ export const metrics: KpiDefinition[] = [
 	{ key: "fehler",   model: "mainModel", path: "/AppLog", select: "LogUuid",
 	  filter: "LogType eq 'E'" },
 	{ key: "abbrueche", model: "tpaModel", path: "/Tpa",    select: "OrderNumber",
-	  filter: "OrderStatus eq 'Cancelled'" }
+	  filter: "OrderStatus eq 'Cancelled'" },
+	// Zaehler fuer die Kopfzeile des Panels "Abbrueche & Warnungen". Die
+	// fachlichen Abbrueche werden im Backend als 'W' geloggt, nicht als 'E'
+	// (fuenf von sechs Abbruchstellen, siehe CLAUDE.md O-25) - deshalb ist das
+	// die Menge, die dort interessiert.
+	// Das Gegenstueck "Technische Fehler" braucht keinen eigenen Eintrag: es
+	// ist derselbe Filter wie 'fehler' und bindet gegen /kpi/fehler.
+	{ key: "nichtUebertragen", model: "mainModel", path: "/AppLog", select: "LogUuid",
+	  filter: "LogType eq 'W'" }
 ];
 
 export async function loadCount(oModel: ODataModel, oDefinition: KpiDefinition): Promise<number> {
