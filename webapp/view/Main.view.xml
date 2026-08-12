@@ -52,20 +52,20 @@
 				sich NICHT zwischen Layouts teilen, deshalb steht sie je Grid
 				und Breakpoint einzeln im XML.
 			-->
-			<VBox id="groupContainer" class="sapUiSmallMargin" renderType="Bare">
+			<VBox id="groupContainer" class="sapUiMediumMargin" renderType="Bare">
 
 				<core:Fragment fragmentName="zui5_zle_aust_mon.view.fragment.KontaktBar" type="XML"/>
 
-				<Title id="overviewHeading" text="{i18n>groupOverview}" level="H2" class="sapUiSmallMarginTop sapUiTinyMarginBottom"/>
+				<Title id="overviewHeading" text="{i18n>groupOverview}" level="H2" titleStyle="H2" class="sapUiLargeMarginTop sapUiSmallMarginBottom"/>
 				<f:GridContainer id="overviewGrid" snapToRow="true">
 					<f:layout>
-						<f:GridContainerSettings rowSize="2rem" columnSize="4.5rem" gap="0.75rem"/>
+						<f:GridContainerSettings rowSize="2rem" columnSize="4.5rem" gap="1rem"/>
 					</f:layout>
 					<f:layoutM>
-						<f:GridContainerSettings rowSize="2rem" columnSize="4rem" gap="0.5rem"/>
+						<f:GridContainerSettings rowSize="2rem" columnSize="4rem" gap="0.75rem"/>
 					</f:layoutM>
 					<f:layoutS>
-						<f:GridContainerSettings rowSize="2rem" columnSize="4rem" gap="0.5rem"/>
+						<f:GridContainerSettings rowSize="2rem" columnSize="4rem" gap="0.75rem"/>
 					</f:layoutS>
 
 					<Panel id="chartPanel" height="100%">
@@ -73,9 +73,9 @@
 							<f:GridContainerItemLayoutData columns="8" minRows="12"/>
 						</layoutData>
 						<headerToolbar>
-							<OverflowToolbar id="chartToolbar">
+							<OverflowToolbar id="chartToolbar" height="3.25rem">
 								<Avatar id="chartAvatar" src="sap-icon://vertical-bar-chart" displaySize="XS" backgroundColor="Accent6"/>
-								<Title id="chartTitle" text="{i18n>chartPanelTitle}" level="H3"/>
+								<Title id="chartTitle" text="{i18n>chartPanelTitle}" level="H3" titleStyle="H3"/>
 								<ToolbarSpacer id="chartSpacer"/>
 								<ObjectStatus
 									id="idChartTruncatedObjectStatus"
@@ -130,9 +130,9 @@
 							<f:GridContainerItemLayoutData columns="4" minRows="12"/>
 						</layoutData>
 						<headerToolbar>
-							<OverflowToolbar id="kpiToolbar">
+							<OverflowToolbar id="kpiToolbar" height="3.25rem">
 								<Avatar id="kpiAvatar" src="sap-icon://kpi-corporate-performance" displaySize="XS" backgroundColor="Accent8"/>
-								<Title id="kpiTitle" text="{i18n>kpiPanelTitle}" level="H3"/>
+								<Title id="kpiTitle" text="{i18n>kpiPanelTitle}" level="H3" titleStyle="H3"/>
 								<ToolbarSpacer id="kpiSpacer"/>
 							</OverflowToolbar>
 						</headerToolbar>
@@ -188,16 +188,16 @@
 					</Panel>
 				</f:GridContainer>
 
-				<Title id="errorHeading" text="{i18n>groupErrors}" level="H2" class="sapUiSmallMarginTop sapUiTinyMarginBottom"/>
+				<Title id="errorHeading" text="{i18n>groupErrors}" level="H2" titleStyle="H2" class="sapUiLargeMarginTop sapUiSmallMarginBottom"/>
 				<f:GridContainer id="errorGrid" snapToRow="true">
 					<f:layout>
-						<f:GridContainerSettings rowSize="2rem" columnSize="4.5rem" gap="0.75rem"/>
+						<f:GridContainerSettings rowSize="2rem" columnSize="4.5rem" gap="1rem"/>
 					</f:layout>
 					<f:layoutM>
-						<f:GridContainerSettings rowSize="2rem" columnSize="4rem" gap="0.5rem"/>
+						<f:GridContainerSettings rowSize="2rem" columnSize="4rem" gap="0.75rem"/>
 					</f:layoutM>
 					<f:layoutS>
-						<f:GridContainerSettings rowSize="2rem" columnSize="4rem" gap="0.5rem"/>
+						<f:GridContainerSettings rowSize="2rem" columnSize="4rem" gap="0.75rem"/>
 					</f:layoutS>
 
 					<!--
@@ -213,9 +213,9 @@
 							<f:GridContainerItemLayoutData columns="4" minRows="10"/>
 						</layoutData>
 						<headerToolbar>
-							<OverflowToolbar id="inboundToolbar">
+							<OverflowToolbar id="inboundToolbar" height="3.25rem">
 								<Avatar id="inboundAvatar" src="sap-icon://inbox" displaySize="XS" backgroundColor="Accent1"/>
-								<Title id="inboundTitle" text="{i18n>inboundPanelTitle}" level="H3"/>
+								<Title id="inboundTitle" text="{i18n>inboundPanelTitle}" level="H3" titleStyle="H3"/>
 								<ToolbarSpacer id="inboundSpacer"/>
 							</OverflowToolbar>
 						</headerToolbar>
@@ -229,9 +229,9 @@
 							<f:GridContainerItemLayoutData columns="4" minRows="10"/>
 						</layoutData>
 						<headerToolbar>
-							<OverflowToolbar id="outboundToolbar">
+							<OverflowToolbar id="outboundToolbar" height="3.25rem">
 								<Avatar id="outboundAvatar" src="sap-icon://outbox" displaySize="XS" backgroundColor="Accent2"/>
-								<Title id="outboundTitle" text="{i18n>outboundPanelTitle}" level="H3"/>
+								<Title id="outboundTitle" text="{i18n>outboundPanelTitle}" level="H3" titleStyle="H3"/>
 								<ToolbarSpacer id="outboundSpacer"/>
 							</OverflowToolbar>
 						</headerToolbar>
@@ -245,9 +245,9 @@
 							<f:GridContainerItemLayoutData columns="12" minRows="10"/>
 						</layoutData>
 						<headerToolbar>
-							<OverflowToolbar id="abbruchToolbar">
+							<OverflowToolbar id="abbruchToolbar" height="3.25rem">
 								<Avatar id="abbruchAvatar" src="sap-icon://cancel" displaySize="XS" backgroundColor="Accent4"/>
-								<Title id="abbruchTitle" text="{i18n>abbruchCardTitle}" level="H3"/>
+								<Title id="abbruchTitle" text="{i18n>abbruchCardTitle}" level="H3" titleStyle="H3"/>
 								<ToolbarSpacer id="abbruchSpacer"/>
 							</OverflowToolbar>
 						</headerToolbar>
@@ -257,16 +257,16 @@
 					</Panel>
 				</f:GridContainer>
 
-				<Title id="dataHeading" text="{i18n>groupData}" level="H2" class="sapUiSmallMarginTop sapUiTinyMarginBottom"/>
+				<Title id="dataHeading" text="{i18n>groupData}" level="H2" titleStyle="H2" class="sapUiLargeMarginTop sapUiSmallMarginBottom"/>
 				<f:GridContainer id="dataGrid" snapToRow="true">
 					<f:layout>
-						<f:GridContainerSettings rowSize="2rem" columnSize="4.5rem" gap="0.75rem"/>
+						<f:GridContainerSettings rowSize="2rem" columnSize="4.5rem" gap="1rem"/>
 					</f:layout>
 					<f:layoutM>
-						<f:GridContainerSettings rowSize="2rem" columnSize="4rem" gap="0.5rem"/>
+						<f:GridContainerSettings rowSize="2rem" columnSize="4rem" gap="0.75rem"/>
 					</f:layoutM>
 					<f:layoutS>
-						<f:GridContainerSettings rowSize="2rem" columnSize="4rem" gap="0.5rem"/>
+						<f:GridContainerSettings rowSize="2rem" columnSize="4rem" gap="0.75rem"/>
 					</f:layoutS>
 
 					<Panel id="appLogPanel" height="100%">
@@ -274,9 +274,9 @@
 							<f:GridContainerItemLayoutData columns="12" minRows="14"/>
 						</layoutData>
 						<headerToolbar>
-							<OverflowToolbar id="appLogToolbar">
+							<OverflowToolbar id="appLogToolbar" height="3.25rem">
 								<Avatar id="appLogAvatar" src="sap-icon://activity-items" displaySize="XS" backgroundColor="Accent5"/>
-								<Title id="appLogTitle" text="{i18n>appLogCardTitle}" level="H3"/>
+								<Title id="appLogTitle" text="{i18n>appLogCardTitle}" level="H3" titleStyle="H3"/>
 								<ToolbarSpacer id="appLogSpacer"/>
 								<Button
 									id="appLogColumnsButton"
@@ -366,9 +366,9 @@
 							<f:GridContainerItemLayoutData columns="12" minRows="14"/>
 						</layoutData>
 						<headerToolbar>
-							<OverflowToolbar id="tpaToolbar">
+							<OverflowToolbar id="tpaToolbar" height="3.25rem">
 								<Avatar id="tpaAvatar" src="sap-icon://shipping-status" displaySize="XS" backgroundColor="Accent7"/>
-								<Title id="tpaTitle" text="{i18n>tpaCardTitle}" level="H3"/>
+								<Title id="tpaTitle" text="{i18n>tpaCardTitle}" level="H3" titleStyle="H3"/>
 								<ToolbarSpacer id="tpaSpacer"/>
 								<Button
 									id="tpaColumnsButton"

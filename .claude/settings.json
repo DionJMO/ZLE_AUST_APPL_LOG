@@ -6,7 +6,9 @@
       "Bash(awk '/declare module \"sap\\\\/m\\\\/NumericContent\"/,/declare module \"sap\\\\/m\\\\/ObjectAttribute\"/' sap.m.d.ts)",
       "Bash(awk '/declare module \"sap\\\\/viz\\\\/ui5\\\\/data\\\\/FlattenedDataset\"/,/declare module \"sap\\\\/viz\\\\/ui5\\\\/data\\\\/MeasureDefinition\"/' sap.viz.d.ts)",
       "Bash(awk '/declare module \"sap\\\\/viz\\\\/ui5\\\\/data\\\\/DimensionDefinition\"/,/declare module \"sap\\\\/viz\\\\/ui5\\\\/data\\\\/Dataset\"/' sap.viz.d.ts)",
-      "Bash(echo \"tsc=$?\")"
+      "Bash(echo \"tsc=$?\")",
+      "Bash(awk '/declare module \"sap\\\\/m\\\\/Title\"/,/declare module \"sap\\\\/m\\\\/ToggleButton\"/' sap.m.d.ts)",
+      "Bash(awk '/declare module \"sap\\\\/m\\\\/Toolbar\"/,/declare module \"sap\\\\/m\\\\/ToolbarLayoutData\"/' sap.m.d.ts)"
     ]
   }
 }

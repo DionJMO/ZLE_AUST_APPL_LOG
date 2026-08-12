@@ -16,30 +16,29 @@
 	xmlns="sap.m"
 	xmlns:core="sap.ui.core">
 	<Panel
-		id="contactPanel"
-		width="100%"
+		id="idContactPanel"
 		backgroundDesign="Transparent"
 		class="sapUiTinyMarginBottom">
 		<headerToolbar>
-			<OverflowToolbar id="contactToolbar" height="2.75rem">
+			<OverflowToolbar id="idContactOverflowToolbar" height="3.25rem">
 				<Avatar
-					id="contactAvatar"
+					id="idContactAvatar"
 					src="sap-icon://group"
 					displaySize="XS"
 					backgroundColor="Accent8"/>
-				<Title id="contactTitle" text="{i18n>kontakteCardTitle}" level="H3"/>
-				<ToolbarSeparator id="contactSeparator"/>
+				<Title id="contactTitle" text="{i18n>kontakteCardTitle}" level="H3" titleStyle="H3"/>
+				<ToolbarSeparator id="idContactToolbarSeparator"/>
 
-				<core:Icon id="contactIconPm" src="sap-icon://person-placeholder" class="sapUiTinyMarginEnd"/>
+				<core:Icon id="idContactPmIcon" src="sap-icon://person-placeholder" class="sapUiTinyMarginEnd"/>
 				<Text id="contactTextPm" text="{i18n>kontaktHoermannPm}"/>
 
-				<core:Icon id="contactIconWms" src="sap-icon://headset" class="sapUiSmallMarginBegin sapUiTinyMarginEnd"/>
+				<core:Icon id="idContactWmsIcon" src="sap-icon://headset" class="sapUiSmallMarginBegin sapUiTinyMarginEnd"/>
 				<Text id="contactTextWms" text="{i18n>kontaktWmsSupport}"/>
 
-				<core:Icon id="contactIconIt" src="sap-icon://it-system" class="sapUiSmallMarginBegin sapUiTinyMarginEnd"/>
+				<core:Icon id="idContactItIcon" src="sap-icon://it-system" class="sapUiSmallMarginBegin sapUiTinyMarginEnd"/>
 				<Text id="contactTextIt" text="{i18n>kontaktKroschkeIt}"/>
 
-				<ToolbarSpacer id="contactSpacer"/>
+				<ToolbarSpacer id="idContactToolbarSpacer"/>
 			</OverflowToolbar>
 		</headerToolbar>
 	</Panel>
