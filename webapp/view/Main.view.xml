@@ -78,9 +78,74 @@
 						<f:GridContainerSettings columns="4" minColumnSize="3.5rem" maxColumnSize="6rem" rowSize="2rem" gap="0.75rem"/>
 					</f:layoutS>
 
+					<Panel id="kpiPanel" height="100%">
+						<layoutData>
+							<!--
+								Flache Zeile ueber die volle Breite: eine Wertezeile braucht
+								mit Kopfzeile rund 9rem. 4 Rasterzeilen * 3rem - 1rem = 11rem
+								lassen etwas Puffer, ohne wieder Leerraum zu erzeugen
+								(minRows=3 waere mit 8rem zu knapp).
+							-->
+							<f:GridContainerItemLayoutData columns="12" minRows="4"/>
+						</layoutData>
+						<headerToolbar>
+							<OverflowToolbar id="kpiToolbar" height="3.25rem">
+								<Avatar id="kpiAvatar" src="sap-icon://kpi-corporate-performance" displaySize="XS" backgroundColor="Accent8"/>
+								<Title id="kpiTitle" text="{i18n>kpiPanelTitle}" level="H3" titleStyle="H3"/>
+								<ToolbarSpacer id="kpiSpacer"/>
+							</OverflowToolbar>
+						</headerToolbar>
+						<content>
+							<!--
+								Alle vier Werte in EINER Zeile, gleichmaessig ueber die Breite
+								verteilt. Zahlen kommen aus model/KpiLoader.ts (serverseitiges
+								$count), Filter und Pfade unveraendert aus der frueheren
+								OVP-Karte - damit sich die Werte gegenueber dem alten Stand nicht
+								still aendern. Jede Zahl mit Icon, nicht nur mit Farbe.
+							-->
+							<HBox id="idKpiHBox" justifyContent="SpaceAround" alignItems="Center" class="sapUiSmallMargin">
+								<VBox id="idGesamtVBox" alignItems="Center">
+									<NumericContent
+										id="idGesamtNumericContent"
+										value="{ui>/kpi/gesamt}"
+										icon="sap-icon://sum"
+										withMargin="false"/>
+									<Label id="idGesamtLabel" text="{i18n>kpiGesamt}" design="Bold"/>
+								</VBox>
+								<VBox id="idOffenVBox" alignItems="Center">
+									<NumericContent
+										id="idOffenNumericContent"
+										value="{ui>/kpi/offen}"
+										icon="sap-icon://pending"
+										valueColor="Critical"
+										withMargin="false"/>
+									<Label id="idOffenLabel" text="{i18n>kpiOffen}" design="Bold"/>
+								</VBox>
+								<VBox id="idFehlerVBox" alignItems="Center">
+									<NumericContent
+										id="idFehlerNumericContent"
+										value="{ui>/kpi/fehler}"
+										icon="sap-icon://error"
+										valueColor="Error"
+										withMargin="false"/>
+									<Label id="idFehlerLabel" text="{i18n>kpiFehler}" design="Bold"/>
+								</VBox>
+								<VBox id="idAbbruecheVBox" alignItems="Center">
+									<NumericContent
+										id="idAbbruecheNumericContent"
+										value="{ui>/kpi/abbrueche}"
+										icon="sap-icon://cancel"
+										valueColor="Critical"
+										withMargin="false"/>
+									<Label id="idAbbruecheLabel" text="{i18n>kpiAbbrueche}" design="Bold"/>
+								</VBox>
+							</HBox>
+						</content>
+					</Panel>
+
 					<Panel id="chartPanel" height="100%">
 						<layoutData>
-							<f:GridContainerItemLayoutData columns="8" minRows="12"/>
+							<f:GridContainerItemLayoutData columns="12" minRows="12"/>
 						</layoutData>
 						<headerToolbar>
 							<OverflowToolbar id="chartToolbar" height="3.25rem">
@@ -132,75 +197,6 @@
 									<vizFeeds:FeedItem uid="categoryAxis" type="Dimension" values="Tag"/>
 								</viz:feeds>
 							</viz:VizFrame>
-						</content>
-					</Panel>
-
-					<Panel id="kpiPanel" height="100%">
-						<layoutData>
-							<!--
-								Bewusst niedriger als das chartPanel (minRows=12): der Inhalt
-								braucht nur rund 16rem, alles darueber waere Leerraum.
-								7 Rasterzeilen * 3rem (rowSize 2rem + gap 1rem) - 1rem = 20rem.
-								Unterschiedliche Panelhoehen in einer Grid-Zeile sind bei
-								sap.f.GridContainer normal.
-							-->
-							<f:GridContainerItemLayoutData columns="4" minRows="7"/>
-						</layoutData>
-						<headerToolbar>
-							<OverflowToolbar id="kpiToolbar" height="3.25rem">
-								<Avatar id="kpiAvatar" src="sap-icon://kpi-corporate-performance" displaySize="XS" backgroundColor="Accent8"/>
-								<Title id="kpiTitle" text="{i18n>kpiPanelTitle}" level="H3" titleStyle="H3"/>
-								<ToolbarSpacer id="kpiSpacer"/>
-							</OverflowToolbar>
-						</headerToolbar>
-						<content>
-							<!--
-								Zahlen kommen aus model/KpiLoader.ts (serverseitiges $count),
-								Filter und Pfade unveraendert aus der frueheren OVP-Karte -
-								damit sich die Werte gegenueber dem alten Stand nicht still
-								aendern. Jede Zahl mit Icon, nicht nur mit Farbe.
-							-->
-							<VBox id="idKpiVBox" class="sapUiSmallMargin">
-								<HBox id="idKpiTopHBox" justifyContent="SpaceAround" class="sapUiSmallMarginBottom">
-									<VBox id="idGesamtVBox" alignItems="Center">
-										<NumericContent
-											id="idGesamtNumericContent"
-											value="{ui>/kpi/gesamt}"
-											icon="sap-icon://sum"
-											withMargin="false"/>
-										<Label id="idGesamtLabel" text="{i18n>kpiGesamt}" design="Bold"/>
-									</VBox>
-									<VBox id="idOffenVBox" alignItems="Center">
-										<NumericContent
-											id="idOffenNumericContent"
-											value="{ui>/kpi/offen}"
-											icon="sap-icon://pending"
-											valueColor="Critical"
-											withMargin="false"/>
-										<Label id="idOffenLabel" text="{i18n>kpiOffen}" design="Bold"/>
-									</VBox>
-								</HBox>
-								<HBox id="idKpiBottomHBox" justifyContent="SpaceAround">
-									<VBox id="idFehlerVBox" alignItems="Center">
-										<NumericContent
-											id="idFehlerNumericContent"
-											value="{ui>/kpi/fehler}"
-											icon="sap-icon://error"
-											valueColor="Error"
-											withMargin="false"/>
-										<Label id="idFehlerLabel" text="{i18n>kpiFehler}" design="Bold"/>
-									</VBox>
-									<VBox id="idAbbruecheVBox" alignItems="Center">
-										<NumericContent
-											id="idAbbruecheNumericContent"
-											value="{ui>/kpi/abbrueche}"
-											icon="sap-icon://cancel"
-											valueColor="Critical"
-											withMargin="false"/>
-										<Label id="idAbbruecheLabel" text="{i18n>kpiAbbrueche}" design="Bold"/>
-									</VBox>
-								</HBox>
-							</VBox>
 						</content>
 					</Panel>
 				</f:GridContainer>
