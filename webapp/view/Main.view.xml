@@ -78,13 +78,27 @@
 						<f:GridContainerSettings columns="4" minColumnSize="3.5rem" maxColumnSize="6rem" rowSize="2rem" gap="0.75rem"/>
 					</f:layoutS>
 
-					<Panel id="kpiPanel" height="100%">
+					<!--
+						BEWUSST OHNE height="100%" - anders als bei allen anderen Panels.
+						Der Default von sap.m.Panel.height ist "auto", damit waechst das
+						Panel mit seinem Inhalt und minRows wirkt wie vorgesehen als
+						Untergrenze ("the MINIMUM number of rows, which the item should
+						take"). Mit height="100%" waere das Panel starr auf die
+						Grid-Item-Hoehe genagelt und die Inhaltsflaeche bekaeme eine
+						Bildlaufleiste, sobald der Inhalt hoeher ist - genau das war hier
+						der Fall, weil sap.m.NumericContent als Tile-Control mit Label
+						rund 85-90px braucht, nicht die von mir angesetzten 60px.
+
+						Bei den Tabellen-Panels ist height="100%" dagegen notwendig: der
+						rowMode Auto berechnet die Zeilenzahl aus der Containerhoehe. Beim
+						chartPanel ebenso, weil der VizFrame einen begrenzten Elternteil
+						braucht.
+					-->
+					<Panel id="kpiPanel">
 						<layoutData>
 							<!--
-								Flache Zeile ueber die volle Breite: eine Wertezeile braucht
-								mit Kopfzeile rund 9rem. 4 Rasterzeilen * 3rem - 1rem = 11rem
-								lassen etwas Puffer, ohne wieder Leerraum zu erzeugen
-								(minRows=3 waere mit 8rem zu knapp).
+								Flache Zeile ueber die volle Breite. minRows ist hier nur der
+								Boden - die tatsaechliche Hoehe ergibt sich aus dem Inhalt.
 							-->
 							<f:GridContainerItemLayoutData columns="12" minRows="4"/>
 						</layoutData>
