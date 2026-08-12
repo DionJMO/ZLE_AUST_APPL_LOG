@@ -11,35 +11,40 @@
 	Handshake und ist von hier aus nicht kontrollierbar.
 
 	Der Anwender kopiert die Adresse manuell.
+
+	ZUM AUFBAU: Bewusst OHNE headerToolbar. Lag der gesamte Inhalt im
+	Panel-Header, blieben die unteren Ecken eckig - der Header rendert bis
+	an die Panelkante. Alles im content zu haben gibt die runden Ecken und
+	bleibt trotzdem eine einzeilige, schmale Leiste.
 -->
 <core:FragmentDefinition
 	xmlns="sap.m"
 	xmlns:core="sap.ui.core">
-	<Panel
-		id="idContactPanel"
-		backgroundDesign="Transparent"
-		class="sapUiTinyMarginBottom">
-		<headerToolbar>
-			<OverflowToolbar id="idContactOverflowToolbar" height="3.25rem">
+	<Panel id="idContactPanel" class="sapUiTinyMarginBottom">
+		<content>
+			<HBox id="idContactHBox" alignItems="Center" wrap="Wrap" class="sapUiSmallMargin">
 				<Avatar
 					id="idContactAvatar"
 					src="sap-icon://group"
 					displaySize="XS"
-					backgroundColor="Accent8"/>
-				<Title id="contactTitle" text="{i18n>kontakteCardTitle}" level="H3" titleStyle="H3"/>
-				<ToolbarSeparator id="idContactToolbarSeparator"/>
+					backgroundColor="Accent8"
+					class="sapUiTinyMarginEnd"/>
+				<Title
+					id="idKontakteTitle"
+					text="{i18n>kontakteCardTitle}"
+					level="H3"
+					titleStyle="H3"
+					class="sapUiMediumMarginEnd"/>
 
 				<core:Icon id="idContactPmIcon" src="sap-icon://person-placeholder" class="sapUiTinyMarginEnd"/>
-				<Text id="contactTextPm" text="{i18n>kontaktHoermannPm}"/>
+				<Text id="contactTextPm" text="{i18n>kontaktHoermannPm}" class="sapUiMediumMarginEnd"/>
 
-				<core:Icon id="idContactWmsIcon" src="sap-icon://headset" class="sapUiSmallMarginBegin sapUiTinyMarginEnd"/>
-				<Text id="contactTextWms" text="{i18n>kontaktWmsSupport}"/>
+				<core:Icon id="idContactWmsIcon" src="sap-icon://headset" class="sapUiTinyMarginEnd"/>
+				<Text id="contactTextWms" text="{i18n>kontaktWmsSupport}" class="sapUiMediumMarginEnd"/>
 
-				<core:Icon id="idContactItIcon" src="sap-icon://it-system" class="sapUiSmallMarginBegin sapUiTinyMarginEnd"/>
+				<core:Icon id="idContactItIcon" src="sap-icon://it-system" class="sapUiTinyMarginEnd"/>
 				<Text id="contactTextIt" text="{i18n>kontaktKroschkeIt}"/>
-
-				<ToolbarSpacer id="idContactToolbarSpacer"/>
-			</OverflowToolbar>
-		</headerToolbar>
+			</HBox>
+		</content>
 	</Panel>
 </core:FragmentDefinition>

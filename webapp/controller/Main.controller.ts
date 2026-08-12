@@ -36,7 +36,7 @@ export default class Main extends BaseController {
 			}
 		});
 
-		this._applyChartColors();
+		this._applyChartProperties();
 		this._loadData();
 	}
 
@@ -91,10 +91,15 @@ export default class Main extends BaseController {
 	}
 
 	/**
-	 * Setzt die Stapelfarben auf die semantischen Theme-Farben, damit sie zur
-	 * Kritikalitaets-Darstellung in den Tabellen passen.
+	 * Chart-Darstellung: Legende unter das Diagramm, Stapelfarben auf die
+	 * semantischen Theme-Farben, damit sie zur Kritikalitaets-Darstellung in
+	 * den Tabellen passen.
+	 *
+	 * Die Legendenposition sitzt unter legendGroup.layout.position - nicht
+	 * unter legend, das steuert nur Sichtbarkeit und Titel der Legende.
+	 * Referenz: https://ui5.sap.com/docs/vizdocs/index.html
 	 */
-	private _applyChartColors(): void {
+	private _applyChartProperties(): void {
 		const oVizFrame = this.byId("idTrendVizFrame") as VizFrame | undefined;
 		if (!oVizFrame) {
 			return;
@@ -102,7 +107,8 @@ export default class Main extends BaseController {
 		ChartColors.resolvePalette((aColors) => {
 			oVizFrame.setVizProperties({
 				plotArea: { colorPalette: aColors, dataLabel: { visible: false } },
-				legend: { title: { visible: false } },
+				legend: { visible: true, title: { visible: false } },
+				legendGroup: { layout: { position: "bottom", alignment: "center" } },
 				title: { visible: false },
 				valueAxis: { title: { visible: false } },
 				categoryAxis: { title: { visible: false } }

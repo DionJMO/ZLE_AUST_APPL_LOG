@@ -8,7 +8,16 @@
       "Bash(awk '/declare module \"sap\\\\/viz\\\\/ui5\\\\/data\\\\/DimensionDefinition\"/,/declare module \"sap\\\\/viz\\\\/ui5\\\\/data\\\\/Dataset\"/' sap.viz.d.ts)",
       "Bash(echo \"tsc=$?\")",
       "Bash(awk '/declare module \"sap\\\\/m\\\\/Title\"/,/declare module \"sap\\\\/m\\\\/ToggleButton\"/' sap.m.d.ts)",
-      "Bash(awk '/declare module \"sap\\\\/m\\\\/Toolbar\"/,/declare module \"sap\\\\/m\\\\/ToolbarLayoutData\"/' sap.m.d.ts)"
+      "Bash(awk '/declare module \"sap\\\\/m\\\\/Toolbar\"/,/declare module \"sap\\\\/m\\\\/ToolbarLayoutData\"/' sap.m.d.ts)",
+      "Bash(npx ui5 *)",
+      "Bash(git checkout *)",
+      "Bash(npm ci *)",
+      "Bash(npm audit *)",
+      "Bash(echo \"ts-typecheck: exit=$?\")",
+      "Bash(npm i *)",
+      "Bash(echo \"typecheck exit=$?\")",
+      "Bash(grep -o 'legendGroup[^;]\\\\{0,90\\\\}' dist/resources/zui5_zle_aust_mon/controller/Main.controller.js)",
+      "Bash(grep -o 'setVizProperties\\({.\\\\{0,220\\\\}' dist/controller/Main.controller.js)"
     ]
   }
 }
