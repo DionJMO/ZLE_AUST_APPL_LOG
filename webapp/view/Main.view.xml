@@ -412,7 +412,14 @@
 
 					<Panel id="appLogPanel" height="100%">
 						<layoutData>
-							<f:GridContainerItemLayoutData columns="12" minRows="14"/>
+							<!--
+								11 Rasterzeilen * 3rem - 1rem = 32rem. Das entspricht in
+								compact-Dichte gerade den 12 Tabellenzeilen unten
+								(maxRowCount), sodass kein Leerraum unter der Tabelle
+								bleibt. Wer minRows erhoeht, muss maxRowCount mitziehen -
+								sonst deckelt die Tabelle und der Leerraum kommt zurueck.
+							-->
+							<f:GridContainerItemLayoutData columns="12" minRows="11"/>
 						</layoutData>
 						<headerToolbar>
 							<OverflowToolbar id="appLogToolbar" height="3.25rem">
@@ -504,7 +511,8 @@
 
 					<Panel id="tpaPanel" height="100%">
 						<layoutData>
-							<f:GridContainerItemLayoutData columns="12" minRows="14"/>
+							<!-- Siehe appLogPanel: Panelhoehe passend zu maxRowCount=12. -->
+							<f:GridContainerItemLayoutData columns="12" minRows="11"/>
 						</layoutData>
 						<headerToolbar>
 							<OverflowToolbar id="tpaToolbar" height="3.25rem">
