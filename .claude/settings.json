@@ -17,7 +17,8 @@
       "Bash(npm i *)",
       "Bash(echo \"typecheck exit=$?\")",
       "Bash(grep -o 'legendGroup[^;]\\\\{0,90\\\\}' dist/resources/zui5_zle_aust_mon/controller/Main.controller.js)",
-      "Bash(grep -o 'setVizProperties\\({.\\\\{0,220\\\\}' dist/controller/Main.controller.js)"
+      "Bash(grep -o 'setVizProperties\\({.\\\\{0,220\\\\}' dist/controller/Main.controller.js)",
+      "Bash(python3 -c \"import xml.dom.minidom;xml.dom.minidom.parse\\('webapp/view/Main.view.xml'\\);print\\('wohlgeformt'\\)\")"
     ]
   }
 }

@@ -127,7 +127,14 @@
 
 					<Panel id="kpiPanel" height="100%">
 						<layoutData>
-							<f:GridContainerItemLayoutData columns="4" minRows="12"/>
+							<!--
+								Bewusst niedriger als das chartPanel (minRows=12): der Inhalt
+								braucht nur rund 16rem, alles darueber waere Leerraum.
+								7 Rasterzeilen * 3rem (rowSize 2rem + gap 1rem) - 1rem = 20rem.
+								Unterschiedliche Panelhoehen in einer Grid-Zeile sind bei
+								sap.f.GridContainer normal.
+							-->
+							<f:GridContainerItemLayoutData columns="4" minRows="7"/>
 						</layoutData>
 						<headerToolbar>
 							<OverflowToolbar id="kpiToolbar" height="3.25rem">
