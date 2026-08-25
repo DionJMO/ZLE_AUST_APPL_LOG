@@ -27,8 +27,18 @@ import Table from "sap/ui/table/Table";
  * Stelle, die auf den Personalisierungsdienst umzustellen ist.
  */
 
+/**
+ * Der Schluessel ist versioniert, weil writeSaved ein boolean[] nach
+ * SPALTENINDEX ablegt. Wird der Spaltensatz einer Tabelle geaendert -
+ * neue Spalte, andere Reihenfolge - zeigen gespeicherte Flags auf die
+ * falschen Spalten, und der neue Standard aus DEFAULT_VISIBLE greift
+ * bei jedem, der den Dialog schon einmal geoeffnet hat, gar nicht.
+ *
+ * Deshalb: bei jeder Aenderung am Spaltensatz die Version hochzaehlen.
+ * v2 = 25.08.2026, HTTP-Status in der Abbruch-Tabelle ergaenzt.
+ */
 function storageKey(sTableId: string): string {
-	return "colVis_" + sTableId;
+	return "colVis_v2_" + sTableId;
 }
 
 function columnLabel(oColumn: Column, iIndex: number): string {

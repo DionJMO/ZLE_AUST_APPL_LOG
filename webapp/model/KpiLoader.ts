@@ -42,7 +42,44 @@ export const metrics: KpiDefinition[] = [
 	// Das Gegenstueck "Technische Fehler" braucht keinen eigenen Eintrag: es
 	// ist derselbe Filter wie 'fehler' und bindet gegen /kpi/fehler.
 	{ key: "nichtUebertragen", model: "mainModel", path: "/AppLog", select: "LogUuid",
-	  filter: "LogType eq 'W'" }
+	  filter: "LogType eq 'W'" },
+	// Zaehler fuer das Panel "Erfolgreiche Uebertragungen". Es hiess bis
+	// 25.08.2026 "Application Log" und war ungefiltert - damit zeigte es
+	// dieselben Zeilen wie die zwei Fehler-Panels darueber, auf einem
+	// Bildschirm also dasselbe Ereignis mehrfach. Mit dem Filter auf 'S'
+	// ergaenzt es die beiden statt sie zu wiederholen.
+	{ key: "erfolge", model: "mainModel", path: "/AppLog", select: "LogUuid",
+	  filter: "LogType eq 'S'" },
+	// PROZESSACHSE - zwei Quellen, bewusst mit ODER verknuepft.
+	//
+	// 1. Der Praefix von HISTORY_TYPE: IB_ Wareneingang, OB_ Warenausgang,
+	//    ITEM_ Materialstamm. Zuverlaessig, aber nur die Consumer-Ebene
+	//    setzt ihn - die WM-Trigger lassen ihn leer (CLAUDE.md O-27).
+	//
+	// 2. Ein Wortmarker im Meldungstext. Ausgewertet am Code von
+	//    ZCL_ZLE_AUST_TO_TRIGGER und ZCL_ZLE_AUST_OB_TRIGGER: von den neun
+	//    Log-Aufrufen des Auslager-Triggers tragen sechs "Pick" oder
+	//    "VSOLA", der Einlager-Trigger schreibt "PutAway". Diese Woerter
+	//    kommen in der jeweils anderen Richtung NICHT vor.
+	//
+	// ⚠ Der Marker ordnet nur ZU, er ordnet nichts FALSCH zu: die drei
+	// Meldungen, die in beiden Richtungen zeichengleich sind
+	// ("HiLIS-Stammdaten nicht lesbar", "ME-Abweichung", der
+	// Verbindungsfehler im Storno), tragen keinen Marker und bleiben
+	// unzugeordnet. Das ist der Unterschied zu einer Heuristik, die raet.
+	// Faellt der saubere Weg (Feld ABORT_REASON bzw. gefuelltes
+	// HISTORY_TYPE), entfallen die Contains-Bedingungen ersatzlos.
+	{ key: "weMeldungen", model: "mainModel", path: "/AppLog", select: "LogUuid",
+	  filter: "startswith(HistoryType,'IB_') or contains(Message,'PutAway')" },
+	{ key: "waMeldungen", model: "mainModel", path: "/AppLog", select: "LogUuid",
+	  filter: "startswith(HistoryType,'OB_') or contains(Message,'Pick') "
+	        + "or contains(Message,'VSOLA')" },
+	// Was in KEINER Prozessgruppe erscheint - weder ueber den Praefix noch
+	// ueber einen Marker. Das Mass fuer die verbleibende Luecke, und nach
+	// dem Backend-Fix direkt als Rueckgang ablesbar.
+	{ key: "ohneProzess", model: "mainModel", path: "/AppLog", select: "LogUuid",
+	  filter: "HistoryType eq '' and not contains(Message,'PutAway') "
+	        + "and not contains(Message,'Pick') and not contains(Message,'VSOLA')" }
 ];
 
 export async function loadCount(oModel: ODataModel, oDefinition: KpiDefinition): Promise<number> {

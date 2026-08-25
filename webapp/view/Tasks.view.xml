@@ -1,0 +1,190 @@
+<mvc:View
+	controllerName="zui5_zle_aust_mon.controller.Tasks"
+	xmlns="sap.m"
+	xmlns:mvc="sap.ui.core.mvc"
+	xmlns:core="sap.ui.core"
+	xmlns:f="sap.f">
+	<f:DynamicPage id="tasksPage" headerExpanded="true" showFooter="false">
+
+		<f:title>
+			<f:DynamicPageTitle id="tasksTitle">
+				<f:heading>
+					<HBox id="tasksTitleBox" alignItems="Center">
+						<Avatar
+							id="tasksTitleAvatar"
+							src="sap-icon://task"
+							displaySize="S"
+							backgroundColor="Accent8"
+							class="sapUiTinyMarginEnd"/>
+						<VBox id="tasksTitleTextBox">
+							<Title id="tasksTitleText" text="{i18n>tasksTitle}" level="H1"/>
+							<Text id="tasksSubtitleText" text="{i18n>tasksSubTitle}"/>
+						</VBox>
+					</HBox>
+				</f:heading>
+				<f:actions>
+					<ObjectStatus
+						id="tasksLastRefresh"
+						icon="sap-icon://history"
+						text="{i18n>lastRefreshLabel} {ui>/lastRefreshText}"/>
+					<Button
+						id="tasksRefreshButton"
+						icon="sap-icon://refresh"
+						tooltip="{i18n>refreshTooltip}"
+						type="Transparent"
+						press=".onRefresh"/>
+				</f:actions>
+			</f:DynamicPageTitle>
+		</f:title>
+
+		<f:content>
+			<VBox id="tasksContainer" class="zleContentMaxWidth sapUiMediumMarginTop sapUiMediumMarginBottom" renderType="Bare">
+
+				<!--
+					ZIELZUSTAND IST LEER. Eine leere Tabelle mit Kopfzeile sieht
+					aus wie ein Defekt - deshalb an dieser Stelle eine
+					bestaetigende Aussage statt einer leeren Liste. Sonst ruft
+					jemand an und fragt, ob die Anwendung kaputt ist.
+				-->
+				<VBox
+					id="tasksEmptyBox"
+					alignItems="Center"
+					class="sapUiLargeMargin"
+					visible="{= !${tasks>/hasContent} }">
+					<core:Icon
+						id="tasksEmptyIcon"
+						src="sap-icon://sys-enter-2"
+						size="3rem"
+						color="Positive"
+						class="sapUiSmallMarginBottom"/>
+					<Title id="tasksEmptyTitle" text="{i18n>tasksEmptyTitle}" level="H2" titleStyle="H2"/>
+					<Text id="tasksEmptyText" text="{i18n>tasksEmptyText}" class="sapUiTinyMarginTop"/>
+				</VBox>
+
+				<Panel
+					id="tasksMaterialPanel"
+					visible="{= ${tasks>/items}.length > 0 }">
+					<headerToolbar>
+						<OverflowToolbar id="tasksMaterialToolbar" height="3.25rem">
+							<Avatar id="tasksMaterialAvatar" src="sap-icon://product" displaySize="XS" backgroundColor="Accent1"/>
+							<Title id="tasksMaterialTitle" text="{i18n>tasksMaterialTitle}" level="H3" titleStyle="H3"/>
+							<ToolbarSpacer id="tasksMaterialSpacer"/>
+							<ObjectStatus
+								id="tasksTruncatedStatus"
+								state="Warning"
+								icon="sap-icon://alert"
+								text="{i18n>tasksTruncated}"
+								visible="{tasks>/truncated}"/>
+						</OverflowToolbar>
+					</headerToolbar>
+					<content>
+						<Table
+							id="tasksMaterialTable"
+							items="{tasks>/items}"
+							ariaLabelledBy="tasksMaterialTitle">
+							<columns>
+								<Column id="tasksColItem" width="10rem">
+									<Text id="tasksColItemLbl" text="{i18n>tasksColItem}"/>
+								</Column>
+								<Column id="tasksColProblem">
+									<Text id="tasksColProblemLbl" text="{i18n>tasksColProblem}"/>
+								</Column>
+								<Column id="tasksColAction">
+									<Text id="tasksColActionLbl" text="{i18n>tasksColAction}"/>
+								</Column>
+								<Column id="tasksColCount" width="9rem" hAlign="End">
+									<Text id="tasksColCountLbl" text="{i18n>tasksColCount}"/>
+								</Column>
+								<Column id="tasksColSince" width="8rem">
+									<Text id="tasksColSinceLbl" text="{i18n>tasksColSince}"/>
+								</Column>
+								<Column id="tasksColLast" width="8rem">
+									<Text id="tasksColLastLbl" text="{i18n>tasksColLast}"/>
+								</Column>
+							</columns>
+							<items>
+								<ColumnListItem id="tasksRow" vAlign="Middle">
+									<cells>
+										<ObjectIdentifier id="tasksCellItem" title="{tasks>itemNumber}"/>
+										<!--
+											Klartext statt Meldungstext. Die Originalmeldung
+											bleibt als Tooltip erreichbar - fuer den Fall, dass
+											jemand aus der IT dieselbe Zeile ansieht.
+										-->
+										<VBox id="tasksCellProblemBox">
+											<Text
+												id="tasksCellProblem"
+												text="{tasks>problemText}"
+												tooltip="{tasks>sample}"/>
+											<Text
+												id="tasksCellDetail"
+												text="{tasks>detail}"
+												visible="{= ${tasks>detail} !== '' }"
+												class="sapUiTinyMarginTop"/>
+										</VBox>
+										<Text id="tasksCellAction" text="{tasks>actionText}"/>
+										<ObjectNumber
+											id="tasksCellCount"
+											number="{tasks>count}"
+											unit="{i18n>tasksCountUnit}"/>
+										<Text id="tasksCellSince" text="{tasks>firstDay}"/>
+										<Text id="tasksCellLast" text="{tasks>lastDay}"/>
+									</cells>
+								</ColumnListItem>
+							</items>
+						</Table>
+					</content>
+				</Panel>
+
+				<!--
+					Punkte ohne Materialbezug lassen sich nicht je Material
+					verdichten. Sie sind selten und stehen deshalb einzeln in
+					einer zweiten, kurzen Liste - statt sie zu verschweigen.
+				-->
+				<Panel
+					id="tasksOtherPanel"
+					class="sapUiMediumMarginTop"
+					visible="{= ${tasks>/others}.length > 0 }">
+					<headerToolbar>
+						<OverflowToolbar id="tasksOtherToolbar" height="3.25rem">
+							<Avatar id="tasksOtherAvatar" src="sap-icon://document-text" displaySize="XS" backgroundColor="Accent9"/>
+							<Title id="tasksOtherTitle" text="{i18n>tasksOtherTitle}" level="H3" titleStyle="H3"/>
+							<ToolbarSpacer id="tasksOtherSpacer"/>
+						</OverflowToolbar>
+					</headerToolbar>
+					<content>
+						<Table
+							id="tasksOtherTable"
+							items="{tasks>/others}"
+							ariaLabelledBy="tasksOtherTitle">
+							<columns>
+								<Column id="tasksOtherColDay" width="8rem">
+									<Text id="tasksOtherColDayLbl" text="{i18n>tasksColSince}"/>
+								</Column>
+								<Column id="tasksOtherColTpa" width="11rem">
+									<Text id="tasksOtherColTpaLbl" text="{i18n>colTpaNumber}"/>
+								</Column>
+								<Column id="tasksOtherColMsg">
+									<Text id="tasksOtherColMsgLbl" text="{i18n>tasksColProblem}"/>
+								</Column>
+							</columns>
+							<items>
+								<ColumnListItem id="tasksOtherRow" vAlign="Middle">
+									<cells>
+										<Text id="tasksOtherCellDay" text="{tasks>day}"/>
+										<Text id="tasksOtherCellTpa" text="{path: 'tasks>tpaNumber', formatter: '.formatter.dashIfEmpty'}"/>
+										<Text id="tasksOtherCellMsg" text="{path: 'tasks>message', formatter: '.formatter.messageShort'}" tooltip="{tasks>message}"/>
+									</cells>
+								</ColumnListItem>
+							</items>
+						</Table>
+					</content>
+				</Panel>
+
+				<Text id="tasksFootnote" text="{i18n>tasksFootnote}" class="sapUiSmallMarginTop"/>
+
+			</VBox>
+		</f:content>
+
+	</f:DynamicPage>
+</mvc:View>

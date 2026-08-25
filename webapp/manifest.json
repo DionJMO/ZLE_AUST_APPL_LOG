@@ -3,7 +3,13 @@
   "sap.app": {
     "id": "zui5_zle_aust_mon",
     "type": "application",
-    "i18n": "i18n/i18n.properties",
+    "i18n": {
+      "bundleUrl": "i18n/i18n.properties",
+      "supportedLocales": [
+        ""
+      ],
+      "fallbackLocale": ""
+    },
     "applicationVersion": {
       "version": "0.0.1"
     },
@@ -119,7 +125,13 @@
       },
       "@i18n": {
         "type": "sap.ui.model.resource.ResourceModel",
-        "uri": "i18n/i18n.properties"
+        "settings": {
+          "bundleName": "zui5_zle_aust_mon.i18n.i18n",
+          "supportedLocales": [
+            ""
+          ],
+          "fallbackLocale": ""
+        }
       }
     },
     "resources": {
@@ -151,12 +163,23 @@
           "target": [
             "TargetMain"
           ]
+        },
+        {
+          "name": "RouteTasks",
+          "pattern": "tasks",
+          "target": [
+            "TargetTasks"
+          ]
         }
       ],
       "targets": {
         "TargetMain": {
           "id": "Main",
           "name": "Main"
+        },
+        "TargetTasks": {
+          "id": "Tasks",
+          "name": "Tasks"
         }
       }
     }

@@ -1,4 +1,5 @@
 import DateFormat from "sap/ui/core/format/DateFormat";
+import UIComponent from "sap/ui/core/UIComponent";
 import Table from "sap/ui/table/Table";
 import JSONModel from "sap/ui/model/json/JSONModel";
 import VizFrame from "sap/viz/ui5/controls/VizFrame";
@@ -17,12 +18,25 @@ export default class Main extends BaseController {
 	 * Standardmaessig sichtbare Spaltenanzahl je Tabelle. Der Rest ist
 	 * ausgeblendet und laesst sich ueber das Zahnrad im Panel-Header
 	 * einblenden.
+	 *
+	 * Angehoben am 25.08.2026: die Abbruch-Tabelle stand auf 3 und
+	 * versteckte damit Position und Prozess - genau die zwei Felder, die
+	 * das Backend zusaetzlich in den Meldungstext schreibt. Sie waren
+	 * gebaut, nur nicht sichtbar. Die Tabelle der technischen Fehler
+	 * versteckte Material und TPA-Nummer, also den einzigen fachlichen
+	 * Bezug, den diese Eintraege haben.
+	 *
+	 * Wer den Spaltendialog schon benutzt hat, hat eine gespeicherte
+	 * Auswahl - die gewinnt. Darum wurde der Speicherschluessel in
+	 * TableColumnState auf v2 gezogen.
 	 */
 	private static readonly DEFAULT_VISIBLE: Record<string, number> = {
-		idAppLogTable: 4,
+		idAppLogTable: 5,
 		idTpaTable: 8,
-		idAbortTable: 3,
-		idTechErrorTable: 3
+		idAbortTable: 7,
+		idTechErrorTable: 5,
+		idInboundMsgTable: 5,
+		idOutboundMsgTable: 5
 	};
 
 	/** Zeitfenster des Verlaufs-Charts in Tagen. */
@@ -49,6 +63,16 @@ export default class Main extends BaseController {
 		this._loadData();
 	}
 
+	/**
+	 * Wechsel in die Arbeitsliste des Fachbereichs. Bewusst nur in diese
+	 * Richtung: wer aus dem Fachbereich kommt, startet direkt auf #/tasks
+	 * und soll die technische Sicht gar nicht erst sehen. Zurueck geht es
+	 * ueber den Browser.
+	 */
+	public onNavToTasks(): void {
+		(this.getOwnerComponent() as UIComponent).getRouter().navTo("RouteTasks");
+	}
+
 	public onOpenAppLogColumns(): void {
 		this._openColumns("idAppLogTable");
 	}
@@ -63,6 +87,14 @@ export default class Main extends BaseController {
 
 	public onOpenTechErrorColumns(): void {
 		this._openColumns("idTechErrorTable");
+	}
+
+	public onOpenInboundMsgColumns(): void {
+		this._openColumns("idInboundMsgTable");
+	}
+
+	public onOpenOutboundMsgColumns(): void {
+		this._openColumns("idOutboundMsgTable");
 	}
 
 	private _loadData(): void {
