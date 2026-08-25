@@ -24,6 +24,21 @@ export interface KpiDefinition {
  * "Fehler" zaehlt bewusst ueber alle Zeiten, nicht nur ueber die sieben
  * Tage des Charts.
  */
+/**
+ * Filter fuer die Auffanggruppe: ein Meldungstyp, aber NUR die Zeilen, die
+ * in keine Prozessgruppe fallen. Ohne diesen Ausschluss wuerde jede Meldung
+ * doppelt gezaehlt - einmal unter ihrem Prozess, einmal unter ihrem Typ.
+ *
+ * Muss zu den Prozessfiltern in Main.view.xml passen. Aendert sich dort ein
+ * Marker, gehoert er hier ebenfalls hinein.
+ */
+function unassignedOfType(sLogType: string): string {
+	return `LogType eq '${sLogType}' and HistoryType eq '' `
+		+ "and not contains(Message,'PutAway') "
+		+ "and not contains(Message,'Pick') "
+		+ "and not contains(Message,'VSOLA')";
+}
+
 // Exportierte Konstante eines ES-Moduls, kein globaler Bezeichner. Die Regel
 // sap-no-global-variable behandelt Modul-Scope faelschlich als globalen Scope.
 // eslint-disable-next-line @sap-ux/fiori-tools/sap-no-global-variable
@@ -79,7 +94,15 @@ export const metrics: KpiDefinition[] = [
 	// dem Backend-Fix direkt als Rueckgang ablesbar.
 	{ key: "ohneProzess", model: "mainModel", path: "/AppLog", select: "LogUuid",
 	  filter: "HistoryType eq '' and not contains(Message,'PutAway') "
-	        + "and not contains(Message,'Pick') and not contains(Message,'VSOLA')" }
+	        + "and not contains(Message,'Pick') and not contains(Message,'VSOLA')" },
+	// Dieselbe Menge, nach Meldungstyp aufgeteilt - die Kopfzeilen der drei
+	// Panels der Auffanggruppe. Ihre Summe muss ohneProzess ergeben.
+	{ key: "nzFehler", model: "mainModel", path: "/AppLog", select: "LogUuid",
+	  filter: unassignedOfType("E") },
+	{ key: "nzAbbrueche", model: "mainModel", path: "/AppLog", select: "LogUuid",
+	  filter: unassignedOfType("W") },
+	{ key: "nzErfolge", model: "mainModel", path: "/AppLog", select: "LogUuid",
+	  filter: unassignedOfType("S") }
 ];
 
 export async function loadCount(oModel: ODataModel, oDefinition: KpiDefinition): Promise<number> {

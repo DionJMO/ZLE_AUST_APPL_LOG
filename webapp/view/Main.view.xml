@@ -685,7 +685,7 @@
 									id="idTechErrorCountObjectStatus"
 									state="Error"
 									icon="sap-icon://error"
-									text="{ui>/kpi/fehler} {i18n>techErrorPanelHint}"/>
+									text="{ui>/kpi/nzFehler} {i18n>techErrorPanelHint}"/>
 								<Button
 									id="techErrorColumnsButton"
 									icon="sap-icon://action-settings"
@@ -697,7 +697,7 @@
 						<content>
 							<t:Table
 								id="idTechErrorTable"
-								rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, filters: [{path: 'LogType', operator: 'EQ', value1: 'E'}], sorter: {path: 'CreatedAt', descending: true}}"
+								rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, filters: [{path: 'LogType', operator: 'EQ', value1: 'E'}, {path: 'HistoryType', operator: 'EQ', value1: ''}, {path: 'Message', operator: 'NotContains', value1: 'PutAway'}, {path: 'Message', operator: 'NotContains', value1: 'Pick'}, {path: 'Message', operator: 'NotContains', value1: 'VSOLA'}], sorter: {path: 'CreatedAt', descending: true}}"
 								selectionMode="None"
 								ariaLabelledBy="techErrorTitle">
 								<t:rowMode>
@@ -739,14 +739,23 @@
 						</content>
 					</Panel>
 					<!--
-						Die Trennung laeuft ueber LogType, nicht ueber Textmuster:
-						die fachlichen Abbrueche werden im Backend als 'W' geloggt
+						AUFFANGGRUPPE. Hier steht nur, was in KEINE Prozessgruppe
+						faellt - weder ueber den HistoryType-Praefix noch ueber einen
+						Wortmarker. Ohne diesen Ausschluss stuende jede Meldung
+						zweimal auf der Seite: einmal unter ihrem Prozess, einmal
+						unter ihrem Typ. Genau das war die Kritik am alten
+						"Application Log"-Panel.
+
+						Untergliedert nach LogType, nicht nach Textmuster: die
+						fachlichen Abbrueche werden im Backend als 'W' geloggt
 						(fuenf von sechs Abbruchstellen), technische Fehler als 'E'.
-						Die alte OVP-Kachel filterte 'E' und zeigte damit genau die
-						Komplementaermenge - daher die Rueckmeldung "man erkennt es
-						nicht am Fehlertext". Siehe CLAUDE.md, O-25.
-						Beide Filter laufen serverseitig, die Zaehler in den
-						Kopfzeilen kommen aus model/KpiLoader.ts.
+						Die alte OVP-Kachel filterte 'E' und zeigte damit die
+						Komplementaermenge - daher "man erkennt es nicht am
+						Fehlertext". Siehe CLAUDE.md, O-25.
+
+						Die Summe dieser drei Panels ist der Zaehler
+						ohneProzess in den beiden Prozessgruppen - beide Zahlen
+						sind damit gegenseitig pruefbar.
 					-->
 					<Panel id="abbruchPanel" height="100%">
 						<layoutData>
@@ -761,7 +770,7 @@
 									id="idAbortCountObjectStatus"
 									state="Warning"
 									icon="sap-icon://alert"
-									text="{ui>/kpi/nichtUebertragen} {i18n>abortPanelHint}"/>
+									text="{ui>/kpi/nzAbbrueche} {i18n>abortPanelHint}"/>
 								<Button
 									id="abortColumnsButton"
 									icon="sap-icon://action-settings"
@@ -773,7 +782,7 @@
 						<content>
 							<t:Table
 								id="idAbortTable"
-								rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, filters: [{path: 'LogType', operator: 'EQ', value1: 'W'}], sorter: {path: 'CreatedAt', descending: true}}"
+								rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, filters: [{path: 'LogType', operator: 'EQ', value1: 'W'}, {path: 'HistoryType', operator: 'EQ', value1: ''}, {path: 'Message', operator: 'NotContains', value1: 'PutAway'}, {path: 'Message', operator: 'NotContains', value1: 'Pick'}, {path: 'Message', operator: 'NotContains', value1: 'VSOLA'}], sorter: {path: 'CreatedAt', descending: true}}"
 								selectionMode="None"
 								ariaLabelledBy="abbruchTitle">
 								<t:rowMode>
@@ -846,7 +855,7 @@
 									id="idSuccessCountObjectStatus"
 									state="Success"
 									icon="sap-icon://sys-enter-2"
-									text="{ui>/kpi/erfolge} {i18n>successPanelHint}"/>
+									text="{ui>/kpi/nzErfolge} {i18n>successPanelHint}"/>
 								<Button
 									id="appLogColumnsButton"
 									icon="sap-icon://action-settings"
@@ -866,7 +875,7 @@
 							-->
 							<t:Table
 								id="idAppLogTable"
-								rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, filters: [{path: 'LogType', operator: 'EQ', value1: 'S'}], sorter: {path: 'CreatedAt', descending: true}}"
+								rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, filters: [{path: 'LogType', operator: 'EQ', value1: 'S'}, {path: 'HistoryType', operator: 'EQ', value1: ''}, {path: 'Message', operator: 'NotContains', value1: 'PutAway'}, {path: 'Message', operator: 'NotContains', value1: 'Pick'}, {path: 'Message', operator: 'NotContains', value1: 'VSOLA'}], sorter: {path: 'CreatedAt', descending: true}}"
 								selectionMode="None"
 								ariaLabelledBy="appLogTitle">
 								<t:rowMode>
