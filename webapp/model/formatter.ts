@@ -1,3 +1,4 @@
+import DateFormat from "sap/ui/core/format/DateFormat";
 import NumberFormat from "sap/ui/core/format/NumberFormat";
 
 /**
@@ -182,4 +183,40 @@ export function criticalityIcon(vCriticality?: number | string | null): string {
 		case 3: return "sap-icon://sys-enter-2";
 		default: return "sap-icon://information";
 	}
+}
+
+/**
+ * Zeitstempel im 24-Stunden-Format.
+ *
+ * WARUM EIN FESTES MUSTER STATT DER LOCALE
+ * Ohne Muster formatiert UI5 Edm.DateTimeOffset nach der Locale des
+ * Browsers. Steht die auf Englisch, kommt "8/26/26, 10:39:17 AM"
+ * heraus - in einer Tabelle mit Zeitstempeln ist AM/PM sowohl
+ * schlechter lesbar als auch breiter, und die Sortierrichtung laesst
+ * sich am Text nicht mehr nachvollziehen. Das Muster ist deshalb
+ * bewusst hart gesetzt und locale-unabhaengig.
+ *
+ * ⚠ ZEITZONE: der Wert ist in der Datenbank UTC. new Date( ) wertet
+ * das abschliessende Z aus und DateFormat gibt ohne UTC:true die
+ * ORTSZEIT des Browsers aus, bei CEST also +2h. Der Report
+ * ZLE_AUST_LOG_DELETE zeigt dagegen UTC - beim Abgleich der beiden
+ * Werkzeuge daran denken. Ortszeit ist hier die richtige Wahl, weil
+ * der Anwender die Uhrzeit mit seiner eigenen vergleicht.
+ *
+ * ⚠ Nur fuer Edm.DateTimeOffset-Felder (CreatedAtStamp, LastSyncAt,
+ * CreationDate). Reine Datumsfelder wie BestBeforeDate haben keine
+ * Uhrzeit und bleiben bei der Standardformatierung.
+ */
+// eslint-disable-next-line @sap-ux/fiori-tools/sap-no-global-variable
+const oTimestampFormat = DateFormat.getDateTimeInstance({ pattern: "dd.MM.yyyy HH:mm:ss" });
+
+export function timestamp(vValue?: string | Date | null): string {
+	if (!vValue) {
+		return DASH;
+	}
+	const oDate = vValue instanceof Date ? vValue : new Date(vValue);
+	if (Number.isNaN(oDate.getTime())) {
+		return String(vValue);
+	}
+	return oTimestampFormat.format(oDate);
 }

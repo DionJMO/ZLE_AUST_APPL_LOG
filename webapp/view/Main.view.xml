@@ -335,17 +335,17 @@
 									<t:Table
 										id="idMsgTable"
 										visible="{= ${ui>/selectedProcess} !== 'TPA' }"
-										rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, sorter: {path: 'CreatedAt', descending: true}}"
+										rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, sorter: {path: 'CreatedAtStamp', descending: true}}"
 										selectionMode="None"
 										ariaLabelledBy="msgHeading">
 										<t:rowMode>
 											<rm:Auto maxRowCount="14"/>
 										</t:rowMode>
 										<t:columns>
-																			<t:Column id="idMsgCreatedAtColumn" width="8rem" sortProperty="CreatedAt">
+																			<t:Column id="idMsgCreatedAtColumn" width="11.5rem" sortProperty="CreatedAtStamp">
 																				<Label id="msLblCreatedAt" text="{i18n>colCreatedAt}"/>
 																				<t:template>
-																					<Text id="msTxtCreatedAt" text="{mainModel>CreatedAt}" wrapping="false"/>
+																					<Text id="msTxtCreatedAt" text="{path: 'mainModel>CreatedAtStamp', formatter: '.formatter.timestamp'}" wrapping="false"/>
 																				</t:template>
 																			</t:Column>
 																			<t:Column id="idMsgTypeColumn" width="7rem" sortProperty="LogType">
@@ -486,7 +486,7 @@
 																		<t:Column id="idTpaLastSyncColumn" width="12rem" sortProperty="LastSyncAt">
 																			<Label id="tpaLblLastSync" text="{i18n>colLastSyncAt}"/>
 																			<t:template>
-																				<Text id="tpaTxtLastSync" text="{tpaModel>LastSyncAt}" wrapping="false"/>
+																				<Text id="tpaTxtLastSync" text="{path: 'tpaModel>LastSyncAt', formatter: '.formatter.timestamp'}" wrapping="false"/>
 																			</t:template>
 																		</t:Column>
 																		<t:Column id="idTpaOrderTypeColumn" width="9rem">
@@ -528,7 +528,7 @@
 																		<t:Column id="idTpaCreationDateColumn" width="11rem">
 																			<Label id="tpaLblCreationDate" text="{i18n>colCreationDate}"/>
 																			<t:template>
-																				<Text id="tpaTxtCreationDate" text="{tpaModel>CreationDate}" wrapping="false"/>
+																				<Text id="tpaTxtCreationDate" text="{path: 'tpaModel>CreationDate', formatter: '.formatter.timestamp'}" wrapping="false"/>
 																			</t:template>
 																		</t:Column>
 																	</t:columns>

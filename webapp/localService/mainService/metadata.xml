@@ -54,6 +54,7 @@
                 </Key>
                 <Property Name="LogUuid" Type="Edm.Guid" Nullable="false"/>
                 <Property Name="CreatedAt" Type="Edm.Date"/>
+                <Property Name="CreatedAtStamp" Type="Edm.DateTimeOffset" Precision="7"/>
                 <Property Name="LogType" Type="Edm.String" Nullable="false" MaxLength="1"/>
                 <Property Name="HistoryType" Type="Edm.String" Nullable="false" MaxLength="20"/>
                 <Property Name="TpaNumber" Type="Edm.String" Nullable="false" MaxLength="17"/>
