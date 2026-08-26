@@ -36,7 +36,7 @@ export default class Component extends UIComponent {
 				gesamt: "0",
 				offen: "0",
 				fehler: "0",
-				abbrueche: "0",
+				storniert: "0",
 				tabIB: "0",
 				tabOB: "0",
 				tabITEM: "0",

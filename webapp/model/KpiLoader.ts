@@ -23,11 +23,12 @@ export interface KpiDefinition {
  * "Fehler" zaehlt bewusst ueber alle Zeiten, nicht nur ueber die sieben
  * Tage des Charts.
  *
- * ⚠ Die Kennzahlenzeile stammt aus der OVP-Zeit und mischt zwei Mengen:
- * Gesamt, Offen und Abbrueche zaehlen TPA-ZEILEN, Fehler zaehlt MELDUNGEN.
- * "Abbrueche" heisst dort ausserdem etwas anderes als im Reiter (dort
- * stornierte Auftraege, hier Meldungen vom Typ W). Bewusst noch nicht
- * angefasst - siehe CLAUDE.md.
+ * Die Kennzahlenzeile mischt bewusst zwei Mengen, sagt es aber jetzt in
+ * den Beschriftungen: drei Zahlen zaehlen TPA-ZEILEN ("Auftraege ..."),
+ * eine zaehlt MELDUNGEN ("Fehlermeldungen"). Der Schluessel hiess bis
+ * 26.08.2026 "abbrueche" und kollidierte damit begrifflich mit dem
+ * Typfilter "Abbrueche" (= LogType W) - gemeint waren aber stornierte
+ * AUFTRAEGE. Deshalb jetzt "storniert".
  *
  * Die Prozessfilter kommen aus model/ProcessAxis.ts und stehen NICHT mehr
  * doppelt hier und in der View.
@@ -42,7 +43,7 @@ export const metrics: KpiDefinition[] = [
 	  filter: "OrderStatus ne 'Finished' and OrderStatus ne 'Cancelled'" },
 	{ key: "fehler",    model: "mainModel", path: "/AppLog", select: "LogUuid",
 	  filter: "LogType eq 'E'" },
-	{ key: "abbrueche", model: "tpaModel",  path: "/Tpa",    select: "OrderNumber",
+	{ key: "storniert", model: "tpaModel",  path: "/Tpa",    select: "OrderNumber",
 	  filter: "OrderStatus eq 'Cancelled'" },
 
 	// --- Zaehler der Reiter ---

@@ -142,6 +142,15 @@
 										withMargin="false"/>
 									<Label id="idOffenLabel" text="{i18n>kpiOffen}" design="Bold"/>
 								</VBox>
+								<VBox id="idStorniertVBox" alignItems="Center">
+									<NumericContent
+										id="idStorniertNumericContent"
+										value="{ui>/kpi/storniert}"
+										icon="sap-icon://cancel"
+										valueColor="Critical"
+										withMargin="false"/>
+									<Label id="idStorniertLabel" text="{i18n>kpiStorniert}" design="Bold"/>
+								</VBox>
 								<VBox id="idFehlerVBox" alignItems="Center">
 									<NumericContent
 										id="idFehlerNumericContent"
@@ -150,15 +159,6 @@
 										valueColor="Error"
 										withMargin="false"/>
 									<Label id="idFehlerLabel" text="{i18n>kpiFehler}" design="Bold"/>
-								</VBox>
-								<VBox id="idAbbruecheVBox" alignItems="Center">
-									<NumericContent
-										id="idAbbruecheNumericContent"
-										value="{ui>/kpi/abbrueche}"
-										icon="sap-icon://cancel"
-										valueColor="Critical"
-										withMargin="false"/>
-									<Label id="idAbbruecheLabel" text="{i18n>kpiAbbrueche}" design="Bold"/>
 								</VBox>
 							</HBox>
 						</content>
@@ -269,31 +269,43 @@
 									<IconTabFilter
 										id="idTabIB"
 										key="IB"
+										icon="sap-icon://download-from-cloud"
+										design="Horizontal"
 										text="{i18n>tabIB}"
 										count="{ui>/kpi/tabIB}"/>
 									<IconTabFilter
 										id="idTabOB"
 										key="OB"
+										icon="sap-icon://upload-to-cloud"
+										design="Horizontal"
 										text="{i18n>tabOB}"
 										count="{ui>/kpi/tabOB}"/>
 									<IconTabFilter
 										id="idTabITEM"
 										key="ITEM"
+										icon="sap-icon://product"
+										design="Horizontal"
 										text="{i18n>tabITEM}"
 										count="{ui>/kpi/tabITEM}"/>
 									<IconTabFilter
 										id="idTabNONE"
 										key="NONE"
+										icon="sap-icon://question-mark"
+										design="Horizontal"
 										text="{i18n>tabNONE}"
 										count="{ui>/kpi/tabNONE}"/>
 									<IconTabFilter
 										id="idTabALL"
 										key="ALL"
+										icon="sap-icon://activity-items"
+										design="Horizontal"
 										text="{i18n>tabALL}"
 										count="{ui>/kpi/tabALL}"/>
 									<IconTabFilter
 										id="idTabTPA"
 										key="TPA"
+										icon="sap-icon://shipping-status"
+										design="Horizontal"
 										text="{i18n>tabTPA}"
 										count="{ui>/kpi/gesamt}"/>
 								</items>
