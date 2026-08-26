@@ -382,6 +382,36 @@
 																					<Text id="msTxtHttpStatus" text="{mainModel>HttpStatus}" wrapping="false"/>
 																				</t:template>
 																			</t:Column>
+																			<t:Column id="idMsgCorrColumn" width="13rem" sortProperty="CorrUuid">
+																				<Label id="msLblCorr" text="{i18n>colCorrUuid}"/>
+																				<t:template>
+																					<Text id="msTxtCorr" text="{path: 'mainModel>CorrUuid', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
+																				</t:template>
+																			</t:Column>
+																			<t:Column id="idMsgBusKeyColumn" width="12rem" sortProperty="BusinessKey">
+																				<Label id="msLblBusKey" text="{i18n>colBusinessKey}"/>
+																				<t:template>
+																					<Text id="msTxtBusKey" text="{path: 'mainModel>BusinessKey', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
+																				</t:template>
+																			</t:Column>
+																			<t:Column id="idMsgKeyTypeColumn" width="8rem" sortProperty="KeyType">
+																				<Label id="msLblKeyType" text="{i18n>colKeyType}"/>
+																				<t:template>
+																					<Text id="msTxtKeyType" text="{path: 'mainModel>KeyType', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
+																				</t:template>
+																			</t:Column>
+																			<t:Column id="idMsgLgnumColumn" width="6rem" sortProperty="Lgnum">
+																				<Label id="msLblLgnum" text="{i18n>colLgnum}"/>
+																				<t:template>
+																					<Text id="msTxtLgnum" text="{path: 'mainModel>Lgnum', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
+																				</t:template>
+																			</t:Column>
+																			<t:Column id="idMsgSeqColumn" width="6rem" hAlign="End" sortProperty="SeqNr">
+																				<Label id="msLblSeq" text="{i18n>colSeqNr}"/>
+																				<t:template>
+																					<Text id="msTxtSeq" text="{path: 'mainModel>SeqNr', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
+																				</t:template>
+																			</t:Column>
 																		</t:columns>
 									</t:Table>
 

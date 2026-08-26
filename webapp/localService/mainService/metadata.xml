@@ -62,6 +62,11 @@
                 <Property Name="HttpStatus" Type="Edm.Int32" Nullable="false"/>
                 <Property Name="Message" Type="Edm.String" Nullable="false" MaxLength="255"/>
                 <Property Name="JsonPayload" Type="Edm.String" Nullable="false"/>
+                <Property Name="CorrUuid" Type="Edm.Guid"/>
+                <Property Name="BusinessKey" Type="Edm.String" MaxLength="50"/>
+                <Property Name="KeyType" Type="Edm.String" MaxLength="10"/>
+                <Property Name="Lgnum" Type="Edm.String" MaxLength="3"/>
+                <Property Name="SeqNr" Type="Edm.Int16"/>
                 <Property Name="LogTypeCriticality" Type="Edm.Byte" Nullable="false"/>
             </EntityType>
             <EntityContainer Name="Container">
