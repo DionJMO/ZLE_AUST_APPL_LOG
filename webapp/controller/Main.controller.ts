@@ -2,12 +2,17 @@ import DateFormat from "sap/ui/core/format/DateFormat";
 import UIComponent from "sap/ui/core/UIComponent";
 import Table from "sap/ui/table/Table";
 import JSONModel from "sap/ui/model/json/JSONModel";
+import Filter from "sap/ui/model/Filter";
+import FilterOperator from "sap/ui/model/FilterOperator";
+import ListBinding from "sap/ui/model/ListBinding";
+import Event from "sap/ui/base/Event";
 import VizFrame from "sap/viz/ui5/controls/VizFrame";
 import BaseController from "./BaseController";
 import * as TableColumnState from "../util/TableColumnState";
 import * as LogAggregator from "../model/LogAggregator";
 import * as KpiLoader from "../model/KpiLoader";
 import * as ChartColors from "../model/ChartColors";
+import * as ProcessAxis from "../model/ProcessAxis";
 
 /**
  * @namespace zui5_zle_aust_mon.controller
@@ -16,27 +21,14 @@ export default class Main extends BaseController {
 
 	/**
 	 * Standardmaessig sichtbare Spaltenanzahl je Tabelle. Der Rest ist
-	 * ausgeblendet und laesst sich ueber das Zahnrad im Panel-Header
-	 * einblenden.
+	 * ausgeblendet und laesst sich ueber das Zahnrad einblenden.
 	 *
-	 * Angehoben am 25.08.2026: die Abbruch-Tabelle stand auf 3 und
-	 * versteckte damit Position und Prozess - genau die zwei Felder, die
-	 * das Backend zusaetzlich in den Meldungstext schreibt. Sie waren
-	 * gebaut, nur nicht sichtbar. Die Tabelle der technischen Fehler
-	 * versteckte Material und TPA-Nummer, also den einzigen fachlichen
-	 * Bezug, den diese Eintraege haben.
-	 *
-	 * Wer den Spaltendialog schon benutzt hat, hat eine gespeicherte
-	 * Auswahl - die gewinnt. Darum wurde der Speicherschluessel in
-	 * TableColumnState auf v2 gezogen.
+	 * Seit dem Umbau auf Reiter gibt es nur noch zwei Tabellen: eine fuer
+	 * alle Meldungsreiter und eine fuer die Auftraege.
 	 */
 	private static readonly DEFAULT_VISIBLE: Record<string, number> = {
-		idAppLogTable: 5,
-		idTpaTable: 8,
-		idAbortTable: 7,
-		idTechErrorTable: 5,
-		idInboundMsgTable: 5,
-		idOutboundMsgTable: 5
+		idMsgTable: 5,
+		idTpaTable: 8
 	};
 
 	/** Zeitfenster des Verlaufs-Charts in Tagen. */
@@ -53,6 +45,7 @@ export default class Main extends BaseController {
 		});
 
 		this._applyChartProperties();
+		this._applyMsgFilter();
 		this._loadData();
 	}
 
@@ -73,28 +66,63 @@ export default class Main extends BaseController {
 		(this.getOwnerComponent() as UIComponent).getRouter().navTo("RouteTasks");
 	}
 
-	public onOpenAppLogColumns(): void {
-		this._openColumns("idAppLogTable");
+	/**
+	 * Der Reiterschluessel wird aus dem Ereignis gelesen, nicht aus dem
+	 * Modell: ob die Zwei-Wege-Bindung von selectedKey vor dem select-
+	 * Ereignis greift, ist nicht garantiert.
+	 */
+	public onProcessTabSelect(oEvent: Event): void {
+		const sKey = oEvent.getParameter("key" as never) as unknown as string;
+		this.getUiModel().setProperty("/selectedProcess", sKey);
+		this._applyMsgFilter();
 	}
 
-	public onOpenTpaColumns(): void {
-		this._openColumns("idTpaTable");
+	public onTypeFilterChange(oEvent: Event): void {
+		const oItem = oEvent.getParameter("item" as never) as unknown as { getKey(): string };
+		this.getUiModel().setProperty("/selectedType", oItem.getKey());
+		this._applyMsgFilter();
 	}
 
-	public onOpenAbortColumns(): void {
-		this._openColumns("idAbortTable");
+	/** Ein Zahnrad fuer beide Tabellen - je nachdem, welcher Reiter offen ist. */
+	public onOpenMsgColumns(): void {
+		const sProcess = this.getUiModel().getProperty("/selectedProcess") as string;
+		this._openColumns(sProcess === ProcessAxis.KEY_ORDERS ? "idTpaTable" : "idMsgTable");
 	}
 
-	public onOpenTechErrorColumns(): void {
-		this._openColumns("idTechErrorTable");
-	}
+	/**
+	 * Setzt Prozess- und Typfilter auf die Meldungstabelle.
+	 *
+	 * Der Reiter "Alle Meldungen" bleibt bewusst ungefiltert und ist damit
+	 * eine Obermenge der uebrigen - er ist keine Kategorie, sondern die
+	 * Rohsicht fuer die Fehlersuche. Wer die Reiterzahlen addiert, kommt
+	 * deshalb nicht auf diese Zahl.
+	 */
+	private _applyMsgFilter(): void {
+		const oBinding = this._table("idMsgTable")?.getBinding("rows") as ListBinding | undefined;
+		if (!oBinding) {
+			return;
+		}
 
-	public onOpenInboundMsgColumns(): void {
-		this._openColumns("idInboundMsgTable");
-	}
+		const sProcess = this.getUiModel().getProperty("/selectedProcess") as string;
+		const sType = this.getUiModel().getProperty("/selectedType") as string;
+		const aFilters: Filter[] = [];
 
-	public onOpenOutboundMsgColumns(): void {
-		this._openColumns("idOutboundMsgTable");
+		if (sProcess === ProcessAxis.KEY_UNASSIGNED) {
+			aFilters.push(ProcessAxis.unassignedFilter());
+		} else if (sProcess !== ProcessAxis.KEY_ALL && sProcess !== ProcessAxis.KEY_ORDERS) {
+			const oProcess = ProcessAxis.processFilter(sProcess);
+			if (oProcess) {
+				aFilters.push(oProcess);
+			}
+		}
+
+		if (sType) {
+			aFilters.push(new Filter({
+				path: "LogType", operator: FilterOperator.EQ, value1: sType
+			}));
+		}
+
+		oBinding.filter(aFilters.length ? [new Filter({ filters: aFilters, and: true })] : []);
 	}
 
 	private _loadData(): void {

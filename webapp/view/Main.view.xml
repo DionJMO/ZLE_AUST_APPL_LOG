@@ -222,271 +222,8 @@
 					</Panel>
 				</f:GridContainer>
 
-				<Title id="dataHeading" text="{i18n>groupInbound}" level="H2" titleStyle="H2" class="sapUiLargeMarginTop sapUiSmallMarginBottom"/>
-				<f:GridContainer id="dataGrid" snapToRow="true">
-					<f:layout>
-						<f:GridContainerSettings columns="12" minColumnSize="4rem" maxColumnSize="6rem" rowSize="2rem" gap="1rem"/>
-					</f:layout>
-					<f:layoutM>
-						<f:GridContainerSettings columns="4" minColumnSize="3.5rem" maxColumnSize="6rem" rowSize="2rem" gap="0.75rem"/>
-					</f:layoutM>
-					<f:layoutS>
-						<f:GridContainerSettings columns="4" minColumnSize="3.5rem" maxColumnSize="6rem" rowSize="2rem" gap="0.75rem"/>
-					</f:layoutS>
-
-
-					<!--
-						PROZESSACHSE Wareneingang. Ausgewaehlt wird ueber den Praefix von
-						HistoryType ("IB_"), nicht ueber Textmuster in der Meldung: der
-						Praefix ist der einzige strukturierte Prozesstraeger, den die
-						Tabelle hat (IB_ Wareneingang, OB_ Warenausgang, ITEM_
-						Materialstamm). Der Filter laeuft serverseitig als
-						startswith(HistoryType,'IB_').
-
-						Anders als die Panels der Gruppe "Meldungen nach Typ" zeigt dieses
-						ALLE Meldungstypen - E, W und S nebeneinander. Das ist der Sinn der
-						Prozesssicht: was passiert im Wareneingang, unabhaengig davon, wie
-						schlimm es ist. Die Typ-Spalte traegt den Zustand.
-
-						⚠ Die Liste ist unvollstaendig, solange das Backend HISTORY_TYPE
-						nicht durchgaengig setzt (alle WM-Trigger-Pfade und alle
-						HTTP-Fehler aus BASE lassen es leer, siehe CLAUDE.md O-27). Der
-						zweite Zaehler in der Kopfzeile macht genau diese Luecke sichtbar,
-						statt sie zu verstecken - er zaehlt die Saetze ohne
-						Prozesszuordnung, die in KEINER Prozessgruppe erscheinen koennen.
-					-->
-					<Panel id="inboundMsgPanel" height="100%">
-						<layoutData>
-							<!-- Siehe appLogPanel: Panelhoehe passend zu maxRowCount=12. -->
-							<f:GridContainerItemLayoutData columns="12" minRows="11"/>
-						</layoutData>
-						<headerToolbar>
-							<OverflowToolbar id="inboundMsgToolbar" height="3.25rem">
-								<Avatar id="inboundMsgAvatar" src="sap-icon://download-from-cloud" displaySize="XS" backgroundColor="Accent7"/>
-								<Title id="inboundMsgTitle" text="{i18n>inboundMsgPanelTitle}" level="H3" titleStyle="H3"/>
-								<ToolbarSpacer id="inboundMsgSpacer"/>
-								<ObjectStatus
-									id="idInboundMsgCountObjectStatus"
-									state="Information"
-									icon="sap-icon://message-information"
-									text="{ui>/kpi/weMeldungen} {i18n>inboundMsgPanelHint}"/>
-								<ObjectStatus
-									id="idNoProcessCountInStatus"
-									state="Warning"
-									icon="sap-icon://alert"
-									text="{ui>/kpi/ohneProzess} {i18n>noProcessHint}"/>
-								<Button
-									id="inboundMsgColumnsButton"
-									icon="sap-icon://action-settings"
-									tooltip="{i18n>columnsTooltip}"
-									type="Transparent"
-									press=".onOpenInboundMsgColumns"/>
-							</OverflowToolbar>
-						</headerToolbar>
-						<content>
-							<t:Table
-								id="idInboundMsgTable"
-								rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, filters: {and: false, filters: [{path: 'HistoryType', operator: 'StartsWith', value1: 'IB_'}, {path: 'Message', operator: 'Contains', value1: 'PutAway'}]}, sorter: {path: 'CreatedAt', descending: true}}"
-								selectionMode="None"
-								ariaLabelledBy="inboundMsgTitle">
-								<t:rowMode>
-									<rm:Auto maxRowCount="12"/>
-								</t:rowMode>
-								<t:columns>
-									<t:Column id="idInboundMsgCreatedAtColumn" width="8rem" sortProperty="CreatedAt">
-										<Label id="imLblCreatedAt" text="{i18n>colCreatedAt}"/>
-										<t:template>
-											<Text id="imTxtCreatedAt" text="{mainModel>CreatedAt}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idInboundMsgTypeColumn" width="7rem" sortProperty="LogType">
-										<Label id="imLblLogType" text="{i18n>colLogType}"/>
-										<t:template>
-											<ObjectStatus
-												id="idInboundMsgTypeObjectStatus"
-												text="{mainModel>LogType}"
-												state="{path: 'mainModel>LogType', formatter: '.formatter.logTypeState'}"
-												icon="{path: 'mainModel>LogType', formatter: '.formatter.logTypeIcon'}"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idInboundMsgMessageColumn" minWidth="320">
-										<Label id="imLblMessage" text="{i18n>colMessage}"/>
-										<t:template>
-											<Text id="imTxtMessage" text="{path: 'mainModel>Message', formatter: '.formatter.messageShort'}" wrapping="false" tooltip="{mainModel>Message}"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idInboundMsgItemColumn" width="12rem" sortProperty="ItemNumber">
-										<Label id="imLblItem" text="{i18n>colItemNumber}"/>
-										<t:template>
-											<Text id="imTxtItem" text="{path: 'mainModel>ItemNumber', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idInboundMsgTpaColumn" width="11rem" sortProperty="TpaNumber">
-										<Label id="imLblTpa" text="{i18n>colTpaNumber}"/>
-										<t:template>
-											<Text id="imTxtTpa" text="{path: 'mainModel>TpaNumber', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idInboundMsgProcessColumn" width="10rem" sortProperty="HistoryType">
-										<Label id="imLblHistory" text="{i18n>colHistoryType}"/>
-										<t:template>
-											<Text id="imTxtHistory" text="{mainModel>HistoryType}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idInboundMsgLineColumn" width="7rem">
-										<Label id="imLblLine" text="{i18n>colOrderLineNr}"/>
-										<t:template>
-											<Text id="imTxtLine" text="{path: 'mainModel>OrderLineNr', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idInboundMsgHttpColumn" width="7rem" hAlign="End" sortProperty="HttpStatus">
-										<Label id="imLblHttp" text="{i18n>colHttpStatus}"/>
-										<t:template>
-											<Text id="imTxtHttp" text="{mainModel>HttpStatus}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-								</t:columns>
-							</t:Table>
-						</content>
-					</Panel>
-
-					<Panel id="tpaPanel" height="100%">
-						<layoutData>
-							<!-- Siehe appLogPanel: Panelhoehe passend zu maxRowCount=12. -->
-							<f:GridContainerItemLayoutData columns="12" minRows="11"/>
-						</layoutData>
-						<headerToolbar>
-							<OverflowToolbar id="tpaToolbar" height="3.25rem">
-								<Avatar id="tpaAvatar" src="sap-icon://shipping-status" displaySize="XS" backgroundColor="Accent7"/>
-								<Title id="tpaTitle" text="{i18n>tpaCardTitle}" level="H3" titleStyle="H3"/>
-								<ToolbarSpacer id="tpaSpacer"/>
-								<Button
-									id="tpaColumnsButton"
-									icon="sap-icon://action-settings"
-									tooltip="{i18n>columnsTooltip}"
-									type="Transparent"
-									press=".onOpenTpaColumns"/>
-							</OverflowToolbar>
-						</headerToolbar>
-						<content>
-							<!--
-								Spaltenreihenfolge bewusst nach Befuellung sortiert: die
-								ersten acht Spalten sind standardmaessig sichtbar. Werk,
-								MeasurementUnit, BestBeforeDate, ReferenceNumber,
-								ReferenceDate und CreationDate werden vom Sync-Report nie
-								befuellt (HiLIS liefert sie nicht, siehe CLAUDE.md O-01)
-								und stehen deshalb hinten in der ausgeblendeten Gruppe.
-							-->
-							<t:Table
-								id="idTpaTable"
-								rows="{path: 'tpaModel>/Tpa', parameters: {$count: true}, sorter: {path: 'OrderNumber'}}"
-								selectionMode="None"
-								ariaLabelledBy="tpaTitle">
-								<t:rowMode>
-									<rm:Auto maxRowCount="12"/>
-								</t:rowMode>
-								<t:columns>
-									<t:Column id="idTpaOrderNumberColumn" width="10rem" sortProperty="OrderNumber">
-										<Label id="tpaLblOrderNumber" text="{i18n>colOrderNumber}"/>
-										<t:template>
-											<Text id="tpaTxtOrderNumber" text="{tpaModel>OrderNumber}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idTpaOrderLineColumn" width="7rem">
-										<Label id="tpaLblOrderLine" text="{i18n>colOrderLineNumber}"/>
-										<t:template>
-											<Text id="tpaTxtOrderLine" text="{path: 'tpaModel>OrderLineNumber', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idTpaItemColumn" width="12rem" sortProperty="ItemNumber">
-										<Label id="tpaLblItem" text="{i18n>colItemNumber}"/>
-										<t:template>
-											<Text id="tpaTxtItem" text="{path: 'tpaModel>ItemNumber', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idTpaMengeColumn" width="8rem" hAlign="End">
-										<Label id="tpaLblMenge" text="{i18n>colMenge}"/>
-										<t:template>
-											<Text id="tpaTxtMenge" text="{path: 'tpaModel>Menge', formatter: '.formatter.quantityOrDash'}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idTpaBatchColumn" width="9rem">
-										<Label id="tpaLblBatch" text="{i18n>colBatchNumber}"/>
-										<t:template>
-											<Text id="tpaTxtBatch" text="{path: 'tpaModel>BatchNumber', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idTpaLineStatusColumn" width="10rem" sortProperty="LineStatus">
-										<Label id="tpaLblLineStatus" text="{i18n>colLineStatus}"/>
-										<t:template>
-											<ObjectStatus
-												id="idTpaLineStatusObjectStatus"
-												text="{path: 'tpaModel>LineStatus', formatter: '.formatter.dashIfEmpty'}"
-												state="{path: 'tpaModel>LineStatus', formatter: '.formatter.orderStatusState'}"
-												icon="{path: 'tpaModel>LineStatus', formatter: '.formatter.orderStatusIcon'}"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idTpaOrderStatusColumn" width="10rem" sortProperty="OrderStatus">
-										<Label id="tpaLblOrderStatus" text="{i18n>colOrderStatus}"/>
-										<t:template>
-											<Text id="tpaTxtOrderStatus" text="{path: 'tpaModel>OrderStatus', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idTpaLastSyncColumn" width="12rem" sortProperty="LastSyncAt">
-										<Label id="tpaLblLastSync" text="{i18n>colLastSyncAt}"/>
-										<t:template>
-											<Text id="tpaTxtLastSync" text="{tpaModel>LastSyncAt}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idTpaOrderTypeColumn" width="9rem">
-										<Label id="tpaLblOrderType" text="{i18n>colOrderType}"/>
-										<t:template>
-											<Text id="tpaTxtOrderType" text="{tpaModel>OrderType}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idTpaWerkColumn" width="6rem">
-										<Label id="tpaLblWerk" text="{i18n>colWerk}"/>
-										<t:template>
-											<Text id="tpaTxtWerk" text="{tpaModel>Werk}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idTpaUomColumn" width="8rem">
-										<Label id="tpaLblUom" text="{i18n>colMeasurementUnit}"/>
-										<t:template>
-											<Text id="tpaTxtUom" text="{tpaModel>MeasurementUnit}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idTpaBbdColumn" width="8rem">
-										<Label id="tpaLblBbd" text="{i18n>colBestBeforeDate}"/>
-										<t:template>
-											<Text id="tpaTxtBbd" text="{tpaModel>BestBeforeDate}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idTpaRefNumberColumn" width="10rem">
-										<Label id="tpaLblRefNumber" text="{i18n>colReferenceNumber}"/>
-										<t:template>
-											<Text id="tpaTxtRefNumber" text="{tpaModel>ReferenceNumber}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idTpaRefDateColumn" width="9rem">
-										<Label id="tpaLblRefDate" text="{i18n>colReferenceDate}"/>
-										<t:template>
-											<Text id="tpaTxtRefDate" text="{tpaModel>ReferenceDate}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idTpaCreationDateColumn" width="11rem">
-										<Label id="tpaLblCreationDate" text="{i18n>colCreationDate}"/>
-										<t:template>
-											<Text id="tpaTxtCreationDate" text="{tpaModel>CreationDate}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-								</t:columns>
-							</t:Table>
-						</content>
-					</Panel>
-				</f:GridContainer>
-				<Title id="outboundHeading" text="{i18n>groupOutbound}" level="H2" titleStyle="H2" class="sapUiLargeMarginTop sapUiSmallMarginBottom"/>
-				<f:GridContainer id="outboundGrid" snapToRow="true">
+				<Title id="msgHeading" text="{i18n>groupMessages}" level="H2" titleStyle="H2" class="sapUiLargeMarginTop sapUiSmallMarginBottom"/>
+				<f:GridContainer id="msgGrid" snapToRow="true">
 					<f:layout>
 						<f:GridContainerSettings columns="12" minColumnSize="4rem" maxColumnSize="6rem" rowSize="2rem" gap="1rem"/>
 					</f:layout>
@@ -498,447 +235,268 @@
 					</f:layoutS>
 
 					<!--
-						PROZESSACHSE Warenausgang. Ausgewaehlt wird ueber den Praefix von
-						HistoryType ("OB_"), nicht ueber Textmuster in der Meldung: der
-						Praefix ist der einzige strukturierte Prozesstraeger, den die
-						Tabelle hat (IB_ Wareneingang, OB_ Warenausgang, ITEM_
-						Materialstamm). Der Filter laeuft serverseitig als
-						startswith(HistoryType,'OB_').
+						EINE Tabelle fuer alle Meldungsreiter, beim Reiterwechsel neu
+						gefiltert - nicht eine Tabelle je Reiter. Grund: IconTabBar laedt
+						NICHT von allein verzoegert, nicht gewaehlte Reiter werden trotzdem
+						instanziiert. Sechs Tabellen hiessen sechs OData-Bindungen beim
+						Seitenaufbau.
 
-						Anders als die Panels der Gruppe "Meldungen nach Typ" zeigt dieses
-						ALLE Meldungstypen - E, W und S nebeneinander. Das ist der Sinn der
-						Prozesssicht: was passiert im Warenausgang, unabhaengig davon, wie
-						schlimm es ist. Die Typ-Spalte traegt den Zustand.
+						Die Auftragstabelle ist die Ausnahme: sie haengt an einer anderen
+						Entitaet (tpaModel>/Tpa) und wird ueber visible umgeschaltet, damit
+						trotzdem immer nur eine gebunden ist.
 
-						ZWEI QUELLEN, mit ODER verknuepft: der Praefix OB_ und ein
-						Wortmarker im Meldungstext. ZCL_ZLE_AUST_OB_TRIGGER setzt
-						HISTORY_TYPE in KEINEM seiner neun Log-Aufrufe (nur die
-						Consumer-Ebene ZCL_ZLE_AUST_OUTBOUND tut es) - sechs dieser
-						neun tragen aber "Pick" oder "VSOLA" im Text, und beide
-						Woerter kommen im Einlager-Trigger nicht vor.
+						Die Reiter kommen aus model/ProcessAxis.ts. Ein vierter Prozess ist
+						dort eine Zeile - hier ein IconTabFilter, sonst nichts.
 
-						⚠ Der Marker ordnet nur ZU, nie FALSCH zu. Drei Meldungen sind
-						in beiden Richtungen zeichengleich (Stammdaten nicht lesbar,
-						ME-Abweichung, Verbindungsfehler im Storno) - die tragen keinen
-						Marker und bleiben unzugeordnet, statt geraten zu werden. Der
-						zweite Zaehler in der Kopfzeile macht genau diese Luecke sichtbar,
-						statt sie zu verstecken - er zaehlt die Saetze ohne
-						Prozesszuordnung, die in KEINER Prozessgruppe erscheinen koennen.
+						⚠ stretchContentHeight + applyContentPadding=false sind nicht
+						kosmetisch: rowMode Auto berechnet die Zeilenzahl aus der
+						Containerhoehe. Ohne sie bekommt die Tabelle zwei Zeilen oder die
+						Seite zwei Scrollbalken.
 					-->
-					<Panel id="outboundMsgPanel" height="100%">
+					<Panel id="msgPanel" height="100%">
 						<layoutData>
-							<!-- Siehe appLogPanel: Panelhoehe passend zu maxRowCount=12. -->
-							<f:GridContainerItemLayoutData columns="12" minRows="11"/>
+							<f:GridContainerItemLayoutData columns="12" minRows="15"/>
 						</layoutData>
-						<headerToolbar>
-							<OverflowToolbar id="outboundMsgToolbar" height="3.25rem">
-								<Avatar id="outboundMsgAvatar" src="sap-icon://upload-to-cloud" displaySize="XS" backgroundColor="Accent1"/>
-								<Title id="outboundMsgTitle" text="{i18n>outboundMsgPanelTitle}" level="H3" titleStyle="H3"/>
-								<ToolbarSpacer id="outboundMsgSpacer"/>
-								<ObjectStatus
-									id="idOutboundMsgCountObjectStatus"
-									state="Information"
-									icon="sap-icon://message-information"
-									text="{ui>/kpi/waMeldungen} {i18n>outboundMsgPanelHint}"/>
-								<ObjectStatus
-									id="idNoProcessCountOutStatus"
-									state="Warning"
-									icon="sap-icon://alert"
-									text="{ui>/kpi/ohneProzess} {i18n>noProcessHint}"/>
-								<Button
-									id="outboundMsgColumnsButton"
-									icon="sap-icon://action-settings"
-									tooltip="{i18n>columnsTooltip}"
-									type="Transparent"
-									press=".onOpenInboundMsgColumns"/>
-							</OverflowToolbar>
-						</headerToolbar>
 						<content>
-							<t:Table
-								id="idOutboundMsgTable"
-								rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, filters: {and: false, filters: [{path: 'HistoryType', operator: 'StartsWith', value1: 'OB_'}, {path: 'Message', operator: 'Contains', value1: 'Pick'}, {path: 'Message', operator: 'Contains', value1: 'VSOLA'}]}, sorter: {path: 'CreatedAt', descending: true}}"
-								selectionMode="None"
-								ariaLabelledBy="outboundMsgTitle">
-								<t:rowMode>
-									<rm:Auto maxRowCount="12"/>
-								</t:rowMode>
-								<t:columns>
-									<t:Column id="idOutboundMsgCreatedAtColumn" width="8rem" sortProperty="CreatedAt">
-										<Label id="omLblCreatedAt" text="{i18n>colCreatedAt}"/>
-										<t:template>
-											<Text id="omTxtCreatedAt" text="{mainModel>CreatedAt}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idOutboundMsgTypeColumn" width="7rem" sortProperty="LogType">
-										<Label id="omLblLogType" text="{i18n>colLogType}"/>
-										<t:template>
-											<ObjectStatus
-												id="idOutboundMsgTypeObjectStatus"
-												text="{mainModel>LogType}"
-												state="{path: 'mainModel>LogType', formatter: '.formatter.logTypeState'}"
-												icon="{path: 'mainModel>LogType', formatter: '.formatter.logTypeIcon'}"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idOutboundMsgMessageColumn" minWidth="320">
-										<Label id="omLblMessage" text="{i18n>colMessage}"/>
-										<t:template>
-											<Text id="omTxtMessage" text="{path: 'mainModel>Message', formatter: '.formatter.messageShort'}" wrapping="false" tooltip="{mainModel>Message}"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idOutboundMsgItemColumn" width="12rem" sortProperty="ItemNumber">
-										<Label id="omLblItem" text="{i18n>colItemNumber}"/>
-										<t:template>
-											<Text id="omTxtItem" text="{path: 'mainModel>ItemNumber', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idOutboundMsgTpaColumn" width="11rem" sortProperty="TpaNumber">
-										<Label id="omLblTpa" text="{i18n>colTpaNumber}"/>
-										<t:template>
-											<Text id="omTxtTpa" text="{path: 'mainModel>TpaNumber', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idOutboundMsgProcessColumn" width="10rem" sortProperty="HistoryType">
-										<Label id="omLblHistory" text="{i18n>colHistoryType}"/>
-										<t:template>
-											<Text id="omTxtHistory" text="{mainModel>HistoryType}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idOutboundMsgLineColumn" width="7rem">
-										<Label id="omLblLine" text="{i18n>colOrderLineNr}"/>
-										<t:template>
-											<Text id="omTxtLine" text="{path: 'mainModel>OrderLineNr', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idOutboundMsgHttpColumn" width="7rem" hAlign="End" sortProperty="HttpStatus">
-										<Label id="omLblHttp" text="{i18n>colHttpStatus}"/>
-										<t:template>
-											<Text id="omTxtHttp" text="{mainModel>HttpStatus}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-								</t:columns>
-							</t:Table>
+							<IconTabBar
+								id="idProcessTabBar"
+								selectedKey="{ui>/selectedProcess}"
+								select=".onProcessTabSelect"
+								stretchContentHeight="true"
+								applyContentPadding="false"
+								expandable="false">
+								<items>
+									<IconTabFilter
+										id="idTabIB"
+										key="IB"
+										text="{i18n>tabIB}"
+										count="{ui>/kpi/tabIB}"/>
+									<IconTabFilter
+										id="idTabOB"
+										key="OB"
+										text="{i18n>tabOB}"
+										count="{ui>/kpi/tabOB}"/>
+									<IconTabFilter
+										id="idTabITEM"
+										key="ITEM"
+										text="{i18n>tabITEM}"
+										count="{ui>/kpi/tabITEM}"/>
+									<IconTabFilter
+										id="idTabNONE"
+										key="NONE"
+										text="{i18n>tabNONE}"
+										count="{ui>/kpi/tabNONE}"/>
+									<IconTabFilter
+										id="idTabALL"
+										key="ALL"
+										text="{i18n>tabALL}"
+										count="{ui>/kpi/tabALL}"/>
+									<IconTabFilter
+										id="idTabTPA"
+										key="TPA"
+										text="{i18n>tabTPA}"
+										count="{ui>/kpi/gesamt}"/>
+								</items>
+								<content>
+									<OverflowToolbar id="idMsgToolbar" height="3rem">
+										<SegmentedButton
+											id="idTypeFilter"
+											selectedKey="{ui>/selectedType}"
+											selectionChange=".onTypeFilterChange"
+											visible="{= ${ui>/selectedProcess} !== 'TPA' }">
+											<items>
+												<SegmentedButtonItem id="idTypeAll" key="" text="{i18n>typeAll}"/>
+												<SegmentedButtonItem id="idTypeE" key="E" text="{i18n>typeE}"/>
+												<SegmentedButtonItem id="idTypeW" key="W" text="{i18n>typeW}"/>
+												<SegmentedButtonItem id="idTypeS" key="S" text="{i18n>typeS}"/>
+											</items>
+										</SegmentedButton>
+										<ToolbarSpacer id="idMsgToolbarSpacer"/>
+										<Button
+											id="idMsgColumnsButton"
+											icon="sap-icon://action-settings"
+											tooltip="{i18n>columnsTooltip}"
+											type="Transparent"
+											press=".onOpenMsgColumns"/>
+									</OverflowToolbar>
+
+									<t:Table
+										id="idMsgTable"
+										visible="{= ${ui>/selectedProcess} !== 'TPA' }"
+										rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, sorter: {path: 'CreatedAt', descending: true}}"
+										selectionMode="None"
+										ariaLabelledBy="msgHeading">
+										<t:rowMode>
+											<rm:Auto maxRowCount="14"/>
+										</t:rowMode>
+										<t:columns>
+																			<t:Column id="idMsgCreatedAtColumn" width="8rem" sortProperty="CreatedAt">
+																				<Label id="msLblCreatedAt" text="{i18n>colCreatedAt}"/>
+																				<t:template>
+																					<Text id="msTxtCreatedAt" text="{mainModel>CreatedAt}" wrapping="false"/>
+																				</t:template>
+																			</t:Column>
+																			<t:Column id="idMsgTypeColumn" width="7rem" sortProperty="LogType">
+																				<Label id="msLblLogType" text="{i18n>colLogType}"/>
+																				<t:template>
+																					<ObjectStatus
+																						id="idMsgTypeObjectStatus"
+																						text="{mainModel>LogType}"
+																						state="{path: 'mainModel>LogType', formatter: '.formatter.logTypeState'}"
+																						icon="{path: 'mainModel>LogType', formatter: '.formatter.logTypeIcon'}"/>
+																				</t:template>
+																			</t:Column>
+																			<t:Column id="idMsgMessageColumn" minWidth="320">
+																				<Label id="msLblMessage" text="{i18n>colMessage}"/>
+																				<t:template>
+																					<Text id="msTxtMessage" text="{path: 'mainModel>Message', formatter: '.formatter.messageShort'}" wrapping="false" tooltip="{mainModel>Message}"/>
+																				</t:template>
+																			</t:Column>
+																			<t:Column id="idMsgItemColumn" width="12rem" sortProperty="ItemNumber">
+																				<Label id="msLblItemNumber" text="{i18n>colItemNumber}"/>
+																				<t:template>
+																					<Text id="msTxtItemNumber" text="{mainModel>ItemNumber}" wrapping="false"/>
+																				</t:template>
+																			</t:Column>
+																			<t:Column id="idMsgTpaColumn" width="11rem" sortProperty="TpaNumber">
+																				<Label id="msLblTpaNumber" text="{i18n>colTpaNumber}"/>
+																				<t:template>
+																					<Text id="msTxtTpaNumber" text="{mainModel>TpaNumber}" wrapping="false"/>
+																				</t:template>
+																			</t:Column>
+																			<t:Column id="idMsgHistoryColumn" width="10rem" sortProperty="HistoryType">
+																				<Label id="msLblHistoryType" text="{i18n>colHistoryType}"/>
+																				<t:template>
+																					<Text id="msTxtHistoryType" text="{mainModel>HistoryType}" wrapping="false"/>
+																				</t:template>
+																			</t:Column>
+																			<t:Column id="idMsgLineColumn" width="7rem">
+																				<Label id="msLblOrderLineNr" text="{i18n>colOrderLineNr}"/>
+																				<t:template>
+																					<Text id="msTxtOrderLineNr" text="{mainModel>OrderLineNr}" wrapping="false"/>
+																				</t:template>
+																			</t:Column>
+																			<t:Column id="idMsgHttpColumn" width="7rem" hAlign="End">
+																				<Label id="msLblHttpStatus" text="{i18n>colHttpStatus}"/>
+																				<t:template>
+																					<Text id="msTxtHttpStatus" text="{mainModel>HttpStatus}" wrapping="false"/>
+																				</t:template>
+																			</t:Column>
+																		</t:columns>
+									</t:Table>
+
+									<t:Table
+																	id="idTpaTable"
+																			visible="{= ${ui>/selectedProcess} === 'TPA' }"
+																	rows="{path: 'tpaModel>/Tpa', parameters: {$count: true}, sorter: {path: 'OrderNumber'}}"
+																	selectionMode="None"
+																	ariaLabelledBy="tpaTitle">
+																	<t:rowMode>
+																		<rm:Auto maxRowCount="12"/>
+																	</t:rowMode>
+																	<t:columns>
+																		<t:Column id="idTpaOrderNumberColumn" width="10rem" sortProperty="OrderNumber">
+																			<Label id="tpaLblOrderNumber" text="{i18n>colOrderNumber}"/>
+																			<t:template>
+																				<Text id="tpaTxtOrderNumber" text="{tpaModel>OrderNumber}" wrapping="false"/>
+																			</t:template>
+																		</t:Column>
+																		<t:Column id="idTpaOrderLineColumn" width="7rem">
+																			<Label id="tpaLblOrderLine" text="{i18n>colOrderLineNumber}"/>
+																			<t:template>
+																				<Text id="tpaTxtOrderLine" text="{path: 'tpaModel>OrderLineNumber', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
+																			</t:template>
+																		</t:Column>
+																		<t:Column id="idTpaItemColumn" width="12rem" sortProperty="ItemNumber">
+																			<Label id="tpaLblItem" text="{i18n>colItemNumber}"/>
+																			<t:template>
+																				<Text id="tpaTxtItem" text="{path: 'tpaModel>ItemNumber', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
+																			</t:template>
+																		</t:Column>
+																		<t:Column id="idTpaMengeColumn" width="8rem" hAlign="End">
+																			<Label id="tpaLblMenge" text="{i18n>colMenge}"/>
+																			<t:template>
+																				<Text id="tpaTxtMenge" text="{path: 'tpaModel>Menge', formatter: '.formatter.quantityOrDash'}" wrapping="false"/>
+																			</t:template>
+																		</t:Column>
+																		<t:Column id="idTpaBatchColumn" width="9rem">
+																			<Label id="tpaLblBatch" text="{i18n>colBatchNumber}"/>
+																			<t:template>
+																				<Text id="tpaTxtBatch" text="{path: 'tpaModel>BatchNumber', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
+																			</t:template>
+																		</t:Column>
+																		<t:Column id="idTpaLineStatusColumn" width="10rem" sortProperty="LineStatus">
+																			<Label id="tpaLblLineStatus" text="{i18n>colLineStatus}"/>
+																			<t:template>
+																				<ObjectStatus
+																					id="idTpaLineStatusObjectStatus"
+																					text="{path: 'tpaModel>LineStatus', formatter: '.formatter.dashIfEmpty'}"
+																					state="{path: 'tpaModel>LineStatus', formatter: '.formatter.orderStatusState'}"
+																					icon="{path: 'tpaModel>LineStatus', formatter: '.formatter.orderStatusIcon'}"/>
+																			</t:template>
+																		</t:Column>
+																		<t:Column id="idTpaOrderStatusColumn" width="10rem" sortProperty="OrderStatus">
+																			<Label id="tpaLblOrderStatus" text="{i18n>colOrderStatus}"/>
+																			<t:template>
+																				<Text id="tpaTxtOrderStatus" text="{path: 'tpaModel>OrderStatus', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
+																			</t:template>
+																		</t:Column>
+																		<t:Column id="idTpaLastSyncColumn" width="12rem" sortProperty="LastSyncAt">
+																			<Label id="tpaLblLastSync" text="{i18n>colLastSyncAt}"/>
+																			<t:template>
+																				<Text id="tpaTxtLastSync" text="{tpaModel>LastSyncAt}" wrapping="false"/>
+																			</t:template>
+																		</t:Column>
+																		<t:Column id="idTpaOrderTypeColumn" width="9rem">
+																			<Label id="tpaLblOrderType" text="{i18n>colOrderType}"/>
+																			<t:template>
+																				<Text id="tpaTxtOrderType" text="{tpaModel>OrderType}" wrapping="false"/>
+																			</t:template>
+																		</t:Column>
+																		<t:Column id="idTpaWerkColumn" width="6rem">
+																			<Label id="tpaLblWerk" text="{i18n>colWerk}"/>
+																			<t:template>
+																				<Text id="tpaTxtWerk" text="{tpaModel>Werk}" wrapping="false"/>
+																			</t:template>
+																		</t:Column>
+																		<t:Column id="idTpaUomColumn" width="8rem">
+																			<Label id="tpaLblUom" text="{i18n>colMeasurementUnit}"/>
+																			<t:template>
+																				<Text id="tpaTxtUom" text="{tpaModel>MeasurementUnit}" wrapping="false"/>
+																			</t:template>
+																		</t:Column>
+																		<t:Column id="idTpaBbdColumn" width="8rem">
+																			<Label id="tpaLblBbd" text="{i18n>colBestBeforeDate}"/>
+																			<t:template>
+																				<Text id="tpaTxtBbd" text="{tpaModel>BestBeforeDate}" wrapping="false"/>
+																			</t:template>
+																		</t:Column>
+																		<t:Column id="idTpaRefNumberColumn" width="10rem">
+																			<Label id="tpaLblRefNumber" text="{i18n>colReferenceNumber}"/>
+																			<t:template>
+																				<Text id="tpaTxtRefNumber" text="{tpaModel>ReferenceNumber}" wrapping="false"/>
+																			</t:template>
+																		</t:Column>
+																		<t:Column id="idTpaRefDateColumn" width="9rem">
+																			<Label id="tpaLblRefDate" text="{i18n>colReferenceDate}"/>
+																			<t:template>
+																				<Text id="tpaTxtRefDate" text="{tpaModel>ReferenceDate}" wrapping="false"/>
+																			</t:template>
+																		</t:Column>
+																		<t:Column id="idTpaCreationDateColumn" width="11rem">
+																			<Label id="tpaLblCreationDate" text="{i18n>colCreationDate}"/>
+																			<t:template>
+																				<Text id="tpaTxtCreationDate" text="{tpaModel>CreationDate}" wrapping="false"/>
+																			</t:template>
+																		</t:Column>
+																	</t:columns>
+																</t:Table>
+								</content>
+							</IconTabBar>
 						</content>
 					</Panel>
 				</f:GridContainer>
-				<Title id="errorHeading" text="{i18n>groupErrors}" level="H2" titleStyle="H2" class="sapUiLargeMarginTop sapUiSmallMarginBottom"/>
-				<f:GridContainer id="errorGrid" snapToRow="true">
-					<f:layout>
-						<f:GridContainerSettings columns="12" minColumnSize="4rem" maxColumnSize="6rem" rowSize="2rem" gap="1rem"/>
-					</f:layout>
-					<f:layoutM>
-						<f:GridContainerSettings columns="4" minColumnSize="3.5rem" maxColumnSize="6rem" rowSize="2rem" gap="0.75rem"/>
-					</f:layoutM>
-					<f:layoutS>
-						<f:GridContainerSettings columns="4" minColumnSize="3.5rem" maxColumnSize="6rem" rowSize="2rem" gap="0.75rem"/>
-					</f:layoutS>
 
-					<!--
-						WE- und WA-Panel sind bewusst ausgeblendet: das Backend
-						protokolliert kein Merkmal, das Wareneingang von
-						Warenausgang unterscheidet (CLAUDE.md, O-27). Zwei
-						garantiert leere Panels waeren eine Verschlechterung.
-						Das Flag ui>/showInOutSplit schaltet sie scharf, sobald
-						die Daten es hergeben.
-					-->
-					<Panel id="inboundPanel" height="100%" visible="{ui>/showInOutSplit}">
-						<layoutData>
-							<f:GridContainerItemLayoutData columns="4" minRows="10"/>
-						</layoutData>
-						<headerToolbar>
-							<OverflowToolbar id="inboundToolbar" height="3.25rem">
-								<Avatar id="inboundAvatar" src="sap-icon://inbox" displaySize="XS" backgroundColor="Accent1"/>
-								<Title id="inboundTitle" text="{i18n>inboundPanelTitle}" level="H3" titleStyle="H3"/>
-								<ToolbarSpacer id="inboundSpacer"/>
-							</OverflowToolbar>
-						</headerToolbar>
-						<content>
-							<Text id="inboundPlaceholder" text="{i18n>panelPlaceholder}" class="sapUiSmallMargin"/>
-						</content>
-					</Panel>
-
-					<Panel id="outboundPanel" height="100%" visible="{ui>/showInOutSplit}">
-						<layoutData>
-							<f:GridContainerItemLayoutData columns="4" minRows="10"/>
-						</layoutData>
-						<headerToolbar>
-							<OverflowToolbar id="outboundToolbar" height="3.25rem">
-								<Avatar id="outboundAvatar" src="sap-icon://outbox" displaySize="XS" backgroundColor="Accent2"/>
-								<Title id="outboundTitle" text="{i18n>outboundPanelTitle}" level="H3" titleStyle="H3"/>
-								<ToolbarSpacer id="outboundSpacer"/>
-							</OverflowToolbar>
-						</headerToolbar>
-						<content>
-							<Text id="outboundPlaceholder" text="{i18n>panelPlaceholder}" class="sapUiSmallMargin"/>
-						</content>
-					</Panel>
-
-					<Panel id="techErrorPanel" height="100%">
-						<layoutData>
-							<f:GridContainerItemLayoutData columns="12" minRows="10"/>
-						</layoutData>
-						<headerToolbar>
-							<OverflowToolbar id="techErrorToolbar" height="3.25rem">
-								<Avatar id="techErrorAvatar" src="sap-icon://error" displaySize="XS" backgroundColor="Accent3"/>
-								<Title id="techErrorTitle" text="{i18n>techErrorPanelTitle}" level="H3" titleStyle="H3"/>
-								<ToolbarSpacer id="techErrorSpacer"/>
-								<ObjectStatus
-									id="idTechErrorCountObjectStatus"
-									state="Error"
-									icon="sap-icon://error"
-									text="{ui>/kpi/nzFehler} {i18n>techErrorPanelHint}"/>
-								<Button
-									id="techErrorColumnsButton"
-									icon="sap-icon://action-settings"
-									tooltip="{i18n>columnsTooltip}"
-									type="Transparent"
-									press=".onOpenTechErrorColumns"/>
-							</OverflowToolbar>
-						</headerToolbar>
-						<content>
-							<t:Table
-								id="idTechErrorTable"
-								rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, filters: [{path: 'LogType', operator: 'EQ', value1: 'E'}, {path: 'HistoryType', operator: 'EQ', value1: ''}, {path: 'Message', operator: 'NotContains', value1: 'PutAway'}, {path: 'Message', operator: 'NotContains', value1: 'Pick'}, {path: 'Message', operator: 'NotContains', value1: 'VSOLA'}], sorter: {path: 'CreatedAt', descending: true}}"
-								selectionMode="None"
-								ariaLabelledBy="techErrorTitle">
-								<t:rowMode>
-									<rm:Auto maxRowCount="12"/>
-								</t:rowMode>
-								<t:columns>
-									<t:Column id="idTechErrorCreatedAtColumn" width="8rem" sortProperty="CreatedAt">
-										<Label id="teLblCreatedAt" text="{i18n>colCreatedAt}"/>
-										<t:template>
-											<Text id="teTxtCreatedAt" text="{mainModel>CreatedAt}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idTechErrorHttpColumn" width="7rem" hAlign="End" sortProperty="HttpStatus">
-										<Label id="teLblHttp" text="{i18n>colHttpStatus}"/>
-										<t:template>
-											<Text id="teTxtHttp" text="{mainModel>HttpStatus}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idTechErrorMessageColumn" minWidth="320">
-										<Label id="teLblMessage" text="{i18n>colMessage}"/>
-										<t:template>
-											<Text id="teTxtMessage" text="{path: 'mainModel>Message', formatter: '.formatter.messageShort'}" wrapping="false" tooltip="{mainModel>Message}"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idTechErrorItemColumn" width="12rem" sortProperty="ItemNumber">
-										<Label id="teLblItem" text="{i18n>colItemNumber}"/>
-										<t:template>
-											<Text id="teTxtItem" text="{mainModel>ItemNumber}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idTechErrorTpaColumn" width="11rem" sortProperty="TpaNumber">
-										<Label id="teLblTpa" text="{i18n>colTpaNumber}"/>
-										<t:template>
-											<Text id="teTxtTpa" text="{mainModel>TpaNumber}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-								</t:columns>
-							</t:Table>
-						</content>
-					</Panel>
-					<!--
-						AUFFANGGRUPPE. Hier steht nur, was in KEINE Prozessgruppe
-						faellt - weder ueber den HistoryType-Praefix noch ueber einen
-						Wortmarker. Ohne diesen Ausschluss stuende jede Meldung
-						zweimal auf der Seite: einmal unter ihrem Prozess, einmal
-						unter ihrem Typ. Genau das war die Kritik am alten
-						"Application Log"-Panel.
-
-						Untergliedert nach LogType, nicht nach Textmuster: die
-						fachlichen Abbrueche werden im Backend als 'W' geloggt
-						(fuenf von sechs Abbruchstellen), technische Fehler als 'E'.
-						Die alte OVP-Kachel filterte 'E' und zeigte damit die
-						Komplementaermenge - daher "man erkennt es nicht am
-						Fehlertext". Siehe CLAUDE.md, O-25.
-
-						Die Summe dieser drei Panels ist der Zaehler
-						ohneProzess in den beiden Prozessgruppen - beide Zahlen
-						sind damit gegenseitig pruefbar.
-					-->
-					<Panel id="abbruchPanel" height="100%">
-						<layoutData>
-							<f:GridContainerItemLayoutData columns="12" minRows="10"/>
-						</layoutData>
-						<headerToolbar>
-							<OverflowToolbar id="abbruchToolbar" height="3.25rem">
-								<Avatar id="abbruchAvatar" src="sap-icon://cancel" displaySize="XS" backgroundColor="Accent4"/>
-								<Title id="abbruchTitle" text="{i18n>abortPanelTitle}" level="H3" titleStyle="H3"/>
-								<ToolbarSpacer id="abbruchSpacer"/>
-								<ObjectStatus
-									id="idAbortCountObjectStatus"
-									state="Warning"
-									icon="sap-icon://alert"
-									text="{ui>/kpi/nzAbbrueche} {i18n>abortPanelHint}"/>
-								<Button
-									id="abortColumnsButton"
-									icon="sap-icon://action-settings"
-									tooltip="{i18n>columnsTooltip}"
-									type="Transparent"
-									press=".onOpenAbortColumns"/>
-							</OverflowToolbar>
-						</headerToolbar>
-						<content>
-							<t:Table
-								id="idAbortTable"
-								rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, filters: [{path: 'LogType', operator: 'EQ', value1: 'W'}, {path: 'HistoryType', operator: 'EQ', value1: ''}, {path: 'Message', operator: 'NotContains', value1: 'PutAway'}, {path: 'Message', operator: 'NotContains', value1: 'Pick'}, {path: 'Message', operator: 'NotContains', value1: 'VSOLA'}], sorter: {path: 'CreatedAt', descending: true}}"
-								selectionMode="None"
-								ariaLabelledBy="abbruchTitle">
-								<t:rowMode>
-									<rm:Auto maxRowCount="12"/>
-								</t:rowMode>
-								<t:columns>
-									<t:Column id="idAbortCreatedAtColumn" width="8rem" sortProperty="CreatedAt">
-										<Label id="abLblCreatedAt" text="{i18n>colCreatedAt}"/>
-										<t:template>
-											<Text id="abTxtCreatedAt" text="{mainModel>CreatedAt}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idAbortItemColumn" width="12rem" sortProperty="ItemNumber">
-										<Label id="abLblItem" text="{i18n>colItemNumber}"/>
-										<t:template>
-											<Text id="abTxtItem" text="{mainModel>ItemNumber}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idAbortMessageColumn" minWidth="320">
-										<Label id="abLblMessage" text="{i18n>colMessage}"/>
-										<t:template>
-											<Text id="abTxtMessage" text="{path: 'mainModel>Message', formatter: '.formatter.messageShort'}" wrapping="false" tooltip="{mainModel>Message}"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idAbortTpaColumn" width="11rem" sortProperty="TpaNumber">
-										<Label id="abLblTpa" text="{i18n>colTpaNumber}"/>
-										<t:template>
-											<Text id="abTxtTpa" text="{mainModel>TpaNumber}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idAbortLineColumn" width="7rem">
-										<Label id="abLblLine" text="{i18n>colOrderLineNr}"/>
-										<t:template>
-											<Text id="abTxtLine" text="{mainModel>OrderLineNr}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idAbortHistoryColumn" width="10rem" sortProperty="HistoryType">
-										<Label id="abLblHistory" text="{i18n>colHistoryType}"/>
-										<t:template>
-											<Text id="abTxtHistory" text="{mainModel>HistoryType}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idAbortHttpColumn" width="7rem" hAlign="End" sortProperty="HttpStatus">
-										<Label id="abLblHttp" text="{i18n>colHttpStatus}"/>
-										<t:template>
-											<Text id="abTxtHttp" text="{mainModel>HttpStatus}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-								</t:columns>
-							</t:Table>
-						</content>
-					</Panel>
-					<Panel id="appLogPanel" height="100%">
-						<layoutData>
-							<!--
-								11 Rasterzeilen * 3rem - 1rem = 32rem. Das entspricht in
-								compact-Dichte gerade den 12 Tabellenzeilen unten
-								(maxRowCount), sodass kein Leerraum unter der Tabelle
-								bleibt. Wer minRows erhoeht, muss maxRowCount mitziehen -
-								sonst deckelt die Tabelle und der Leerraum kommt zurueck.
-							-->
-							<f:GridContainerItemLayoutData columns="12" minRows="11"/>
-						</layoutData>
-						<headerToolbar>
-							<OverflowToolbar id="appLogToolbar" height="3.25rem">
-								<Avatar id="appLogAvatar" src="sap-icon://sys-enter-2" displaySize="XS" backgroundColor="Accent8"/>
-								<Title id="appLogTitle" text="{i18n>successPanelTitle}" level="H3" titleStyle="H3"/>
-								<ToolbarSpacer id="appLogSpacer"/>
-								<ObjectStatus
-									id="idSuccessCountObjectStatus"
-									state="Success"
-									icon="sap-icon://sys-enter-2"
-									text="{ui>/kpi/nzErfolge} {i18n>successPanelHint}"/>
-								<Button
-									id="appLogColumnsButton"
-									icon="sap-icon://action-settings"
-									tooltip="{i18n>columnsTooltip}"
-									type="Transparent"
-									press=".onOpenAppLogColumns"/>
-							</OverflowToolbar>
-						</headerToolbar>
-						<content>
-							<!--
-								sap.ui.table.Table statt sap.m.Table: nur diese hat einen
-								eigenen Scrollbar und dauerhaft fixierte Spaltenkoepfe.
-								sap.m.Table scrollt mit der Seite, und ihr sticky-Feature
-								wird von Grid-Layout-Containern unterdrueckt.
-								rowMode-Aggregation statt visibleRowCountMode - Letzteres
-								ist seit UI5 1.119 deprecated.
-							-->
-							<t:Table
-								id="idAppLogTable"
-								rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, filters: [{path: 'LogType', operator: 'EQ', value1: 'S'}, {path: 'HistoryType', operator: 'EQ', value1: ''}, {path: 'Message', operator: 'NotContains', value1: 'PutAway'}, {path: 'Message', operator: 'NotContains', value1: 'Pick'}, {path: 'Message', operator: 'NotContains', value1: 'VSOLA'}], sorter: {path: 'CreatedAt', descending: true}}"
-								selectionMode="None"
-								ariaLabelledBy="appLogTitle">
-								<t:rowMode>
-									<rm:Auto maxRowCount="12"/>
-								</t:rowMode>
-								<t:columns>
-									<t:Column id="idAppLogCreatedAtColumn" width="8rem" sortProperty="CreatedAt">
-										<Label id="alLblCreatedAt" text="{i18n>colCreatedAt}"/>
-										<t:template>
-											<Text id="alTxtCreatedAt" text="{mainModel>CreatedAt}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idAppLogTypeColumn" width="7rem" sortProperty="LogType">
-										<Label id="alLblLogType" text="{i18n>colLogType}"/>
-										<t:template>
-											<ObjectStatus
-												id="idAppLogTypeObjectStatus"
-												text="{mainModel>LogType}"
-												state="{path: 'mainModel>LogType', formatter: '.formatter.logTypeState'}"
-												icon="{path: 'mainModel>LogType', formatter: '.formatter.logTypeIcon'}"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idAppLogMessageColumn" minWidth="320">
-										<Label id="alLblMessage" text="{i18n>colMessage}"/>
-										<t:template>
-											<Text id="alTxtMessage" text="{path: 'mainModel>Message', formatter: '.formatter.messageShort'}" wrapping="false" tooltip="{mainModel>Message}"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idAppLogItemColumn" width="12rem" sortProperty="ItemNumber">
-										<Label id="alLblItemNumber" text="{i18n>colItemNumber}"/>
-										<t:template>
-											<Text id="alTxtItemNumber" text="{mainModel>ItemNumber}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idAppLogTpaColumn" width="11rem" sortProperty="TpaNumber">
-										<Label id="alLblTpaNumber" text="{i18n>colTpaNumber}"/>
-										<t:template>
-											<Text id="alTxtTpaNumber" text="{mainModel>TpaNumber}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idAppLogHistoryColumn" width="10rem" sortProperty="HistoryType">
-										<Label id="alLblHistoryType" text="{i18n>colHistoryType}"/>
-										<t:template>
-											<Text id="alTxtHistoryType" text="{mainModel>HistoryType}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idAppLogLineColumn" width="7rem">
-										<Label id="alLblOrderLineNr" text="{i18n>colOrderLineNr}"/>
-										<t:template>
-											<Text id="alTxtOrderLineNr" text="{mainModel>OrderLineNr}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-									<t:Column id="idAppLogHttpColumn" width="7rem" hAlign="End">
-										<Label id="alLblHttpStatus" text="{i18n>colHttpStatus}"/>
-										<t:template>
-											<Text id="alTxtHttpStatus" text="{mainModel>HttpStatus}" wrapping="false"/>
-										</t:template>
-									</t:Column>
-								</t:columns>
-							</t:Table>
-						</content>
-					</Panel>
-				</f:GridContainer>
 
 
 

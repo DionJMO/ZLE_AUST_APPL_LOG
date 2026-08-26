@@ -14,7 +14,7 @@ export default abstract class BaseController extends Controller {
 	public formatter = formatter;
 
 	/**
-	 * Steuermodell der Oberflaeche (lastRefreshText, showInOutSplit).
+	 * Steuermodell der Oberflaeche (lastRefreshText, selectedProcess, kpi).
 	 */
 	protected getUiModel(): JSONModel {
 		return this.getOwnerComponent()?.getModel("ui") as JSONModel;

@@ -36,9 +36,10 @@ import Table from "sap/ui/table/Table";
  *
  * Deshalb: bei jeder Aenderung am Spaltensatz die Version hochzaehlen.
  * v2 = 25.08.2026, HTTP-Status in der Abbruch-Tabelle ergaenzt.
+ * v3 = 26.08.2026, Umbau auf Reiter - aus sechs Tabellen wurden zwei.
  */
 function storageKey(sTableId: string): string {
-	return "colVis_v2_" + sTableId;
+	return "colVis_v3_" + sTableId;
 }
 
 function columnLabel(oColumn: Column, iIndex: number): string {

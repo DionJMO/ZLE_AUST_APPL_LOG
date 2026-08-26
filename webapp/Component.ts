@@ -24,18 +24,24 @@ export default class Component extends UIComponent {
 		// der Elternknoten /kpi noch nicht existiert - die Bindings blieben
 		// dann leer und die Kacheln zeigten dauerhaft 0.
 		//
-		// showInOutSplit bleibt false, solange das Backend WE und WA nicht
-		// unterscheidbar protokolliert (siehe CLAUDE.md, O-27).
+		// selectedProcess/selectedType steuern den Reiter und den Typfilter
+		// der Meldungssicht; die Reiter selbst kommen aus model/ProcessAxis.
 		this.setModel(new JSONModel({
 			lastRefreshText: "",
-			showInOutSplit: false,
+			// Reiterzustand der Meldungssicht. selectedType leer = alle Typen.
+			selectedProcess: "IB",
+			selectedType: "",
 			chartTruncated: false,
 			kpi: {
 				gesamt: "0",
 				offen: "0",
 				fehler: "0",
 				abbrueche: "0",
-				nichtUebertragen: "0"
+				tabIB: "0",
+				tabOB: "0",
+				tabITEM: "0",
+				tabNONE: "0",
+				tabALL: "0"
 			}
 		}), "ui");
 
