@@ -120,16 +120,25 @@
 					15rem Mindestbreite hineinpassen. Im 46rem breiten Popover
 					sind das zwei, auf dem Telefon (wo der ResponsivePopover zum
 					Vollbild-Dialog wird) eine.
+
+					⚠ Die Klasse zleFieldGrid ist PFLICHT, nicht Schmuck: sie hebt
+					"min-width: auto" auf. Ohne sie schrumpfen die Zellen nicht
+					unter ihre Inhaltsbreite, und das Raster erzeugt einen
+					SEITWAERTS-SCROLLBALKEN. Begruendung in css/app.css.
+
+					wrapping="true" an den Labels, damit eine zu enge Zelle
+					UMBRICHT statt abzuschneiden - sap.m.Label kuerzt sonst mit
+					Ellipse, und "Bewegungsart WM / BF" waere dann unlesbar.
 				-->
 				<grid:CSSGrid
 					id="keyPopoverSapFieldGrid"
 					gridTemplateColumns="repeat(auto-fit, minmax(15rem, 1fr))"
-					gridGap="0.5rem 2rem"
-					class="sapUiSmallMargin"
+					gridGap="0.5rem 1.5rem"
+					class="sapUiSmallMargin zleFieldGrid"
 					items="{detail>/sap/fields}"
 					visible="{= ${detail>/sap/fields}.length > 0 }">
 					<HBox id="keyPopoverSapFieldBox" justifyContent="SpaceBetween" alignItems="Center">
-						<Label id="keyPopoverSapFieldLabel" text="{detail>label}"/>
+						<Label id="keyPopoverSapFieldLabel" text="{detail>label}" wrapping="true"/>
 						<ObjectStatus
 							id="keyPopoverSapFieldValue"
 							text="{detail>value}"
@@ -206,10 +215,10 @@
 								id="keyPopoverSapRowAttrGrid"
 								gridTemplateColumns="repeat(auto-fit, minmax(12rem, 1fr))"
 								gridGap="0.25rem 1.5rem"
-								class="sapUiTinyMarginTop"
+								class="sapUiTinyMarginTop zleFieldGrid"
 								items="{path: 'detail>attrs', templateShareable: false}">
 								<HBox id="keyPopoverSapRowAttrBox" justifyContent="SpaceBetween" alignItems="Center">
-									<Label id="keyPopoverSapRowAttrLabel" text="{detail>label}"/>
+									<Label id="keyPopoverSapRowAttrLabel" text="{detail>label}" wrapping="true"/>
 									<Text
 										id="keyPopoverSapRowAttrValue"
 										text="{detail>value}"

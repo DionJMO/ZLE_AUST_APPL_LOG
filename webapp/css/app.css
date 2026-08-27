@@ -33,3 +33,27 @@
     padding-right: 2rem;
     box-sizing: border-box;
 }
+
+/* BEGRUENDUNG fuer diese Regel:
+ * Das Feldraster im Detail-Popover erzeugte einen SEITWAERTS-SCROLLBALKEN
+ * (27.08.2026). Ursache ist kein Fehler im Raster, sondern eine
+ * CSS-Voreinstellung: Grid- und Flex-Elemente haben "min-width: auto" und
+ * schrumpfen deshalb NIE unter ihre Inhaltsbreite. Ein Paar wie
+ * "Angelegt am | 2026-08-26 13:57:36" braucht mehr als die rund 19rem
+ * Spurbreite und schiebt das ganze Raster ueber den Rand.
+ *
+ * "min-width: 0" ist die vorgesehene Gegenmassnahme dafuer - erst damit
+ * darf der Inhalt umbrechen, statt den Container zu sprengen.
+ *
+ * Anders als die frueheren OVP-Regeln kaempft das NICHT gegen per
+ * JavaScript gesetzte Geometrie: es setzt keine Breite und keine Hoehe,
+ * es hebt nur eine Schrumpfsperre auf. Die Spaltenzahl bleibt
+ * vollstaendig Sache von repeat(auto-fit, minmax(...)) im Fragment.
+ *
+ * Eng auf den Teilbaum des Rasters begrenzt, damit es nichts anderes
+ * beruehrt.
+ */
+.zleFieldGrid,
+.zleFieldGrid * {
+    min-width: 0;
+}
