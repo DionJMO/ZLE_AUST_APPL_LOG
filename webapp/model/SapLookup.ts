@@ -72,6 +72,35 @@ function text(vValue: unknown): string {
 	return "";
 }
 
+/**
+ * Ist ein Kennzeichen gesetzt?
+ *
+ * 🔴 NICHT mit text( ) <> '' pruefen. SADL bildet ABAP-Kennzeichen mit
+ * XFELD-Domaene auf Edm.Boolean ab - aus einem NICHT gesetzten Flag wird
+ * dann der Wert false, und String(false) ist "false", also ein NICHT leerer
+ * String. Die Pruefung kehrte sich damit um: eine nicht quittierte
+ * TA-Position wurde als "quittiert" angezeigt (gefunden 27.08.2026 an einer
+ * Position mit "Soll 1.000 / Ist -", die trotzdem gruen als quittiert
+ * erschien).
+ *
+ * Welche Felder als Boolean und welche als CHAR1 ankommen, haengt an der
+ * Domaene des jeweiligen Datenelements - deshalb hier beide Formen
+ * behandeln statt zu raten.
+ */
+function isFlagged(vValue: unknown): boolean {
+	if (typeof vValue === "boolean") {
+		return vValue;
+	}
+	if (typeof vValue === "number") {
+		return vValue !== 0;
+	}
+	if (typeof vValue !== "string") {
+		return false;
+	}
+	const sValue = vValue.trim().toLowerCase();
+	return sValue !== "" && sValue !== "false" && sValue !== "0";
+}
+
 /** Ist ein Betragsfeld gefuellt und von null verschieden? */
 function hasValue(vValue: unknown): boolean {
 	const nValue = Number(vValue);
@@ -169,7 +198,7 @@ function unitFields(oWm: Record<string, unknown> | undefined, oBundle: ResourceB
 		pushIf(aFields, field(oBundle, "sapPutAwayInd", `${sPut || "–"} / ${sRem || "–"}`));
 	}
 
-	if (text(oWm.HasEmptyUnit).trim()) {
+	if (isFlagged(oWm.HasEmptyUnit)) {
 		aFields.push(field(oBundle, "sapEmptyUnit", oBundle.getText("sapEmptyUnitHint") ?? "", "Error"));
 	}
 	return aFields;
@@ -196,10 +225,10 @@ function batchFields(oBase: Record<string, unknown>, oBundle: ResourceBundle): S
 	const aFields: SapField[] = [];
 	pushIf(aFields, field(oBundle, "sapBatchType", text(oBase.SentBatchHandlingType)));
 
-	if (text(oBase.BatchMgmtRequiredInPlant) !== text(oBase.BatchMgmtRequiredClientWide)) {
+	if (isFlagged(oBase.BatchMgmtRequiredInPlant) !== isFlagged(oBase.BatchMgmtRequiredClientWide)) {
 		aFields.push(field(oBundle, "sapBatchMismatch", oBundle.getText("sapBatchMismatchHint") ?? "", "Warning"));
 	}
-	if (text(oBase.IsMarkedForDeletion).trim() || text(oBase.IsMarkedForDeletionInPlant).trim()) {
+	if (isFlagged(oBase.IsMarkedForDeletion) || isFlagged(oBase.IsMarkedForDeletionInPlant)) {
 		aFields.push(field(oBundle, "sapDeleted", oBundle.getText("sapDeletedHint") ?? "", "Warning"));
 	}
 	return aFields;
@@ -282,7 +311,8 @@ async function loadTransferOrder(
 	);
 
 	return aRows.map((oRow) => {
-		const bConfirmed = text(oRow.ItemIsConfirmed).trim() !== "";
+		const bConfirmed = isFlagged(oRow.ItemIsConfirmed);
+		const sUser = text(oRow.ConfirmedByUser).trim();
 
 		/*
 		 * Je Attribut eine Zeile, und leere fallen HERAUS statt als "-" zu
@@ -319,9 +349,11 @@ async function loadTransferOrder(
 				normalizeMaterial(text(oRow.Material)) || "–"
 			]) ?? "",
 			intro: text(oRow.MaterialName),
-			status: oBundle.getText(bConfirmed ? "sapConfirmed" : "sapOpen", [
-				text(oRow.ConfirmedByUser) || "?"
-			]) ?? "",
+			// Kein Fragezeichen erfinden: ohne Benutzernamen bleibt es beim
+			// blossen "quittiert".
+			status: (bConfirmed
+				? oBundle.getText(sUser ? "sapConfirmed" : "sapConfirmedPlain", sUser ? [sUser] : undefined)
+				: oBundle.getText("sapOpen")) ?? "",
 			statusState: bConfirmed ? "Success" : "Warning",
 			attrs: aAttrs.filter((sAttr) => sAttr)
 		};
