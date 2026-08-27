@@ -263,3 +263,34 @@ export function materialNumber(sValue?: string | null): string {
 export function chartTitle(sPattern?: string | null, vDays?: number | string | null): string {
 	return (sPattern ?? "").replace("{0}", String(vDays ?? ""));
 }
+
+/**
+ * Zaehler eines Prozessreiters - leer, solange nach Vorgang gruppiert wird.
+ *
+ * WARUM DER ZAEHLER DANN VERSCHWINDET
+ * Die Reiterzahlen kommen aus $count ueber ZLE_AUST_APL_LOG und zaehlen
+ * MELDUNGEN. In der Vorgangssicht stehen in der Tabelle aber VORGAENGE -
+ * "Wareneingang 12" ueber einer Liste mit 5 Zeilen liest sich wie ein
+ * Fehler. Lieber keine Zahl als eine, die nicht zu dem passt, was
+ * darunter steht; die Summenzeile neben der Tabelle nennt beide.
+ *
+ * WARUM NICHT DIE VORGANGSZAHL JE REITER
+ * Sie waere die Anzahl VERSCHIEDENER CORR_UUID je Filter. OData V4 kann
+ * das ohne $apply nicht, und ZLE_AUST_C_APPL_LOG traegt kein
+ * @Aggregation.applySupported. Im Browser ginge es nur, indem die
+ * Filterlogik aus model/ProcessAxis.ts ein zweites Mal als
+ * JS-Praedikate nachgebaut wuerde - genau die Redundanz, gegen die
+ * ProcessAxis gebaut wurde.
+ *
+ * ⚠ Bewusst ein Formatter und KEINE Ausdrucksbindung. count ist eine
+ * String-Eigenschaft; eine Ausdrucksbindung wandelt referenzierte Werte
+ * vorher in den Zieltyp, aus dem booleschen Flag wuerde "true"/"false" -
+ * beides wahr, der Zaehler waere immer leer. Ein Formatter bekommt die
+ * Rohwerte.
+ */
+export function tabCount(bGrouped?: boolean | null, vCount?: number | string | null): string {
+	if (bGrouped) {
+		return "";
+	}
+	return vCount === undefined || vCount === null ? "" : String(vCount);
+}

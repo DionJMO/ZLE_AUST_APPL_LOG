@@ -603,7 +603,11 @@ export default class Main extends BaseController {
 			oCascade.setProperty("/truncated", oResult.truncated);
 			oCascade.setProperty("/summary", this._bundle().getText(
 				oResult.truncated ? "cascSummaryCut" : "cascSummary",
-				[String(oResult.rows.length), String(oResult.sourceCount)]
+				// Meldungen zuerst: diese Zahl entspricht dem, was der
+				// Reiter ohne Gruppierung anzeigt - so ist der Bezug
+				// erkennbar, statt dass zwei Zahlen unverbunden nebeneinander
+				// stehen.
+				[String(oResult.sourceCount), String(oResult.rows.length)]
 			) ?? "");
 		} catch {
 			oCascade.setProperty("/rows", []);

@@ -288,35 +288,35 @@
 										icon="sap-icon://download-from-cloud"
 										design="Horizontal"
 										text="{i18n>tabIB}"
-										count="{ui>/kpi/tabIB}"/>
+										count="{parts: ['ui>/grouped', 'ui>/kpi/tabIB'], formatter: '.formatter.tabCount'}"/>
 									<IconTabFilter
 										id="idTabOB"
 										key="OB"
 										icon="sap-icon://upload-to-cloud"
 										design="Horizontal"
 										text="{i18n>tabOB}"
-										count="{ui>/kpi/tabOB}"/>
+										count="{parts: ['ui>/grouped', 'ui>/kpi/tabOB'], formatter: '.formatter.tabCount'}"/>
 									<IconTabFilter
 										id="idTabITEM"
 										key="ITEM"
 										icon="sap-icon://product"
 										design="Horizontal"
 										text="{i18n>tabITEM}"
-										count="{ui>/kpi/tabITEM}"/>
+										count="{parts: ['ui>/grouped', 'ui>/kpi/tabITEM'], formatter: '.formatter.tabCount'}"/>
 									<IconTabFilter
 										id="idTabNONE"
 										key="NONE"
 										icon="sap-icon://question-mark"
 										design="Horizontal"
 										text="{i18n>tabNONE}"
-										count="{ui>/kpi/tabNONE}"/>
+										count="{parts: ['ui>/grouped', 'ui>/kpi/tabNONE'], formatter: '.formatter.tabCount'}"/>
 									<IconTabFilter
 										id="idTabALL"
 										key="ALL"
 										icon="sap-icon://activity-items"
 										design="Horizontal"
 										text="{i18n>tabALL}"
-										count="{ui>/kpi/tabALL}"/>
+										count="{parts: ['ui>/grouped', 'ui>/kpi/tabALL'], formatter: '.formatter.tabCount'}"/>
 									<IconTabFilter
 										id="idTabTPA"
 										key="TPA"
