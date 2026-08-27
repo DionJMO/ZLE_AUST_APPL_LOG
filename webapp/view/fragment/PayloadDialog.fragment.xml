@@ -1,0 +1,44 @@
+<!--
+	JSON_PAYLOAD einer einzelnen Logzeile.
+
+	Das Feld liegt seit jeher im OData-Service und war in der Oberflaeche
+	NIRGENDS sichtbar. O-09 hatte das als nicht umsetzbar abgelegt - das war
+	aber eine OVP-Beschraenkung (@UI.facets ist auf S/4HANA 758 nicht
+	aktivierbar). In einer Freestyle-App ist es ein Dialog.
+
+	TextArea statt Text, damit der Inhalt markiert und mit Strg+C kopiert werden
+	kann - fuer eine Rueckfrage an Hoermann ist genau das der Nutzen. Ein
+	eigener Kopier-Button waere navigator.clipboard, und das verbietet die
+	Projektregel sap-no-navigator; der Gewinn waere ohnehin klein.
+-->
+<core:FragmentDefinition
+	xmlns="sap.m"
+	xmlns:core="sap.ui.core">
+
+	<Dialog
+		id="payloadDialog"
+		title="{detail>/payloadTitle}"
+		contentWidth="52rem"
+		contentHeight="32rem"
+		resizable="true"
+		draggable="true">
+
+		<VBox id="payloadBox" class="sapUiSmallMargin">
+			<Text id="payloadMessage" text="{detail>/payloadMessage}" class="sapUiTinyMarginBottom"/>
+			<TextArea
+				id="payloadText"
+				value="{detail>/payload}"
+				editable="false"
+				growing="false"
+				height="24rem"
+				width="100%"/>
+		</VBox>
+
+		<endButton>
+			<Button
+				id="payloadClose"
+				text="{i18n>popClose}"
+				press=".onPayloadClose"/>
+		</endButton>
+	</Dialog>
+</core:FragmentDefinition>

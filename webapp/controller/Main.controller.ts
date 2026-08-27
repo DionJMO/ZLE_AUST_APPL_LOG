@@ -13,6 +13,16 @@ import * as LogAggregator from "../model/LogAggregator";
 import * as KpiLoader from "../model/KpiLoader";
 import * as ChartColors from "../model/ChartColors";
 import * as ProcessAxis from "../model/ProcessAxis";
+import * as KeyDetailLoader from "../model/KeyDetailLoader";
+import * as CascadeGrouper from "../model/CascadeGrouper";
+import Sorter from "sap/ui/model/Sorter";
+import Fragment from "sap/ui/core/Fragment";
+import Popover from "sap/m/Popover";
+import Dialog from "sap/m/Dialog";
+import Control from "sap/ui/core/Control";
+import ODataModel from "sap/ui/model/odata/v4/ODataModel";
+import ResourceModel from "sap/ui/model/resource/ResourceModel";
+import ResourceBundle from "sap/base/i18n/ResourceBundle";
 
 /**
  * @namespace zui5_zle_aust_mon.controller
@@ -27,9 +37,16 @@ export default class Main extends BaseController {
 	 * alle Meldungsreiter und eine fuer die Auftraege.
 	 */
 	private static readonly DEFAULT_VISIBLE: Record<string, number> = {
-		idMsgTable: 5,
+		// 6 statt 5: die Spalte "Schritte" sitzt auf Index 1 und wird von
+		// restore( ) uebersprungen, belegt aber einen Indexplatz. Ohne die
+		// Anhebung fiele die TPA-Nummer aus der Standardauswahl.
+		idMsgTable: 6,
 		idTpaTable: 8
 	};
+
+	/** Detail-Popover und Payload-Dialog werden einmal erzeugt und wiederverwendet. */
+	private _pKeyPopover?: Promise<Popover>;
+	private _pPayloadDialog?: Promise<Dialog>;
 
 	/** Zeitfenster des Verlaufs-Charts in Tagen. */
 	private static readonly CHART_DAYS = 7;
@@ -98,11 +115,26 @@ export default class Main extends BaseController {
 	 * deshalb nicht auf diese Zahl.
 	 */
 	private _applyMsgFilter(): void {
+		if (this.getUiModel().getProperty("/grouped") as boolean) {
+			void this._loadCascades();
+			return;
+		}
 		const oBinding = this._table("idMsgTable")?.getBinding("rows") as ListBinding | undefined;
 		if (!oBinding) {
 			return;
 		}
+		oBinding.filter(this._msgFilters());
+	}
 
+	/**
+	 * Prozess- und Typfilter als Filterliste.
+	 *
+	 * Ausgelagert, weil sie zweimal gebraucht wird: fuer die OData-Bindung
+	 * der Tabelle und fuer den Ladevorgang der Vorgangs-Verdichtung. Zwei
+	 * Kopien wuerden auseinanderlaufen, und dann zeigte die gruppierte
+	 * Sicht etwas anderes als die einzelne.
+	 */
+	private _msgFilters(): Filter[] {
 		const sProcess = this.getUiModel().getProperty("/selectedProcess") as string;
 		const sType = this.getUiModel().getProperty("/selectedType") as string;
 		const aFilters: Filter[] = [];
@@ -122,7 +154,7 @@ export default class Main extends BaseController {
 			}));
 		}
 
-		oBinding.filter(aFilters.length ? [new Filter({ filters: aFilters, and: true })] : []);
+		return aFilters.length ? [new Filter({ filters: aFilters, and: true })] : [];
 	}
 
 	private _loadData(): void {
@@ -205,5 +237,249 @@ export default class Main extends BaseController {
 	private _stampRefresh(): void {
 		const oFormat = DateFormat.getDateTimeInstance({ style: "medium" });
 		this.getUiModel().setProperty("/lastRefreshText", oFormat.format(new Date()));
+	}
+
+	/**
+	 * Detailsicht zu einer TPA-Nummer.
+	 *
+	 * ⚠ Der Filterwert kommt aus dem BINDING-KONTEXT, nicht aus dem Linktext.
+	 * Bei Materialnummern zeigt die Oberflaeche die normalisierte Form ("4028"),
+	 * in der Datenbank steht je nach Erzeuger auch "000000000000004028" - ein
+	 * Filter auf den angezeigten Text fuende die Haelfte der Zeilen nicht.
+	 */
+	public onTpaNumberPress(oEvent: Event): void {
+		void this._openKeyPopover(oEvent, "TPA", "TpaNumber", "OrderNumber");
+	}
+
+	/** Detailsicht zu einer Materialnummer. */
+	public onItemNumberPress(oEvent: Event): void {
+		void this._openKeyPopover(oEvent, "ITEM", "ItemNumber", "ItemNumber");
+	}
+
+	public onKeyPopoverClose(): void {
+		void this._pKeyPopover?.then((oPopover) => oPopover.close());
+	}
+
+	/** Zeigt den JSON_PAYLOAD der angeklickten Logzeile. */
+	public onKeyPopoverLogPress(oEvent: Event): void {
+		// oEvent.getSource( ) liefert laut Typen EventProvider, dort gibt es
+		// weder getBindingContext noch laesst es sich an openBy uebergeben.
+		// Die Assertion ist also noetig - tsc belegt das, ESLints Regel
+		// no-unnecessary-type-assertion urteilt hier falsch.
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+		const oItem = oEvent.getSource() as Control;
+		const oContext = oItem.getBindingContext("detail");
+		const sPayload = (oContext?.getProperty("payload") as string) ?? "";
+		if (!sPayload) {
+			return;
+		}
+		const oDetail = this._detailModel();
+		oDetail.setProperty("/payload", sPayload);
+		oDetail.setProperty("/payloadMessage", (oContext?.getProperty("message") as string) ?? "");
+		oDetail.setProperty("/payloadTitle", (oContext?.getProperty("stamp") as string) ?? "");
+
+		if (!this._pPayloadDialog) {
+			this._pPayloadDialog = Fragment.load({
+				id: this.getView()?.getId(),
+				name: "zui5_zle_aust_mon.view.fragment.PayloadDialog",
+				controller: this
+			}) as Promise<Dialog>;
+			void this._pPayloadDialog.then((oDialog) => this.getView()?.addDependent(oDialog));
+		}
+		void this._pPayloadDialog.then((oDialog) => oDialog.open());
+	}
+
+	public onPayloadClose(): void {
+		void this._pPayloadDialog?.then((oDialog) => oDialog.close());
+	}
+
+	private _bundle(): ResourceBundle {
+		const oModel = this.getView()?.getModel("i18n") as ResourceModel;
+		return oModel.getResourceBundle() as ResourceBundle;
+	}
+
+	private _detailModel(): JSONModel {
+		let oModel = this.getView()?.getModel("detail") as JSONModel | undefined;
+		if (!oModel) {
+			oModel = new JSONModel({ log: [], tpa: [] });
+			this.getView()?.setModel(oModel, "detail");
+		}
+		return oModel;
+	}
+
+	private async _openKeyPopover(
+		oEvent: Event,
+		sKind: KeyDetailLoader.KeyKind,
+		sMainField: string,
+		sTpaField: string
+	): Promise<void> {
+		// oEvent.getSource( ) liefert laut Typen EventProvider, dort gibt es
+		// weder getBindingContext noch laesst es sich an openBy uebergeben.
+		// Die Assertion ist also noetig - tsc belegt das, ESLints Regel
+		// no-unnecessary-type-assertion urteilt hier falsch.
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+		const oSource = oEvent.getSource() as Control;
+		const oMainContext = oSource.getBindingContext("mainModel");
+		const oTpaContext = oSource.getBindingContext("tpaModel");
+		const sRaw = (oMainContext
+			? (oMainContext.getProperty(sMainField) as string)
+			: (oTpaContext?.getProperty(sTpaField) as string)) ?? "";
+
+		if (!sRaw.trim()) {
+			return;
+		}
+
+		const oDetail = this._detailModel();
+		oDetail.setProperty("/busy", true);
+		oDetail.setProperty("/log", []);
+		oDetail.setProperty("/tpa", []);
+
+		await this._openPopover(oSource);
+
+		try {
+			const oDetailData = await KeyDetailLoader.loadKeyDetail(
+				this.getView()?.getModel("mainModel") as ODataModel,
+				this.getView()?.getModel("tpaModel") as ODataModel,
+				sKind,
+				sRaw,
+				this._bundle()
+			);
+			Object.keys(oDetailData).forEach((sKey) => {
+				oDetail.setProperty("/" + sKey, (oDetailData as unknown as Record<string, unknown>)[sKey]);
+			});
+		} catch {
+			oDetail.setProperty("/logHeader", this._bundle().getText("popLoadFailed") ?? "");
+		} finally {
+			oDetail.setProperty("/busy", false);
+		}
+	}
+
+	/**
+	 * Umschalten zwischen Einzelmeldungen und Vorgaengen.
+	 *
+	 * Die Tabelle wird dabei UMGEBUNDEN: im Normalfall haengt sie an
+	 * mainModel>/AppLog (OData, serverseitig gefiltert und geblaettert), in
+	 * der Vorgangssicht an cascade>/rows (JSON, im Browser verdichtet).
+	 *
+	 * ⚠ Die verdichteten Zeilen tragen dieselben Eigenschaftsnamen wie die
+	 * OData-Zeilen. Nur deshalb funktionieren alle bestehenden Spalten in
+	 * beiden Zustaenden unveraendert weiter - es gibt keinen zweiten
+	 * Spaltensatz.
+	 */
+	public onCascadeToggle(oEvent: Event): void {
+		const bPressed = oEvent.getParameter("pressed" as never) as unknown as boolean;
+		this.getUiModel().setProperty("/grouped", bPressed);
+		this._bindMsgRows(bPressed);
+		this._applyMsgFilter();
+	}
+
+	/** Alle Schritte eines Vorgangs - im selben Popover wie die Detailsicht. */
+	public onCascadePress(oEvent: Event): void {
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+		const oSource = oEvent.getSource() as Control;
+		const oContext = oSource.getBindingContext("cascade");
+		const oRow = oContext?.getObject() as CascadeGrouper.CascadeRow | undefined;
+		if (!oRow) {
+			return;
+		}
+		const oBundle = this._bundle();
+		const oDetail = this._detailModel();
+
+		oDetail.setProperty("/title", oBundle.getText("cascTitle", [String(oRow.StepCount)]) ?? "");
+		oDetail.setProperty("/subtitle", oBundle.getText("cascSubtitle") ?? "");
+		oDetail.setProperty("/logHeader", oBundle.getText("popLogPanel", [String(oRow.StepCount)]) ?? "");
+		oDetail.setProperty("/tpaHeader", oBundle.getText("popTpaPanel", ["0"]) ?? "");
+		oDetail.setProperty("/tpaExpanded", false);
+		oDetail.setProperty("/tpa", []);
+		oDetail.setProperty("/busy", false);
+		oDetail.setProperty("/log", (oRow.Steps ?? []).map((oStep) => ({
+			stamp:   this.formatter.timestamp(oStep.CreatedAtStamp),
+			logType: oStep.LogType ?? "",
+			message: oStep.Message ?? "",
+			process: oBundle.getText("popAttrProcess", [this.formatter.dashIfEmpty(oStep.HistoryType)]) ?? "",
+			http:    oStep.HttpStatus ? (oBundle.getText("popAttrHttp", [String(oStep.HttpStatus)]) ?? "") : "",
+			line:    oStep.OrderLineNr ? (oBundle.getText("popAttrLine", [oStep.OrderLineNr]) ?? "") : "",
+			payload: oStep.JsonPayload ?? ""
+		})));
+
+		void this._openPopover(oSource);
+	}
+
+	private _bindMsgRows(bGrouped: boolean): void {
+		const oTable = this._table("idMsgTable");
+		if (!oTable) {
+			return;
+		}
+		if (bGrouped) {
+			oTable.bindRows({ path: "cascade>/rows" });
+		} else {
+			oTable.bindRows({
+				path: "mainModel>/AppLog",
+				parameters: { $count: true },
+				sorter: new Sorter("CreatedAtStamp", true)
+			});
+		}
+	}
+
+	/**
+	 * Laedt die gefilterten Zeilen und verdichtet sie im Browser.
+	 *
+	 * Serverseitig geht das nicht: ZLE_AUST_C_APPL_LOG traegt kein
+	 * @Aggregation.applySupported, es gibt also kein OData-$apply. Dieselbe
+	 * Lage wie beim Verlaufs-Chart, deshalb auch dieselbe Obergrenze und
+	 * derselbe Umgang damit - wird sie erreicht, sagt es die Kopfzeile.
+	 */
+	private async _loadCascades(): Promise<void> {
+		const oCascade = this._cascadeModel();
+		oCascade.setProperty("/busy", true);
+		try {
+			const oBinding = this.getODataModel("mainModel").bindList(
+				"/AppLog",
+				undefined,
+				[new Sorter("CreatedAtStamp", true)],
+				this._msgFilters(),
+				{ $select: "LogUuid,CorrUuid,SeqNr,CreatedAtStamp,LogType,HistoryType,Message,"
+					+ "ItemNumber,TpaNumber,OrderLineNr,BusinessKey,KeyType,Lgnum,HttpStatus,JsonPayload" }
+			);
+			const aContexts = await oBinding.requestContexts(0, CascadeGrouper.MAX_ROWS);
+			const aRows = aContexts.map((oCtx) => oCtx.getObject() as CascadeGrouper.LogRow);
+			const oResult = CascadeGrouper.group(aRows, aRows.length >= CascadeGrouper.MAX_ROWS);
+
+			oCascade.setProperty("/rows", oResult.rows);
+			oCascade.setProperty("/sourceCount", oResult.sourceCount);
+			oCascade.setProperty("/truncated", oResult.truncated);
+			oCascade.setProperty("/summary", this._bundle().getText(
+				oResult.truncated ? "cascSummaryCut" : "cascSummary",
+				[String(oResult.rows.length), String(oResult.sourceCount)]
+			) ?? "");
+		} catch {
+			oCascade.setProperty("/rows", []);
+			oCascade.setProperty("/summary", this._bundle().getText("popLoadFailed") ?? "");
+		} finally {
+			oCascade.setProperty("/busy", false);
+		}
+	}
+
+	/** Erzeugt das Detail-Popover einmalig und oeffnet es am geklickten Element. */
+	private async _openPopover(oSource: Control): Promise<void> {
+		if (!this._pKeyPopover) {
+			this._pKeyPopover = Fragment.load({
+				id: this.getView()?.getId(),
+				name: "zui5_zle_aust_mon.view.fragment.KeyPopover",
+				controller: this
+			}) as Promise<Popover>;
+			void this._pKeyPopover.then((oPopover) => this.getView()?.addDependent(oPopover));
+		}
+		const oPopover = await this._pKeyPopover;
+		oPopover.openBy(oSource);
+	}
+
+	private _cascadeModel(): JSONModel {
+		let oModel = this.getView()?.getModel("cascade") as JSONModel | undefined;
+		if (!oModel) {
+			oModel = new JSONModel({ rows: [], summary: "", truncated: false });
+			this.getView()?.setModel(oModel, "cascade");
+		}
+		return oModel;
 	}
 }

@@ -323,6 +323,19 @@
 												<SegmentedButtonItem id="idTypeS" key="S" text="{i18n>typeS}"/>
 											</items>
 										</SegmentedButton>
+										<ToggleButton
+											id="idCascadeToggle"
+											icon="sap-icon://group-2"
+											text="{i18n>cascToggle}"
+											tooltip="{i18n>cascToggleTooltip}"
+											pressed="{ui>/grouped}"
+											press=".onCascadeToggle"
+											visible="{= ${ui>/selectedProcess} !== 'TPA' }"/>
+										<Text
+											id="idCascadeSummary"
+											text="{cascade>/summary}"
+											visible="{= ${ui>/grouped} === true }"
+											class="sapUiSmallMarginBegin"/>
 										<ToolbarSpacer id="idMsgToolbarSpacer"/>
 										<Button
 											id="idMsgColumnsButton"
@@ -348,7 +361,17 @@
 																					<Text id="msTxtCreatedAt" text="{path: 'mainModel>CreatedAtStamp', formatter: '.formatter.timestamp'}" wrapping="false"/>
 																				</t:template>
 																			</t:Column>
-																			<t:Column id="idMsgTypeColumn" width="7rem" sortProperty="LogType">
+																			<t:Column id="idMsgStepsColumn" width="6rem" hAlign="Center" visible="{= ${ui>/grouped} === true }">
+																				<Label id="msLblSteps" text="{i18n>colSteps}"/>
+																				<t:template>
+																					<Link
+																						id="msLnkSteps"
+																						text="{cascade>StepCount}"
+																						press=".onCascadePress"
+																						tooltip="{i18n>cascStepsTooltip}"/>
+																				</t:template>
+																			</t:Column>
+											<t:Column id="idMsgTypeColumn" width="7rem" sortProperty="LogType">
 																				<Label id="msLblLogType" text="{i18n>colLogType}"/>
 																				<t:template>
 																					<ObjectStatus
@@ -367,13 +390,13 @@
 																			<t:Column id="idMsgItemColumn" width="12rem" sortProperty="ItemNumber">
 																				<Label id="msLblItemNumber" text="{i18n>colItemNumber}"/>
 																				<t:template>
-																					<Text id="msTxtItemNumber" text="{mainModel>ItemNumber}" wrapping="false"/>
+																					<Link id="msTxtItemNumber" text="{path: 'mainModel>ItemNumber', formatter: '.formatter.materialNumber'}" wrapping="false" press=".onItemNumberPress" tooltip="{i18n>popTooltipItem}"/>
 																				</t:template>
 																			</t:Column>
 																			<t:Column id="idMsgTpaColumn" width="11rem" sortProperty="TpaNumber">
 																				<Label id="msLblTpaNumber" text="{i18n>colTpaNumber}"/>
 																				<t:template>
-																					<Text id="msTxtTpaNumber" text="{mainModel>TpaNumber}" wrapping="false"/>
+																					<Link id="msTxtTpaNumber" text="{path: 'mainModel>TpaNumber', formatter: '.formatter.dashIfEmpty'}" wrapping="false" press=".onTpaNumberPress" tooltip="{i18n>popTooltipTpa}"/>
 																				</t:template>
 																			</t:Column>
 																			<t:Column id="idMsgHistoryColumn" width="10rem" sortProperty="HistoryType">
@@ -440,7 +463,7 @@
 																		<t:Column id="idTpaOrderNumberColumn" width="10rem" sortProperty="OrderNumber">
 																			<Label id="tpaLblOrderNumber" text="{i18n>colOrderNumber}"/>
 																			<t:template>
-																				<Text id="tpaTxtOrderNumber" text="{tpaModel>OrderNumber}" wrapping="false"/>
+																				<Link id="tpaTxtOrderNumber" text="{path: 'tpaModel>OrderNumber', formatter: '.formatter.dashIfEmpty'}" wrapping="false" press=".onTpaNumberPress" tooltip="{i18n>popTooltipTpa}"/>
 																			</t:template>
 																		</t:Column>
 																		<t:Column id="idTpaOrderLineColumn" width="7rem">
@@ -452,7 +475,7 @@
 																		<t:Column id="idTpaItemColumn" width="12rem" sortProperty="ItemNumber">
 																			<Label id="tpaLblItem" text="{i18n>colItemNumber}"/>
 																			<t:template>
-																				<Text id="tpaTxtItem" text="{path: 'tpaModel>ItemNumber', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
+																				<Link id="tpaTxtItem" text="{path: 'tpaModel>ItemNumber', formatter: '.formatter.materialNumber'}" wrapping="false" press=".onItemNumberPress" tooltip="{i18n>popTooltipItem}"/>
 																			</t:template>
 																		</t:Column>
 																		<t:Column id="idTpaMengeColumn" width="8rem" hAlign="End">

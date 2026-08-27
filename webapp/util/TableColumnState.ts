@@ -38,9 +38,23 @@ import Table from "sap/ui/table/Table";
  * v2 = 25.08.2026, HTTP-Status in der Abbruch-Tabelle ergaenzt.
  * v3 = 26.08.2026, Umbau auf Reiter - aus sechs Tabellen wurden zwei.
  * v4 = 26.08.2026, fuenf neue Felder aus ZLE_AUST_APL_LOG ergaenzt.
+ * v5 = 27.08.2026, Spalte "Schritte" fuer die Vorgangsverdichtung.
  */
 function storageKey(sTableId: string): string {
-	return "colVis_v4_" + sTableId;
+	return "colVis_v5_" + sTableId;
+}
+
+/**
+ * Spalten, deren Sichtbarkeit an einer BINDUNG haengt, gehoeren nicht in
+ * die Personalisierung.
+ *
+ * Solche Spalten sind ein MODUS, keine Vorliebe - die Spalte "Schritte"
+ * ergibt nur in der Vorgangssicht einen Sinn. Wuerde restore( ) sie
+ * anfassen, ueberschriebe setVisible( ) den Bindungswert; und im Dialog
+ * koennte man sie einschalten, ohne dass es etwas bewirkt.
+ */
+function isModeDriven(oColumn: Column): boolean {
+	return oColumn.isBound("visible");
 }
 
 function columnLabel(oColumn: Column, iIndex: number): string {
@@ -80,6 +94,9 @@ export function restore(oTable: Table, sTableId: string, nDefaultVisible: number
 	const aSaved = readSaved(sTableId);
 
 	aColumns.forEach((oColumn, i) => {
+		if (isModeDriven(oColumn)) {
+			return;
+		}
 		if (aSaved) {
 			if (aSaved[i] !== undefined) {
 				oColumn.setVisible(aSaved[i]);
@@ -95,19 +112,26 @@ export function restore(oTable: Table, sTableId: string, nDefaultVisible: number
  */
 export function openDialog(oTable: Table, sTableId: string): void {
 	const aColumns = oTable.getColumns();
-	const aCheckBoxes = aColumns.map((oColumn, i) => new CheckBox({
-		text: columnLabel(oColumn, i),
-		selected: oColumn.getVisible()
-	}));
+	// null fuer modusgesteuerte Spalten - sie bekommen kein Kaestchen, der
+	// Index bleibt aber erhalten, damit die gespeicherten Flags weiter zu
+	// den Spalten passen.
+	const aCheckBoxes = aColumns.map((oColumn, i) => isModeDriven(oColumn)
+		? null
+		: new CheckBox({ text: columnLabel(oColumn, i), selected: oColumn.getVisible() }));
 
 	const oDialog = new Dialog({
 		title: "Spalten konfigurieren",
-		content: [new VBox({ items: aCheckBoxes })],
+		content: [new VBox({ items: aCheckBoxes.filter((o): o is CheckBox => o !== null) })],
 		beginButton: new Button({
 			text: "OK",
 			type: "Emphasized",
 			press: () => {
-				aColumns.forEach((oColumn, i) => { oColumn.setVisible(aCheckBoxes[i].getSelected()); });
+				aColumns.forEach((oColumn, i) => {
+					const oBox = aCheckBoxes[i];
+					if (oBox) {
+						oColumn.setVisible(oBox.getSelected());
+					}
+				});
 				writeSaved(sTableId, aColumns.map((oColumn) => oColumn.getVisible()));
 				oDialog.close();
 			}

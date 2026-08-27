@@ -220,3 +220,36 @@ export function timestamp(vValue?: string | Date | null): string {
 	}
 	return oTimestampFormat.format(oDate);
 }
+
+/**
+ * Materialnummer in EINER Schreibweise.
+ *
+ * WARUM DAS NOETIG IST
+ * Dasselbe Feld kommt aus dem Backend in zwei Formen, weil die Klassen es
+ * unterschiedlich uebergeben:
+ *
+ *   ZCL_ZLE_AUST_ITEM_TRIGGER   conv #( lv_matnr )        -> 000000000000011217
+ *   ZCL_ZLE_AUST_TO_/OB_TRIGGER |{ matnr alpha = out }|   -> 4028
+ *
+ * Folgen ohne Normalisierung: Sortieren und Filtern nach Material greift
+ * ueber die Zeilen hinweg nicht, und TaskAggregator verdichtet dasselbe
+ * Material als ZWEI Zeilen, wenn es sowohl ein Stammdaten- als auch ein
+ * WM-Problem hat.
+ *
+ * Sauber waere es im ABAP (ein Wort in acht add_message-Aufrufen), aber die
+ * ERP-Seite ruht. Hier ist es die ALPHA-Konvention: fuehrende Nullen fallen
+ * weg, wenn der Wert rein numerisch ist - sonst bleibt er unveraendert.
+ * Ein Materialnummer wie "M-4028" wird also nicht angetastet.
+ */
+export function normalizeMaterial(sValue?: string | null): string {
+	const sTrimmed = (sValue ?? "").trim();
+	if (!sTrimmed || !/^\d+$/.test(sTrimmed)) {
+		return sTrimmed;
+	}
+	return sTrimmed.replace(/^0+/, "") || "0";
+}
+
+/** normalizeMaterial fuer die Anzeige - leer wird zum Gedankenstrich. */
+export function materialNumber(sValue?: string | null): string {
+	return normalizeMaterial(sValue) || DASH;
+}

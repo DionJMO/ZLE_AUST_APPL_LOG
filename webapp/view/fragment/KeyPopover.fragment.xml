@@ -1,0 +1,128 @@
+<!--
+	Detailsicht zu einer TPA- oder Materialnummer.
+
+	PHASE 1: zeigt ausschliesslich, was die beiden vorhandenen OData-Services
+	schon liefern - Logzeilen und Pufferzeilen. Der Zweck ist, den Wechsel in
+	die SAP GUI zu sparen, bei dem man nur nachsehen wollte, was zu diesem
+	Auftrag alles passiert ist.
+
+	PHASE 2 fuellt dieselbe Huelle mit SAP-Feldern aus LTAK/LTAP bzw.
+	MARA/MAKT/MARC/MLGN. Dafuer braucht es einen CDS-View plus Service; die
+	Standardtabellen sind vom Frontend aus nicht erreichbar. Plan und
+	Feldlisten in project2/CLAUDE.md, Abschnitt "Popover auf TPA- und
+	Materialnummer".
+
+	Gebunden wird gegen das JSON-Modell "detail", nicht direkt gegen OData -
+	die Daten werden im Controller geladen, sortiert und aufbereitet. Zwei
+	OData-Listenbindungen in einem Popover waeren schwerer zu steuern und
+	wuerden bei jedem Oeffnen neu aufsetzen.
+-->
+<core:FragmentDefinition
+	xmlns="sap.m"
+	xmlns:core="sap.ui.core"
+	xmlns:f="sap.ui.layout.form">
+
+	<ResponsivePopover
+		id="keyPopover"
+		title="{detail>/title}"
+		placement="Auto"
+		contentWidth="46rem"
+		contentHeight="30rem"
+		resizable="true"
+		verticalScrolling="true">
+
+		<customHeader>
+			<Bar id="keyPopoverBar">
+				<contentLeft>
+					<VBox id="keyPopoverTitleBox" class="sapUiTinyMarginBegin">
+						<Title id="keyPopoverTitle" text="{detail>/title}" level="H3"/>
+						<Text id="keyPopoverSubtitle" text="{detail>/subtitle}" class="sapUiTinyMarginBottom"/>
+					</VBox>
+				</contentLeft>
+				<contentRight>
+					<Button
+						id="keyPopoverClose"
+						icon="sap-icon://decline"
+						type="Transparent"
+						tooltip="{i18n>popClose}"
+						press=".onKeyPopoverClose"/>
+				</contentRight>
+			</Bar>
+		</customHeader>
+
+		<VBox id="keyPopoverContent" busy="{detail>/busy}" busyIndicatorDelay="0">
+
+			<Panel
+				id="keyPopoverLogPanel"
+				headerText="{detail>/logHeader}"
+				expandable="true"
+				expanded="true">
+				<List
+					id="keyPopoverLogList"
+					items="{detail>/log}"
+					noDataText="{i18n>popNoLog}"
+					showSeparators="Inner">
+					<ObjectListItem
+						id="keyPopoverLogItem"
+						title="{detail>message}"
+						intro="{detail>stamp}"
+						type="{= ${detail>payload} ? 'Active' : 'Inactive' }"
+						press=".onKeyPopoverLogPress">
+						<firstStatus>
+							<ObjectStatus
+								id="keyPopoverLogStatus"
+								text="{detail>logType}"
+								state="{path: 'detail>logType', formatter: '.formatter.logTypeState'}"
+								icon="{path: 'detail>logType', formatter: '.formatter.logTypeIcon'}"/>
+						</firstStatus>
+						<attributes>
+							<ObjectAttribute id="keyPopoverLogProcess" text="{detail>process}"/>
+							<ObjectAttribute id="keyPopoverLogHttp" text="{detail>http}"/>
+							<ObjectAttribute id="keyPopoverLogLine" text="{detail>line}"/>
+							<ObjectAttribute id="keyPopoverLogPayloadHint" text="{i18n>popPayloadHint}" visible="{= !!${detail>payload} }"/>
+						</attributes>
+					</ObjectListItem>
+				</List>
+			</Panel>
+
+			<Panel
+				id="keyPopoverTpaPanel"
+				headerText="{detail>/tpaHeader}"
+				expandable="true"
+				expanded="{detail>/tpaExpanded}">
+				<List
+					id="keyPopoverTpaList"
+					items="{detail>/tpa}"
+					noDataText="{i18n>popNoTpa}"
+					showSeparators="Inner">
+					<ObjectListItem
+						id="keyPopoverTpaItem"
+						title="{detail>title}"
+						intro="{detail>intro}"
+						type="Inactive">
+						<firstStatus>
+							<ObjectStatus
+								id="keyPopoverTpaStatus"
+								text="{detail>status}"
+								state="{path: 'detail>status', formatter: '.formatter.orderStatusState'}"
+								icon="{path: 'detail>status', formatter: '.formatter.orderStatusIcon'}"/>
+						</firstStatus>
+						<attributes>
+							<ObjectAttribute id="keyPopoverTpaQty" text="{detail>qty}"/>
+							<ObjectAttribute id="keyPopoverTpaBatch" text="{detail>batch}"/>
+							<ObjectAttribute id="keyPopoverTpaSync" text="{detail>sync}"/>
+						</attributes>
+					</ObjectListItem>
+				</List>
+			</Panel>
+
+			<MessageStrip
+				id="keyPopoverPhaseHint"
+				text="{i18n>popPhaseHint}"
+				type="Information"
+				showIcon="true"
+				class="sapUiSmallMargin"/>
+
+		</VBox>
+	</ResponsivePopover>
+</core:FragmentDefinition>

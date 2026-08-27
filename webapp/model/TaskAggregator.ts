@@ -1,4 +1,5 @@
 import ODataModel from "sap/ui/model/odata/v4/ODataModel";
+import { normalizeMaterial } from "./formatter";
 
 /**
  * Verdichtet die fachlichen Abbrueche zu einer Arbeitsliste.
@@ -126,7 +127,9 @@ export async function loadOpenTasks(oModel: ODataModel, nDays: number): Promise<
 		}
 		const sMessage = (oRow.Message ?? "").trim();
 		const sDay = (oRow.CreatedAt ?? "").slice(0, 10);
-		const sItem = (oRow.ItemNumber ?? "").trim();
+		// Normalisiert, sonst verdichtet dasselbe Material zu zwei Zeilen -
+		// die Trigger-Klassen liefern es in zwei Schreibweisen.
+		const sItem = normalizeMaterial(oRow.ItemNumber);
 
 		// Ohne Materialbezug laesst sich nicht je Material verdichten -
 		// diese Punkte kommen einzeln in die zweite, kurze Liste.
