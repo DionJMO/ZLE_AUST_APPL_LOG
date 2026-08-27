@@ -323,6 +323,13 @@
 												<SegmentedButtonItem id="idTypeS" key="S" text="{i18n>typeS}"/>
 											</items>
 										</SegmentedButton>
+										<SearchField
+											id="idMsgSearch"
+											width="16rem"
+											placeholder="{i18n>searchPlaceholder}"
+											tooltip="{i18n>searchTooltip}"
+											search=".onMsgSearch"
+											visible="{= ${ui>/selectedProcess} !== 'TPA' }"/>
 										<ToggleButton
 											id="idCascadeToggle"
 											icon="sap-icon://group-2"
@@ -354,6 +361,13 @@
 										<t:rowMode>
 											<rm:Auto maxRowCount="14"/>
 										</t:rowMode>
+										<t:noData>
+											<IllustratedMessage
+												id="idMsgNoData"
+												illustrationType="{= ${ui>/searchTerm} ? 'sapIllus-NoSearchResults' : 'sapIllus-NoEntries' }"
+												title="{= ${ui>/searchTerm} ? ${i18n>noDataSearchTitle} : ${i18n>noDataMsgTitle} }"
+												description="{= ${ui>/searchTerm} ? ${i18n>noDataSearchText} : ${i18n>noDataMsgText} }"/>
+										</t:noData>
 										<t:columns>
 																			<t:Column id="idMsgCreatedAtColumn" width="11.5rem" sortProperty="CreatedAtStamp">
 																				<Label id="msLblCreatedAt" text="{i18n>colCreatedAt}"/>
@@ -469,6 +483,13 @@
 																	<t:rowMode>
 																		<rm:Auto maxRowCount="12"/>
 																	</t:rowMode>
+																	<t:noData>
+																		<IllustratedMessage
+																			id="idTpaNoData"
+																			illustrationType="sapIllus-NoEntries"
+																			title="{i18n>noDataTpaTitle}"
+																			description="{i18n>noDataTpaText}"/>
+																	</t:noData>
 																	<t:columns>
 																		<t:Column id="idTpaOrderNumberColumn" width="10rem" sortProperty="OrderNumber">
 																			<Label id="tpaLblOrderNumber" text="{i18n>colOrderNumber}"/>

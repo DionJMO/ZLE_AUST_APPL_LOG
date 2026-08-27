@@ -96,6 +96,19 @@ export default class Main extends BaseController {
 		this._applyMsgFilter();
 	}
 
+	/**
+	 * Volltextsuche ueber die Meldungstabelle.
+	 *
+	 * ⚠ Bewusst nur am search-Ereignis (Eingabetaste, Lupe, Loeschkreuz) und
+	 * NICHT an liveChange: bei ueber 6000 Saetzen wuerde jeder Tastendruck
+	 * eine OData-Abfrage ausloesen.
+	 */
+	public onMsgSearch(oEvent: Event): void {
+		const sQuery = (oEvent.getParameter("query" as never) as unknown as string) ?? "";
+		this.getUiModel().setProperty("/searchTerm", sQuery.trim());
+		this._applyMsgFilter();
+	}
+
 	public onTypeFilterChange(oEvent: Event): void {
 		const oItem = oEvent.getParameter("item" as never) as unknown as { getKey(): string };
 		this.getUiModel().setProperty("/selectedType", oItem.getKey());
@@ -153,6 +166,29 @@ export default class Main extends BaseController {
 		if (sType) {
 			aFilters.push(new Filter({
 				path: "LogType", operator: FilterOperator.EQ, value1: sType
+			}));
+		}
+
+		/*
+		 * Suche ueber drei Felder, ODER-verknuepft und mit Contains.
+		 *
+		 * Contains loest zwei Probleme auf einmal, die sonst je eine
+		 * Sonderbehandlung braeuchten: die TPA-Nummer steht 10-stellig mit
+		 * fuehrenden Nullen in der Tabelle ("0006024397"), getippt wird sie
+		 * aber ohne ("6024397"); und die Materialnummer liegt in zwei
+		 * Schreibweisen vor ("4028" und "000000000000004028"). Contains
+		 * findet beide Male, ohne dass hier normalisiert werden muss.
+		 *
+		 * Message ist mit drin, weil "Stammdaten" oder "ME-Abweichung" die
+		 * naheliegendste Suche ist, wenn man einem Fehlerbild nachgeht.
+		 */
+		const sSearch = this.getUiModel().getProperty("/searchTerm") as string;
+		if (sSearch) {
+			aFilters.push(new Filter({
+				and: false,
+				filters: ["TpaNumber", "ItemNumber", "Message"].map((sField) => new Filter({
+					path: sField, operator: FilterOperator.Contains, value1: sSearch
+				}))
 			}));
 		}
 
