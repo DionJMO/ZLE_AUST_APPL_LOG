@@ -300,6 +300,32 @@ async function loadMaterial(
 }
 
 /**
+ * Die reine TA-Nummer aus dem, was im Log steht.
+ *
+ * 🔴 ZLE_AUST_APL_LOG-TPA_NUMBER (CHAR17) traegt ZWEI FORMATE nebeneinander,
+ * je nachdem, welche Schicht geschrieben hat:
+ *
+ *   Trigger-Klassen   log_msg( iv_tanum = is_ltak-tanum )   "0006024375"
+ *   Consumer-Schicht  die HiLIS-Auftragsnummer              "00060244110001001"
+ *
+ * Die lange Form ist zusammengesetzt: TANUM(10)+TAPOS(4)+LGNUM(3) beim
+ * PutAway, TANUM(10)+LGNUM(3) beim Pick. In BEIDEN Faellen sind die ersten
+ * zehn Stellen die TANUM - genau die Trunkierung, die ZLE_AUST_TPA_SYNC
+ * unbeabsichtigt vornimmt (siehe ../CLAUDE.md, Offene Punkte).
+ *
+ * Ohne diese Ableitung liefert der Filter gegen LTAP-TANUM (NUMC10) bei
+ * jedem Klick auf eine lange Nummer nichts, und das Popover zeigt einen
+ * leeren Auftragskopf.
+ */
+function tanumFrom(sValue: string): string {
+	const sTrimmed = (sValue ?? "").trim();
+	if (!sTrimmed || !/^\d+$/.test(sTrimmed)) {
+		return sTrimmed;
+	}
+	return sTrimmed.length > 10 ? sTrimmed.slice(0, 10) : sTrimmed.padStart(10, "0");
+}
+
+/**
  * Auftragskopf aus LTAK.
  *
  * WARUM GETRENNT VON DEN POSITIONEN
@@ -366,7 +392,7 @@ async function loadTransferOrder(
 	sTransferOrder: string,
 	oBundle: ResourceBundle
 ): Promise<{ header: SapField[]; rows: SapRow[] }> {
-	const sTanum = sTransferOrder.trim();
+	const sTanum = tanumFrom(sTransferOrder);
 	const aRows = await fetchRows(
 		oModel,
 		"/TransferOrderItem",
@@ -425,6 +451,21 @@ async function loadTransferOrder(
 			attrs: aAttrs.filter((sAttr) => sAttr)
 		};
 	});
+
+	/*
+	 * Ein leeres Ergebnis muss sich MELDEN. Die Regel "leere Felder
+	 * verschwinden" wuerde sonst einen Auftragskopf ganz ohne Inhalt
+	 * zeigen - der sieht aus wie ein Anzeigefehler, ist aber ein Befund:
+	 * zu dieser Nummer gibt es in LTAK/LTAP nichts (archiviert, falsche
+	 * Lagernummer, oder die Nummer stammt gar nicht aus einem TA).
+	 */
+	if (!aRows.length) {
+		return {
+			header: [field(oBundle, "sapNoTransferOrder",
+				oBundle.getText("sapNoTransferOrderHint", [sTanum, LGNUM]) ?? "", "Warning")],
+			rows: []
+		};
+	}
 
 	return { header: headerFields(aRows[0], oBundle), rows: aItems };
 }

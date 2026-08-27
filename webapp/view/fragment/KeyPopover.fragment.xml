@@ -25,10 +25,16 @@
 	xmlns="sap.m"
 	xmlns:core="sap.ui.core">
 
+	<!--
+		placement="PreferredLeftOrFlip" statt "Auto": die Ankerzellen
+		(Material, TPA-Nummer) sitzen in den RECHTEN Spalten, und bei 46rem
+		Breite lief das Popover dort ueber den Bildschirmrand hinaus. Links
+		bevorzugen, kippen wenn dort kein Platz ist.
+	-->
 	<ResponsivePopover
 		id="keyPopover"
 		title="{detail>/title}"
-		placement="Auto"
+		placement="PreferredLeftOrFlip"
 		contentWidth="46rem"
 		resizable="true"
 		verticalScrolling="true">
