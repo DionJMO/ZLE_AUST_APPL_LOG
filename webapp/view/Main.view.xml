@@ -171,8 +171,23 @@
 						<headerToolbar>
 							<OverflowToolbar id="chartToolbar" height="3.25rem">
 								<Avatar id="chartAvatar" src="sap-icon://vertical-bar-chart" displaySize="XS" backgroundColor="Accent6"/>
-								<Title id="chartTitle" text="{i18n>chartPanelTitle}" level="H3" titleStyle="H3"/>
+								<Title
+									id="chartTitle"
+									text="{parts: ['i18n>chartPanelTitle', 'ui>/chartDays'], formatter: '.formatter.chartTitle'}"
+									level="H3"
+									titleStyle="H3"/>
 								<ToolbarSpacer id="chartSpacer"/>
+								<SegmentedButton
+									id="idChartDays"
+									selectedKey="{ui>/chartDays}"
+									selectionChange=".onChartDaysChange"
+									tooltip="{i18n>chartDaysTooltip}">
+									<items>
+										<SegmentedButtonItem id="idChartDays7"  key="7"  text="{i18n>chartDays7}"/>
+										<SegmentedButtonItem id="idChartDays14" key="14" text="{i18n>chartDays14}"/>
+										<SegmentedButtonItem id="idChartDays30" key="30" text="{i18n>chartDays30}"/>
+									</items>
+								</SegmentedButton>
 								<ObjectStatus
 									id="idChartTruncatedObjectStatus"
 									state="Warning"
@@ -183,7 +198,8 @@
 						</headerToolbar>
 						<content>
 							<!--
-								Gestapeltes Saeulendiagramm ueber die letzten sieben Tage.
+								Gestapeltes Saeulendiagramm ueber den gewaehlten Zeitraum
+								(7, 14 oder 30 Tage, siehe SegmentedButton oben).
 								Bewusst VizFrame und NICHT sap.ui.comp.smartchart: das vom
 								Kollegen verlinkte SmartChart-Sample setzt OData V2 mit
 								sap:semantics="aggregate", sap:aggregation-role und

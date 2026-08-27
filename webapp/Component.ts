@@ -36,6 +36,9 @@ export default class Component extends UIComponent {
 			// der URL und werden von dort zurueckgeschrieben.
 			searchTerm: "",
 			grouped: false,
+			// String, weil SegmentedButton.selectedKey eine String-Eigenschaft
+			// ist - siehe Kommentar in Main.controller.ts.
+			chartDays: "7",
 			chartTruncated: false,
 			kpi: {
 				gesamt: "0",

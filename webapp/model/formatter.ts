@@ -253,3 +253,13 @@ export function normalizeMaterial(sValue?: string | null): string {
 export function materialNumber(sValue?: string | null): string {
 	return normalizeMaterial(sValue) || DASH;
 }
+
+/**
+ * Ueberschrift des Verlaufs mit dem gewaehlten Zeitraum.
+ *
+ * Der Text traegt einen Platzhalter ("Verlauf ({0} Tage)"), damit die Zahl
+ * nicht in drei Uebersetzungen dupliziert werden muss.
+ */
+export function chartTitle(sPattern?: string | null, vDays?: number | string | null): string {
+	return (sPattern ?? "").replace("{0}", String(vDays ?? ""));
+}

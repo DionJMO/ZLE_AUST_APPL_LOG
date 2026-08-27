@@ -50,7 +50,7 @@ export default class Main extends BaseController {
 	private _pKeyPopover?: Promise<Popover>;
 	private _pPayloadDialog?: Promise<Dialog>;
 
-	/** Zeitfenster des Verlaufs-Charts in Tagen. */
+	/** Voreinstellung des Verlaufs-Zeitfensters in Tagen. */
 	private static readonly CHART_DAYS = 7;
 
 	/**
@@ -67,7 +67,8 @@ export default class Main extends BaseController {
 		p: "/selectedProcess",
 		t: "/selectedType",
 		q: "/searchTerm",
-		g: "/grouped"
+		g: "/grouped",
+		d: "/chartDays"
 	};
 
 	/**
@@ -139,6 +140,20 @@ export default class Main extends BaseController {
 	 * NICHT an liveChange: bei ueber 6000 Saetzen wuerde jeder Tastendruck
 	 * eine OData-Abfrage ausloesen.
 	 */
+	/**
+	 * Zeitfenster des Verlaufs umschalten.
+	 *
+	 * ⚠ Nur der Chart wird neu geladen, nicht die Kennzahlen: die zaehlen
+	 * bewusst ueber ALLE Zeiten und haben mit dem Fenster nichts zu tun.
+	 * Ein _loadData( ) hier waere drei Abfragen fuer nichts.
+	 */
+	public onChartDaysChange(oEvent: Event): void {
+		const oItem = oEvent.getParameter("item" as never) as unknown as { getKey(): string };
+		this.getUiModel().setProperty("/chartDays", oItem.getKey());
+		this._syncUrl();
+		void this._loadChart();
+	}
+
 	public onMsgSearch(oEvent: Event): void {
 		const sQuery = (oEvent.getParameter("query" as never) as unknown as string) ?? "";
 		this.getUiModel().setProperty("/searchTerm", sQuery.trim());
@@ -245,7 +260,7 @@ export default class Main extends BaseController {
 		try {
 			const oData = await LogAggregator.loadLastDays(
 				this.getODataModel("mainModel"),
-				Main.CHART_DAYS
+				Number(this.getUiModel().getProperty("/chartDays")) || Main.CHART_DAYS
 			);
 			(this.getView()?.getModel("chart") as JSONModel).setData(oData);
 			this.getUiModel().setProperty("/chartTruncated", oData.truncated);
@@ -636,12 +651,32 @@ export default class Main extends BaseController {
 			if (sValue === undefined) {
 				return;
 			}
-			oUi.setProperty(sPath, sPath === "/grouped" ? sValue === "1" : sValue);
+			if (sPath === "/grouped") {
+				oUi.setProperty(sPath, sValue === "1");
+			} else if (sPath === "/chartDays") {
+				/*
+				 * Durchgehend als STRING ablegen. selectedKey des
+				 * SegmentedButton ist eine String-Eigenschaft: UI5 wandelt
+				 * eine Zahl beim Setzen zwar still um, die Zwei-Wege-Bindung
+				 * schreibt beim Klick aber einen String zurueck. Der
+				 * Modellwert wechselte damit je nach Herkunft den Typ - genau
+				 * die Sorte Unsauberkeit, die spaeter an einem === auffaellt.
+				 * Gelesen wird ohnehin ueberall mit Number( ).
+				 */
+				oUi.setProperty(sPath, String(Number(sValue) || Main.CHART_DAYS));
+			} else {
+				oUi.setProperty(sPath, sValue);
+			}
 		});
 		this._bApplyingUrl = false;
 
 		this._bindMsgRows(oUi.getProperty("/grouped") as boolean);
 		this._applyMsgFilter();
+		// Kam ein abweichendes Zeitfenster aus der Adresse, muss der Chart
+		// nachziehen - _applyMsgFilter betrifft nur die Tabelle.
+		if (Number(oUi.getProperty("/chartDays")) !== Main.CHART_DAYS) {
+			void this._loadChart();
+		}
 	}
 
 	/**
@@ -677,6 +712,10 @@ export default class Main extends BaseController {
 		}
 		if (oUi.getProperty("/grouped") as boolean) {
 			oQuery.g = "1";
+		}
+		const nDays = Number(oUi.getProperty("/chartDays"));
+		if (nDays && nDays !== Main.CHART_DAYS) {
+			oQuery.d = String(nDays);
 		}
 
 		(this.getOwnerComponent() as UIComponent).getRouter().navTo(
