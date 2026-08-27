@@ -32,13 +32,21 @@
 		Breite lief das Popover dort ueber den Bildschirmrand hinaus. Links
 		bevorzugen, kippen wenn dort kein Platz ist.
 	-->
+	<!--
+		⚠ horizontalScrolling="false" ist der eigentliche Grund, warum ueberhaupt
+		ein Seitwaerts-Scrollbalken auftreten konnte: sap.m.Popover hat die
+		Eigenschaft auf TRUE voreingestellt. Damit bekommt zu breiter Inhalt
+		einen Balken, statt dass er sich fuegt - und der Balken spannt die ganze
+		Popover-Breite, weshalb er wie ein Fehler des Panels aussah.
+	-->
 	<ResponsivePopover
 		id="keyPopover"
 		title="{detail>/title}"
 		placement="PreferredLeftOrFlip"
 		contentWidth="46rem"
 		resizable="true"
-		verticalScrolling="true">
+		verticalScrolling="true"
+		horizontalScrolling="false">
 
 		<customHeader>
 			<Bar id="keyPopoverBar">
@@ -121,30 +129,32 @@
 					sind das zwei, auf dem Telefon (wo der ResponsivePopover zum
 					Vollbild-Dialog wird) eine.
 
-					⚠ Die Klasse zleFieldGrid ist PFLICHT, nicht Schmuck: sie hebt
-					"min-width: auto" auf. Ohne sie schrumpfen die Zellen nicht
-					unter ihre Inhaltsbreite, und das Raster erzeugt einen
-					SEITWAERTS-SCROLLBALKEN. Begruendung in css/app.css.
+					🔴 LABEL UEBER WERT, NICHT DANEBEN - und das ist der Kern.
+					Nebeneinander muss eine Zelle "Bewegungsart WM / BF" UND
+					"2026-08-27 15:58:13" tragen, also rund 19rem; uebereinander
+					nur den laengeren von beiden, rund 10rem. Erst damit passen
+					drei Spalten sicher, und die Anordnung kann gar nicht mehr
+					ueber den Rand laufen - unabhaengig davon, wie lang ein
+					einzelner Wert wird.
 
-					wrapping="true" an den Labels, damit eine zu enge Zelle
-					UMBRICHT statt abzuschneiden - sap.m.Label kuerzt sonst mit
-					Ellipse, und "Bewegungsart WM / BF" waere dann unlesbar.
+					Die Klasse zleFieldGrid hebt zusaetzlich "min-width: auto"
+					auf, damit lange Werte umbrechen statt zu draengen
+					(Begruendung in css/app.css).
 				-->
 				<grid:CSSGrid
 					id="keyPopoverSapFieldGrid"
-					gridTemplateColumns="repeat(auto-fit, minmax(15rem, 1fr))"
-					gridGap="0.5rem 1.5rem"
+					gridTemplateColumns="repeat(auto-fit, minmax(11rem, 1fr))"
+					gridGap="0.75rem 1.5rem"
 					class="sapUiSmallMargin zleFieldGrid"
 					items="{detail>/sap/fields}"
 					visible="{= ${detail>/sap/fields}.length > 0 }">
-					<HBox id="keyPopoverSapFieldBox" justifyContent="SpaceBetween" alignItems="Center">
+					<VBox id="keyPopoverSapFieldBox">
 						<Label id="keyPopoverSapFieldLabel" text="{detail>label}" wrapping="true"/>
 						<ObjectStatus
 							id="keyPopoverSapFieldValue"
 							text="{detail>value}"
-							state="{detail>state}"
-							class="sapUiTinyMarginBegin"/>
-					</HBox>
+							state="{detail>state}"/>
+					</VBox>
 				</grid:CSSGrid>
 
 			</Panel>
