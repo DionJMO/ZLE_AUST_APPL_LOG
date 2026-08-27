@@ -137,11 +137,21 @@
 					id="keyPopoverSapRowList"
 					items="{detail>/sap/rows}"
 					showSeparators="Inner">
+					<!--
+						⚠ templateShareable: false an der attributes-Bindung ist
+						PFLICHT, nicht Kosmetik. Diese Aggregationsbindung sitzt
+						INNERHALB eines Templates - der ObjectListItem wird je Zeile
+						geklont. Ohne die Angabe weiss UI5 nicht, ob es das
+						mitgeklonte Attribut-Template zerstoeren darf, laesst es
+						stehen und warnt vor Speicherleck und doppelten IDs.
+						"false" heisst: gehoert dieser Bindung allein und geht mit
+						ihr.
+					-->
 					<ObjectListItem
 						id="keyPopoverSapRowItem"
 						title="{detail>title}"
 						intro="{detail>intro}"
-						attributes="{detail>attrs}"
+						attributes="{path: 'detail>attrs', templateShareable: false}"
 						type="Inactive">
 						<firstStatus>
 							<ObjectStatus
