@@ -417,11 +417,26 @@
 																				<t:template>
 																					<HBox id="msBoxMessage" alignItems="Center">
 																						<Text id="msTxtMessage" text="{path: 'mainModel>Message', formatter: '.formatter.messageShort'}" wrapping="false" tooltip="{mainModel>Message}"/>
-																						<Link
-																							id="msLnkPayload"
-																							icon="sap-icon://attachment"
-																							text=""
-																							visible="{= !!${mainModel>JsonPayload} }"
+																						<!--
+																							core:Icon statt sap.m.Link: Link hat KEINE
+																							icon-Eigenschaft, das Symbol wurde nie
+																							gerendert. Ein Button waere die Alternative,
+																							erhoeht in einer Tabellenzeile aber die
+																							Zeilenhoehe.
+
+																							⚠ targetType: 'any' ist Pflicht. Eine
+																							Ausdrucksbindung wandelt die referenzierte
+																							Eigenschaft VOR der Auswertung in den Typ der
+																							Zieleigenschaft - hier boolean. UI5 versuchte
+																							also, den JSON-Payload nach boolean zu
+																							konvertieren, und warf je Zeile eine
+																							FormatException.
+																						-->
+																						<core:Icon
+																							id="msIcnPayload"
+																							src="sap-icon://attachment"
+																							decorative="false"
+																							visible="{= !!${path: 'mainModel>JsonPayload', targetType: 'any'} }"
 																							tooltip="{i18n>popPayloadHint}"
 																							press=".onMessagePayloadPress"
 																							class="sapUiTinyMarginBegin"/>
