@@ -39,10 +39,7 @@ export default class Main extends BaseController {
 	 * alle Meldungsreiter und eine fuer die Auftraege.
 	 */
 	private static readonly DEFAULT_VISIBLE: Record<string, number> = {
-		// 6 statt 5: die Spalte "Schritte" sitzt auf Index 1 und wird von
-		// restore( ) uebersprungen, belegt aber einen Indexplatz. Ohne die
-		// Anhebung fiele die TPA-Nummer aus der Standardauswahl.
-		idMsgTable: 6,
+		idMsgTable: 5,
 		idTpaTable: 8
 	};
 
@@ -510,19 +507,19 @@ export default class Main extends BaseController {
 	/**
 	 * Umschalten zwischen Einzelmeldungen und Vorgaengen.
 	 *
-	 * Die Tabelle wird dabei UMGEBUNDEN: im Normalfall haengt sie an
-	 * mainModel>/AppLog (OData, serverseitig gefiltert und geblaettert), in
-	 * der Vorgangssicht an cascade>/rows (JSON, im Browser verdichtet).
+	 * ⚠ KORREKTUR 27.08.2026: die erste Fassung band EINE Tabelle um, von
+	 * mainModel>/AppLog auf cascade>/rows, mit der Begruendung "gleiche
+	 * Eigenschaftsnamen, also funktionieren alle Spalten weiter". Das war
+	 * falsch - die Zellen binden mit Modellpraefix, und in der
+	 * Vorgangssicht lag der Zeilenkontext auf "cascade". Alle Spalten
+	 * blieben leer ausser "Schritte", der einzigen mit cascade>-Bindung.
 	 *
-	 * ⚠ Die verdichteten Zeilen tragen dieselben Eigenschaftsnamen wie die
-	 * OData-Zeilen. Nur deshalb funktionieren alle bestehenden Spalten in
-	 * beiden Zustaenden unveraendert weiter - es gibt keinen zweiten
-	 * Spaltensatz.
+	 * Jetzt haengt jede Tabelle fest an ihrem Modell und wird ueber
+	 * visible umgeschaltet - wie die Auftragstabelle auch.
 	 */
 	public onCascadeToggle(oEvent: Event): void {
 		const bPressed = oEvent.getParameter("pressed" as never) as unknown as boolean;
 		this.getUiModel().setProperty("/grouped", bPressed);
-		this._bindMsgRows(bPressed);
 		this._applyMsgFilter();
 	}
 
@@ -556,22 +553,6 @@ export default class Main extends BaseController {
 		})));
 
 		void this._openPopover(oSource);
-	}
-
-	private _bindMsgRows(bGrouped: boolean): void {
-		const oTable = this._table("idMsgTable");
-		if (!oTable) {
-			return;
-		}
-		if (bGrouped) {
-			oTable.bindRows({ path: "cascade>/rows" });
-		} else {
-			oTable.bindRows({
-				path: "mainModel>/AppLog",
-				parameters: { $count: true },
-				sorter: new Sorter("CreatedAtStamp", true)
-			});
-		}
 	}
 
 	/**
@@ -674,7 +655,6 @@ export default class Main extends BaseController {
 		});
 		this._bApplyingUrl = false;
 
-		this._bindMsgRows(oUi.getProperty("/grouped") as boolean);
 		this._applyMsgFilter();
 		// Kam ein abweichendes Zeitfenster aus der Adresse, muss der Chart
 		// nachziehen - _applyMsgFilter betrifft nur die Tabelle.

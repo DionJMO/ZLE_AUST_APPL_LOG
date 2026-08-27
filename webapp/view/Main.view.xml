@@ -371,7 +371,7 @@
 
 									<t:Table
 										id="idMsgTable"
-										visible="{= ${ui>/selectedProcess} !== 'TPA' }"
+										visible="{= ${ui>/selectedProcess} !== 'TPA' &amp;&amp; ${ui>/grouped} !== true }"
 										rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, sorter: {path: 'CreatedAtStamp', descending: true}}"
 										selectionMode="None"
 										ariaLabelledBy="msgHeading">
@@ -390,16 +390,6 @@
 																				<Label id="msLblCreatedAt" text="{i18n>colCreatedAt}"/>
 																				<t:template>
 																					<Text id="msTxtCreatedAt" text="{path: 'mainModel>CreatedAtStamp', formatter: '.formatter.timestamp'}" wrapping="false"/>
-																				</t:template>
-																			</t:Column>
-																			<t:Column id="idMsgStepsColumn" width="6rem" hAlign="Center" visible="{= ${ui>/grouped} === true }">
-																				<Label id="msLblSteps" text="{i18n>colSteps}"/>
-																				<t:template>
-																					<Link
-																						id="msLnkSteps"
-																						text="{cascade>StepCount}"
-																						press=".onCascadePress"
-																						tooltip="{i18n>cascStepsTooltip}"/>
 																				</t:template>
 																			</t:Column>
 											<t:Column id="idMsgTypeColumn" width="7rem" sortProperty="LogType">
@@ -504,6 +494,88 @@
 																				</t:template>
 																			</t:Column>
 																		</t:columns>
+									</t:Table>
+
+									<!--
+										EIGENE TABELLE FUER DIE VORGANGSSICHT, und das ist kein
+										Zufall zweier Spaltensaetze.
+
+										Die erste Fassung band DIESELBE Tabelle einmal auf
+										mainModel>/AppLog und einmal auf cascade>/rows. Das ging
+										nicht auf: die Zellen binden mit Modellpraefix
+										("{mainModel>Message}"), und in der Vorgangssicht liegt
+										der Zeilenkontext auf "cascade" - alle Spalten blieben
+										leer ausser "Schritte". Gleiche Feldnamen genuegen nicht,
+										das Modell muss auch stimmen.
+
+										Der zweite Grund ist inhaltlich: ein Vorgang ist etwas
+										anderes als eine Meldung. Position, HTTP-Status,
+										Korrelations-ID oder Sequenznummer lassen sich nicht
+										sinnvoll verdichten - deshalb sechs Spalten statt
+										vierzehn und keine Spaltenauswahl.
+									-->
+									<t:Table
+										id="idCascadeTable"
+										visible="{= ${ui>/selectedProcess} !== 'TPA' &amp;&amp; ${ui>/grouped} === true }"
+										rows="{cascade>/rows}"
+										selectionMode="None"
+										ariaLabelledBy="msgHeading">
+										<t:rowMode>
+											<rm:Auto maxRowCount="14"/>
+										</t:rowMode>
+										<t:noData>
+											<IllustratedMessage
+												id="idCascadeNoData"
+												illustrationType="{= ${ui>/searchTerm} ? 'sapIllus-NoSearchResults' : 'sapIllus-NoEntries' }"
+												title="{= ${ui>/searchTerm} ? ${i18n>noDataSearchTitle} : ${i18n>noDataMsgTitle} }"
+												description="{= ${ui>/searchTerm} ? ${i18n>noDataSearchText} : ${i18n>noDataMsgText} }"/>
+										</t:noData>
+										<t:columns>
+											<t:Column id="idCascStampColumn" width="11.5rem" sortProperty="CreatedAtStamp">
+												<Label id="cscLblStamp" text="{i18n>colCreatedAt}"/>
+												<t:template>
+													<Text id="cscTxtStamp" text="{path: 'cascade>CreatedAtStamp', formatter: '.formatter.timestamp'}" wrapping="false"/>
+												</t:template>
+											</t:Column>
+											<t:Column id="idCascStepsColumn" width="6rem" hAlign="Center" sortProperty="StepCount">
+												<Label id="cscLblSteps" text="{i18n>colSteps}"/>
+												<t:template>
+													<Link
+														id="cscLnkSteps"
+														text="{cascade>StepCount}"
+														press=".onCascadePress"
+														tooltip="{i18n>cascStepsTooltip}"/>
+												</t:template>
+											</t:Column>
+											<t:Column id="idCascTypeColumn" width="7rem" sortProperty="LogType">
+												<Label id="cscLblType" text="{i18n>colLogType}"/>
+												<t:template>
+													<ObjectStatus
+														id="cscStaType"
+														text="{cascade>LogType}"
+														state="{path: 'cascade>LogType', formatter: '.formatter.logTypeState'}"
+														icon="{path: 'cascade>LogType', formatter: '.formatter.logTypeIcon'}"/>
+												</t:template>
+											</t:Column>
+											<t:Column id="idCascMessageColumn" minWidth="320">
+												<Label id="cscLblMessage" text="{i18n>colMessage}"/>
+												<t:template>
+													<Text id="cscTxtMessage" text="{path: 'cascade>Message', formatter: '.formatter.messageShort'}" wrapping="false" tooltip="{cascade>Message}"/>
+												</t:template>
+											</t:Column>
+											<t:Column id="idCascItemColumn" width="12rem" sortProperty="ItemNumber">
+												<Label id="cscLblItem" text="{i18n>colItemNumber}"/>
+												<t:template>
+													<Link id="cscLnkItem" text="{path: 'cascade>ItemNumber', formatter: '.formatter.materialNumber'}" wrapping="false" press=".onItemNumberPress" tooltip="{i18n>popTooltipItem}"/>
+												</t:template>
+											</t:Column>
+											<t:Column id="idCascTpaColumn" width="11rem" sortProperty="TpaNumber">
+												<Label id="cscLblTpa" text="{i18n>colTpaNumber}"/>
+												<t:template>
+													<Link id="cscLnkTpa" text="{path: 'cascade>TpaNumber', formatter: '.formatter.dashIfEmpty'}" wrapping="false" press=".onTpaNumberPress" tooltip="{i18n>popTooltipTpa}"/>
+												</t:template>
+											</t:Column>
+										</t:columns>
 									</t:Table>
 
 									<t:Table

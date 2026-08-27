@@ -39,19 +39,25 @@ import Table from "sap/ui/table/Table";
  * v3 = 26.08.2026, Umbau auf Reiter - aus sechs Tabellen wurden zwei.
  * v4 = 26.08.2026, fuenf neue Felder aus ZLE_AUST_APL_LOG ergaenzt.
  * v5 = 27.08.2026, Spalte "Schritte" fuer die Vorgangsverdichtung.
+ * v6 = 27.08.2026, "Schritte" wieder entfernt - die Vorgangssicht hat eine
+ *      eigene Tabelle bekommen, weil eine umgebundene Tabelle ihre Zellen
+ *      nicht mitnimmt (Modellpraefix).
  */
 function storageKey(sTableId: string): string {
-	return "colVis_v5_" + sTableId;
+	return "colVis_v6_" + sTableId;
 }
 
 /**
  * Spalten, deren Sichtbarkeit an einer BINDUNG haengt, gehoeren nicht in
  * die Personalisierung.
  *
- * Solche Spalten sind ein MODUS, keine Vorliebe - die Spalte "Schritte"
- * ergibt nur in der Vorgangssicht einen Sinn. Wuerde restore( ) sie
+ * Solche Spalten sind ein MODUS, keine Vorliebe. Wuerde restore( ) sie
  * anfassen, ueberschriebe setVisible( ) den Bindungswert; und im Dialog
  * koennte man sie einschalten, ohne dass es etwas bewirkt.
+ *
+ * ℹ Derzeit hat KEINE Spalte eine gebundene Sichtbarkeit - die Regel steht
+ * hier trotzdem, weil sie fuer diese Verwaltung allgemein gilt und der
+ * naechste modusgesteuerte Spalteneintrag sonst genau in diese Falle liefe.
  */
 function isModeDriven(oColumn: Column): boolean {
 	return oColumn.isBound("visible");
