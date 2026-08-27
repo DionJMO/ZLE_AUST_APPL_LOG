@@ -33,11 +33,12 @@
 		bevorzugen, kippen wenn dort kein Platz ist.
 	-->
 	<!--
-		⚠ horizontalScrolling="false" ist der eigentliche Grund, warum ueberhaupt
-		ein Seitwaerts-Scrollbalken auftreten konnte: sap.m.Popover hat die
-		Eigenschaft auf TRUE voreingestellt. Damit bekommt zu breiter Inhalt
-		einen Balken, statt dass er sich fuegt - und der Balken spannt die ganze
-		Popover-Breite, weshalb er wie ein Fehler des Panels aussah.
+		horizontalScrolling="false" ist ein SICHERUNGSNETZ, nicht die Behebung -
+		ich hatte es zunaechst fuer die Ursache gehalten, und das war falsch
+		(die lag am width="100%" des CSSGrid, s. unten). Die Eigenschaft ist bei
+		sap.m.Popover auf TRUE voreingestellt; fuer eine Detailsicht ist
+		seitwaerts scrollen aber nie die richtige Antwort auf zu breiten Inhalt -
+		umbrechen ist es. Deshalb bleibt sie aus.
 	-->
 	<ResponsivePopover
 		id="keyPopover"
@@ -123,10 +124,10 @@
 					das viel Hoehe fuer wenig Inhalt, und der Kopf schob die
 					Positionen aus dem Bild.
 
-					"repeat(auto-fit, minmax(15rem, 1fr))" braucht dafuer KEINE
+					"repeat(auto-fit, minmax(11rem, 1fr))" braucht dafuer KEINE
 					Breakpoints: der Browser legt so viele Spalten an, wie bei
-					15rem Mindestbreite hineinpassen. Im 46rem breiten Popover
-					sind das zwei, auf dem Telefon (wo der ResponsivePopover zum
+					11rem Mindestbreite hineinpassen. Im 46rem breiten Popover
+					sind das drei, auf dem Telefon (wo der ResponsivePopover zum
 					Vollbild-Dialog wird) eine.
 
 					🔴 LABEL UEBER WERT, NICHT DANEBEN - und das ist der Kern.
@@ -141,8 +142,26 @@
 					auf, damit lange Werte umbrechen statt zu draengen
 					(Begruendung in css/app.css).
 				-->
+				<!--
+					🔴 width="auto" IST DIE URSACHENBEHEBUNG, kein Feinschliff.
+					sap.ui.layout.cssgrid.CSSGrid hat width mit Vorgabewert
+					"100%", und der Renderer schreibt ihn als INLINE-STIL
+					(CSSGridRenderer: oRM.style("width", oControl.getWidth())).
+					"width: 100%" plus "margin: 1rem" links und rechts ergibt
+					100% + 2rem -> Ueberlauf um genau die Randbreite, und damit
+					einen Seitwaerts-Scrollbalken. box-sizing: border-box hilft
+					nicht: das deckt Padding und Rahmen ab, NICHT Margin.
+
+					Genau deshalb war nur der Kopf betroffen und die Positionen
+					nicht - die tragen nur sapUiTinyMarginTop, also keinen
+					waagerechten Rand.
+
+					Mit width="auto" ist das Element wieder blockweit und die
+					Raender verkleinern es, statt es zu sprengen.
+				-->
 				<grid:CSSGrid
 					id="keyPopoverSapFieldGrid"
+					width="auto"
 					gridTemplateColumns="repeat(auto-fit, minmax(11rem, 1fr))"
 					gridGap="0.75rem 1.5rem"
 					class="sapUiSmallMargin zleFieldGrid"
@@ -221,8 +240,12 @@
 								Engeres Raster als im Kopf: Datum, Charge und Drucker
 								sind kurz, da passen bei 12rem drei Spalten nebeneinander.
 							-->
+							<!-- width="auto" auch hier: heute ohne waagerechten Rand
+								 unauffaellig, aber eine spaeter ergaenzte
+								 Margin-Klasse braechte denselben Ueberlauf zurueck. -->
 							<grid:CSSGrid
 								id="keyPopoverSapRowAttrGrid"
+								width="auto"
 								gridTemplateColumns="repeat(auto-fit, minmax(12rem, 1fr))"
 								gridGap="0.25rem 1.5rem"
 								class="sapUiTinyMarginTop zleFieldGrid"
