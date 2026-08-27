@@ -384,7 +384,17 @@
 																			<t:Column id="idMsgMessageColumn" minWidth="320">
 																				<Label id="msLblMessage" text="{i18n>colMessage}"/>
 																				<t:template>
-																					<Text id="msTxtMessage" text="{path: 'mainModel>Message', formatter: '.formatter.messageShort'}" wrapping="false" tooltip="{mainModel>Message}"/>
+																					<HBox id="msBoxMessage" alignItems="Center">
+																						<Text id="msTxtMessage" text="{path: 'mainModel>Message', formatter: '.formatter.messageShort'}" wrapping="false" tooltip="{mainModel>Message}"/>
+																						<Link
+																							id="msLnkPayload"
+																							icon="sap-icon://attachment"
+																							text=""
+																							visible="{= !!${mainModel>JsonPayload} }"
+																							tooltip="{i18n>popPayloadHint}"
+																							press=".onMessagePayloadPress"
+																							class="sapUiTinyMarginBegin"/>
+																					</HBox>
 																				</t:template>
 																			</t:Column>
 																			<t:Column id="idMsgItemColumn" width="12rem" sortProperty="ItemNumber">

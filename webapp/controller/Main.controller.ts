@@ -16,6 +16,7 @@ import * as ProcessAxis from "../model/ProcessAxis";
 import * as KeyDetailLoader from "../model/KeyDetailLoader";
 import * as CascadeGrouper from "../model/CascadeGrouper";
 import * as SapLookup from "../model/SapLookup";
+import { normalizeMaterial as formatterNormalize } from "../model/formatter";
 import Sorter from "sap/ui/model/Sorter";
 import Fragment from "sap/ui/core/Fragment";
 import Popover from "sap/m/Popover";
@@ -257,6 +258,29 @@ export default class Main extends BaseController {
 		void this._openKeyPopover(oEvent, "ITEM", "ItemNumber", "ItemNumber");
 	}
 
+	/**
+	 * JSON-Payload direkt aus der Meldungstabelle.
+	 *
+	 * Bis zum 27.08.2026 fuehrte der einzige Weg dorthin ueber das
+	 * Verlaufs-Panel im Popover - und genau das war die Dublette, weil es
+	 * die Tabelle wiederholte, in der man ohnehin gerade steht. Jetzt haengt
+	 * das Symbol an der Zeile selbst und erscheint nur, wo es einen Payload
+	 * gibt.
+	 */
+	public onMessagePayloadPress(oEvent: Event): void {
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+		const oSource = oEvent.getSource() as Control;
+		const oContext = oSource.getBindingContext("mainModel");
+		if (!oContext) {
+			return;
+		}
+		this._showPayload(
+			(oContext.getProperty("JsonPayload") as string) ?? "",
+			(oContext.getProperty("Message") as string) ?? "",
+			this.formatter.timestamp((oContext.getProperty("CreatedAtStamp") as string) ?? "")
+		);
+	}
+
 	public onKeyPopoverClose(): void {
 		void this._pKeyPopover?.then((oPopover) => oPopover.close());
 	}
@@ -274,10 +298,21 @@ export default class Main extends BaseController {
 		if (!sPayload) {
 			return;
 		}
+		this._showPayload(
+			sPayload,
+			(oContext?.getProperty("message") as string) ?? "",
+			(oContext?.getProperty("stamp") as string) ?? ""
+		);
+	}
+
+	private _showPayload(sPayload: string, sMessage: string, sTitle: string): void {
+		if (!sPayload) {
+			return;
+		}
 		const oDetail = this._detailModel();
 		oDetail.setProperty("/payload", sPayload);
-		oDetail.setProperty("/payloadMessage", (oContext?.getProperty("message") as string) ?? "");
-		oDetail.setProperty("/payloadTitle", (oContext?.getProperty("stamp") as string) ?? "");
+		oDetail.setProperty("/payloadMessage", sMessage);
+		oDetail.setProperty("/payloadTitle", sTitle);
 
 		if (!this._pPayloadDialog) {
 			this._pPayloadDialog = Fragment.load({
@@ -302,7 +337,7 @@ export default class Main extends BaseController {
 	private _detailModel(): JSONModel {
 		let oModel = this.getView()?.getModel("detail") as JSONModel | undefined;
 		if (!oModel) {
-			oModel = new JSONModel({ log: [], logExpanded: true, sap: { available: false, hint: "", header: "", fields: [], rows: [] } });
+			oModel = new JSONModel({ log: [], logVisible: false, sap: { available: false, hint: "", header: "", fields: [], rows: [] } });
 			this.getView()?.setModel(oModel, "detail");
 		}
 		return oModel;
@@ -333,42 +368,48 @@ export default class Main extends BaseController {
 		const oDetail = this._detailModel();
 		oDetail.setProperty("/busy", true);
 		oDetail.setProperty("/log", []);
-		oDetail.setProperty("/logExpanded", true);
+		oDetail.setProperty("/logVisible", false);
 
 		await this._openPopover(oSource);
 
 		try {
-			const oSap = SapLookup.load(
+			/*
+			 * SAP ZUERST, und der Log NUR wenn er gebraucht wird.
+			 *
+			 * Stehen die SAP-Felder, ist das Verlaufs-Panel ausgeblendet -
+			 * dann waere ein Ladevorgang dafuer eine Abfrage fuer nichts.
+			 * Deshalb hier bewusst nacheinander statt parallel: die
+			 * Rueckfallebene kostet nur dann, wenn sie eintritt.
+			 */
+			const oSapData = await SapLookup.load(
 				this.getView()?.getModel("lookupModel") as ODataModel | undefined,
 				sKind,
 				sRaw,
 				this._bundle()
 			);
-
-			const oDetailData = await KeyDetailLoader.loadKeyDetail(
-				this.getView()?.getModel("mainModel") as ODataModel,
-				sKind,
-				sRaw,
-				this._bundle()
-			);
-			Object.keys(oDetailData).forEach((sKey) => {
-				oDetail.setProperty("/" + sKey, (oDetailData as unknown as Record<string, unknown>)[sKey]);
-			});
-			// Phase 2 wird PARALLEL geladen und erst hier erwartet: faellt der
-			// Lookup-Service aus, steht Phase 1 trotzdem schon.
-			const oSapData = await oSap;
 			oDetail.setProperty("/sap", oSapData);
 
-			/*
-			 * Stehen die SAP-Felder zur Verfuegung, sind SIE der Grund, warum
-			 * jemand das Popover geoeffnet hat - der Verlauf wiederholt im
-			 * Wesentlichen die Tabelle dahinter. Also klappt er zu und das
-			 * SAP-Panel auf. Ohne SAP-Daten bleibt der Verlauf offen, sonst
-			 * waere das Popover leer.
-			 */
-			oDetail.setProperty("/logExpanded", !oSapData.available);
+			const oBundle = this._bundle();
+			oDetail.setProperty("/title",
+				oBundle.getText(sKind === "ITEM" ? "popTitleItem" : "popTitleTpa",
+					[sKind === "ITEM" ? formatterNormalize(sRaw) : sRaw.trim()]) ?? sRaw);
+			oDetail.setProperty("/subtitle",
+				oBundle.getText(sKind === "ITEM" ? "popSubtitleItem" : "popSubtitleTpa") ?? "");
+
+			if (!oSapData.available) {
+				const oDetailData = await KeyDetailLoader.loadKeyDetail(
+					this.getView()?.getModel("mainModel") as ODataModel,
+					sKind,
+					sRaw,
+					oBundle
+				);
+				oDetail.setProperty("/logHeader", oDetailData.logHeader);
+				oDetail.setProperty("/log", oDetailData.log);
+				oDetail.setProperty("/logVisible", true);
+			}
 		} catch {
 			oDetail.setProperty("/logHeader", this._bundle().getText("popLoadFailed") ?? "");
+			oDetail.setProperty("/logVisible", true);
 			oDetail.setProperty("/sap", { available: false, hint: "", header: "", fields: [], rows: [] });
 		} finally {
 			oDetail.setProperty("/busy", false);
@@ -412,7 +453,7 @@ export default class Main extends BaseController {
 		oDetail.setProperty("/busy", false);
 		oDetail.setProperty("/sap", { available: false, hint: "", header: "", fields: [], rows: [] });
 		// Im Kaskaden-Popover IST der Verlauf der Inhalt, nicht die Beigabe.
-		oDetail.setProperty("/logExpanded", true);
+		oDetail.setProperty("/logVisible", true);
 		oDetail.setProperty("/log", (oRow.Steps ?? []).map((oStep) => ({
 			stamp:   this.formatter.timestamp(oStep.CreatedAtStamp),
 			logType: oStep.LogType ?? "",

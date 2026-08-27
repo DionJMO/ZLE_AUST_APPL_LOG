@@ -4,9 +4,11 @@
 	ZWEI PANELS, UND DAS IST ABSICHT:
 	  SAP      - Stammdaten bzw. TA-Positionen. Der Grund, warum jemand das
 	             Popover oeffnet, deshalb aufgeklappt.
-	  Verlauf  - alle Logzeilen zu diesem Schluessel, zugeklappt. Er ist NICHT
-	             dasselbe wie die Tabelle dahinter (die ist nach Prozess und
-	             Typ gefiltert) und der einzige Zugang zum JSON_PAYLOAD.
+	  Verlauf  - NUR fuer die Kaskadensicht und als Rueckfallebene, wenn der
+	             Lookup-Service nicht antwortet. Bei vorhandenen SAP-Daten
+	             ist er ausgeblendet: er wiederholte die Tabelle dahinter.
+	             Der JSON_PAYLOAD ist seit dem 27.08.2026 direkt in der
+	             Meldungszelle erreichbar, nicht mehr nur hier.
 
 	⚠ Ein drittes Panel mit den Pufferzeilen aus ZLE_AUST_TPA gab es bis zum
 	  27.08.2026. Es ist entfallen: seit die TA-Positionen aus LTAK/LTAP da
@@ -57,7 +59,8 @@
 				id="keyPopoverLogPanel"
 				headerText="{detail>/logHeader}"
 				expandable="true"
-				expanded="{detail>/logExpanded}">
+				expanded="true"
+				visible="{detail>/logVisible}">
 				<List
 					id="keyPopoverLogList"
 					items="{detail>/log}"
