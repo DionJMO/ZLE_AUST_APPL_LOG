@@ -508,8 +508,6 @@ export default class Main extends BaseController {
 			oDetail.setProperty("/title",
 				oBundle.getText(sKind === "ITEM" ? "popTitleItem" : "popTitleTpa",
 					[sKind === "ITEM" ? formatterNormalize(sRaw) : sRaw.trim()]) ?? sRaw);
-			oDetail.setProperty("/subtitle",
-				oBundle.getText(sKind === "ITEM" ? "popSubtitleItem" : "popSubtitleTpa") ?? "");
 
 			if (!oSapData.available) {
 				const oDetailData = await KeyDetailLoader.loadKeyDetail(
@@ -563,7 +561,6 @@ export default class Main extends BaseController {
 		const oDetail = this._detailModel();
 
 		oDetail.setProperty("/title", oBundle.getText("cascTitle", [String(oRow.StepCount)]) ?? "");
-		oDetail.setProperty("/subtitle", oBundle.getText("cascSubtitle") ?? "");
 		oDetail.setProperty("/logHeader", oBundle.getText("popLogPanel", [String(oRow.StepCount)]) ?? "");
 		oDetail.setProperty("/busy", false);
 		oDetail.setProperty("/sap", { available: false, hint: "", header: "", fields: [], rowsHeader: "", rows: [] });

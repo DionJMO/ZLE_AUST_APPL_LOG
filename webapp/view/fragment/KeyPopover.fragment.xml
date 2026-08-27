@@ -30,17 +30,23 @@
 		title="{detail>/title}"
 		placement="Auto"
 		contentWidth="46rem"
-		contentHeight="30rem"
 		resizable="true"
 		verticalScrolling="true">
 
 		<customHeader>
 			<Bar id="keyPopoverBar">
+				<!--
+					⚠ Titel DIREKT in contentLeft, nicht in einer VBox.
+					sap.m.Bar verteilt die Breiten auf links/mitte/rechts; ein
+					Flex-Container ohne eigene Breite kollabiert dabei auf
+					null. Der Titel stand vorher in einer VBox und war
+					deshalb NIE sichtbar - der Kopf zeigte nur das X aus
+					contentRight. Der Untertitel ist mit entfallen: die
+					Panel-Ueberschriften darunter sagen ohnehin, was zu sehen
+					ist.
+				-->
 				<contentLeft>
-					<VBox id="keyPopoverTitleBox" class="sapUiTinyMarginBegin">
-						<Title id="keyPopoverTitle" text="{detail>/title}" level="H3"/>
-						<Text id="keyPopoverSubtitle" text="{detail>/subtitle}" class="sapUiTinyMarginBottom"/>
-					</VBox>
+					<Title id="keyPopoverTitle" text="{detail>/title}" level="H3" titleStyle="H5" class="sapUiTinyMarginBegin"/>
 				</contentLeft>
 				<contentRight>
 					<Button
@@ -150,12 +156,18 @@
 				</List>
 			</Panel>
 
+			<!--
+				An den TEXT gebunden, nicht an available: in der Kaskadensicht
+				gibt es gar keinen SAP-Abruf, available ist dort false und der
+				Hinweis leer - die Leiste erschien trotzdem, als blaue Zeile
+				ohne Inhalt.
+			-->
 			<MessageStrip
 				id="keyPopoverSapHint"
 				text="{detail>/sap/hint}"
 				type="Information"
 				showIcon="true"
-				visible="{= ${detail>/sap/available} !== true }"
+				visible="{= ${detail>/sap/hint} !== '' }"
 				class="sapUiSmallMargin"/>
 
 		</VBox>
