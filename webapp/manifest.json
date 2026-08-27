@@ -145,7 +145,7 @@
         "settings": {
           "operationMode": "Server",
           "autoExpandSelect": true,
-          "earlyRequests": false
+          "earlyRequests": true
         }
       }
     },
