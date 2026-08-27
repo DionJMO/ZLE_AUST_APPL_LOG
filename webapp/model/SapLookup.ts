@@ -51,7 +51,19 @@ export interface SapRow {
 	intro: string;
 	status: string;
 	statusState: string;
-	attrs: string[];
+	/**
+	 * Soll/Ist und Von->Nach. Bleiben VOLLE BREITE und stehen immer da:
+	 * sie sind der Kern einer TA-Position, und eine fehlende Menge waere
+	 * selbst ein Befund.
+	 */
+	lines: string[];
+	/**
+	 * Metadaten (WE-Datum, MHD, Charge, ...) als Label/Wert. Sie flossen
+	 * frueher als je eine volle Zeile untereinander - sechs Zeilen fuer
+	 * sechs kurze Werte. Als SapField koennen sie im Raster nebeneinander
+	 * stehen und teilen sich die Leer-Regel mit dem Kopf-Panel.
+	 */
+	attrs: SapField[];
 }
 
 export interface SapDetail {
@@ -152,12 +164,6 @@ function pushIf(aTarget: SapField[], oField: SapField): void {
 	if (oField.value.trim() || oField.state !== "None") {
 		aTarget.push(oField);
 	}
-}
-
-/** Beschriftetes Attribut, leer wenn ohne Wert - zum Herausfiltern. */
-function attr(oBundle: ResourceBundle, sKey: string, sValue: string): string {
-	const sTrimmed = sValue.trim();
-	return sTrimmed ? `${oBundle.getText(sKey) ?? sKey}: ${sTrimmed}` : "";
 }
 
 /*
@@ -405,20 +411,23 @@ async function loadTransferOrder(
 		const sUser = text(oRow.ConfirmedByUser).trim();
 
 		/*
-		 * Je Attribut eine Zeile, und leere fallen HERAUS statt als "-" zu
-		 * erscheinen. Vorher standen zusammengesetzte Texte drin
-		 * ("WE-Datum - · MHD -"), die bei halb gefuellten Positionen
-		 * kaputt aussahen und die gefuellten Angaben zudeckten.
+		 * ZWEI EBENEN, UND DAS IST DER PUNKT DER ANORDNUNG:
 		 *
-		 * Soll/Ist und Von->Nach bleiben immer stehen: sie sind der Kern
-		 * einer TA-Position, und eine fehlende Menge waere selbst ein
-		 * Befund.
+		 * lines = Soll/Ist und Von->Nach. Der Kern der Position, volle
+		 *   Breite, immer sichtbar - eine fehlende Menge ist selbst ein
+		 *   Befund.
+		 * attrs = Metadaten. Kurze Werte (Datum, Charge, Drucker), die
+		 *   frueher je eine volle Zeile belegten. Als Label/Wert-Paare
+		 *   stehen sie jetzt im Raster nebeneinander.
 		 *
-		 * ⚠ Die Bewegungsart steht NICHT mehr hier - sie kommt aus LTAK und
-		 * waere bei jeder Position derselbe Wert. Sie sitzt jetzt im
-		 * Kopf-Panel.
+		 * Leere fallen wie ueberall HERAUS statt als "-" zu erscheinen.
+		 * Vorher standen zusammengesetzte Texte drin ("WE-Datum - · MHD -"),
+		 * die bei halb gefuellten Positionen kaputt aussahen.
+		 *
+		 * ⚠ Die Bewegungsart steht NICHT hier - sie kommt aus LTAK und waere
+		 * bei jeder Position derselbe Wert. Sie sitzt im Kopf-Panel.
 		 */
-		const aAttrs = [
+		const aLines = [
 			oBundle.getText("sapAttrQty", [
 				quantityOrDash(oRow.DestTargetQtyInAltUnit as string | number | null),
 				quantityOrDash(oRow.DestActualQtyInAltUnit as string | number | null),
@@ -427,14 +436,16 @@ async function loadTransferOrder(
 			oBundle.getText("sapAttrBin", [
 				`${text(oRow.SourceStorageType) || "–"}/${text(oRow.SourceStorageBin) || "–"}`,
 				`${text(oRow.DestStorageType) || "–"}/${text(oRow.DestStorageBin) || "–"}`
-			]) ?? "",
-			attr(oBundle, "sapLblGr", text(oRow.GoodsReceiptDate)),
-			attr(oBundle, "sapLblBbd", text(oRow.ShelfLifeExpirationDate)),
-			attr(oBundle, "sapLblBatch", text(oRow.Batch)),
-			attr(oBundle, "sapLblSpecial", text(oRow.SpecialStockNumber)),
-			attr(oBundle, "sapLblDelivery", text(oRow.DeliveryDocument)),
-			attr(oBundle, "sapLblPrinter", text(oRow.PrinterName))
+			]) ?? ""
 		];
+
+		const aAttrs: SapField[] = [];
+		pushIf(aAttrs, field(oBundle, "sapLblGr", text(oRow.GoodsReceiptDate)));
+		pushIf(aAttrs, field(oBundle, "sapLblBbd", text(oRow.ShelfLifeExpirationDate)));
+		pushIf(aAttrs, field(oBundle, "sapLblBatch", text(oRow.Batch)));
+		pushIf(aAttrs, field(oBundle, "sapLblSpecial", text(oRow.SpecialStockNumber)));
+		pushIf(aAttrs, field(oBundle, "sapLblDelivery", text(oRow.DeliveryDocument)));
+		pushIf(aAttrs, field(oBundle, "sapLblPrinter", text(oRow.PrinterName)));
 
 		return {
 			title: oBundle.getText("sapTaItem", [
@@ -448,7 +459,8 @@ async function loadTransferOrder(
 				? oBundle.getText(sUser ? "sapConfirmed" : "sapConfirmedPlain", sUser ? [sUser] : undefined)
 				: oBundle.getText("sapOpen")) ?? "",
 			statusState: bConfirmed ? "Success" : "Warning",
-			attrs: aAttrs.filter((sAttr) => sAttr)
+			lines: aLines.filter((sLine) => sLine),
+			attrs: aAttrs
 		};
 	});
 

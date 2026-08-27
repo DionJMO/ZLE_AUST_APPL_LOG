@@ -23,7 +23,8 @@
 -->
 <core:FragmentDefinition
 	xmlns="sap.m"
-	xmlns:core="sap.ui.core">
+	xmlns:core="sap.ui.core"
+	xmlns:grid="sap.ui.layout.cssgrid">
 
 	<!--
 		placement="PreferredLeftOrFlip" statt "Auto": die Ankerzellen
@@ -108,21 +109,34 @@
 				expanded="true"
 				visible="{= ${detail>/sap/available} === true }">
 
-				<List
-					id="keyPopoverSapFieldList"
+				<!--
+					RASTER STATT LISTE. Eine Liste gibt jedem Feld eine eigene
+					volle Zeile - bei Werten wie "999", "1", "0" oder "02" ist
+					das viel Hoehe fuer wenig Inhalt, und der Kopf schob die
+					Positionen aus dem Bild.
+
+					"repeat(auto-fit, minmax(15rem, 1fr))" braucht dafuer KEINE
+					Breakpoints: der Browser legt so viele Spalten an, wie bei
+					15rem Mindestbreite hineinpassen. Im 46rem breiten Popover
+					sind das zwei, auf dem Telefon (wo der ResponsivePopover zum
+					Vollbild-Dialog wird) eine.
+				-->
+				<grid:CSSGrid
+					id="keyPopoverSapFieldGrid"
+					gridTemplateColumns="repeat(auto-fit, minmax(15rem, 1fr))"
+					gridGap="0.5rem 2rem"
+					class="sapUiSmallMargin"
 					items="{detail>/sap/fields}"
-					showSeparators="None"
 					visible="{= ${detail>/sap/fields}.length > 0 }">
-					<CustomListItem id="keyPopoverSapFieldItem">
-						<HBox id="keyPopoverSapFieldBox" justifyContent="SpaceBetween" class="sapUiTinyMargin">
-							<Label id="keyPopoverSapFieldLabel" text="{detail>label}"/>
-							<ObjectStatus
-								id="keyPopoverSapFieldValue"
-								text="{detail>value}"
-								state="{detail>state}"/>
-						</HBox>
-					</CustomListItem>
-				</List>
+					<HBox id="keyPopoverSapFieldBox" justifyContent="SpaceBetween" alignItems="Center">
+						<Label id="keyPopoverSapFieldLabel" text="{detail>label}"/>
+						<ObjectStatus
+							id="keyPopoverSapFieldValue"
+							text="{detail>value}"
+							state="{detail>state}"
+							class="sapUiTinyMarginBegin"/>
+					</HBox>
+				</grid:CSSGrid>
 
 			</Panel>
 
@@ -139,36 +153,72 @@
 				expandable="true"
 				expanded="true"
 				visible="{= ${detail>/sap/rows}.length > 0 }">
+				<!--
+					⚠ templateShareable: false ist an BEIDEN inneren Bindungen
+					(lines, attrs) PFLICHT, nicht Kosmetik: sie sitzen INNERHALB
+					des Zeilen-Templates und werden je Position mitgeklont. Ohne
+					die Angabe weiss UI5 nicht, ob es die Kopie zerstoeren darf,
+					laesst sie stehen und warnt vor Speicherleck und doppelten IDs.
+
+					ObjectListItem war hier nicht mehr das richtige Steuerelement:
+					es stellt "intro" UEBER den Titel (der Materialkurztext stand
+					also grau und klein ueber der Kennung, obwohl er der Text ist,
+					den man liest) und legt jedes ObjectAttribute auf eine eigene
+					Zeile - sechs Zeilen fuer sechs kurze Werte.
+				-->
 				<List
 					id="keyPopoverSapRowList"
 					items="{detail>/sap/rows}"
 					showSeparators="Inner">
-					<!--
-						⚠ templateShareable: false an der attributes-Bindung ist
-						PFLICHT, nicht Kosmetik. Diese Aggregationsbindung sitzt
-						INNERHALB eines Templates - der ObjectListItem wird je Zeile
-						geklont. Ohne die Angabe weiss UI5 nicht, ob es das
-						mitgeklonte Attribut-Template zerstoeren darf, laesst es
-						stehen und warnt vor Speicherleck und doppelten IDs.
-						"false" heisst: gehoert dieser Bindung allein und geht mit
-						ihr.
-					-->
-					<ObjectListItem
-						id="keyPopoverSapRowItem"
-						title="{detail>title}"
-						intro="{detail>intro}"
-						attributes="{path: 'detail>attrs', templateShareable: false}"
-						type="Inactive">
-						<firstStatus>
-							<ObjectStatus
-								id="keyPopoverSapRowStatus"
-								text="{detail>status}"
-								state="{detail>statusState}"/>
-						</firstStatus>
-						<attributes>
-							<ObjectAttribute id="keyPopoverSapRowAttr" text="{detail>}"/>
-						</attributes>
-					</ObjectListItem>
+					<CustomListItem id="keyPopoverSapRowItem" type="Inactive">
+						<VBox id="keyPopoverSapRowBox" class="sapUiSmallMargin">
+
+							<HBox id="keyPopoverSapRowHead" justifyContent="SpaceBetween" alignItems="Start">
+								<VBox id="keyPopoverSapRowIdent">
+									<Title
+										id="keyPopoverSapRowTitle"
+										text="{detail>title}"
+										level="H4"
+										titleStyle="H6"/>
+									<Text
+										id="keyPopoverSapRowIntro"
+										text="{detail>intro}"
+										visible="{= !!${detail>intro} }"/>
+								</VBox>
+								<ObjectStatus
+									id="keyPopoverSapRowStatus"
+									text="{detail>status}"
+									state="{detail>statusState}"/>
+							</HBox>
+
+							<VBox
+								id="keyPopoverSapRowLines"
+								class="sapUiTinyMarginTop"
+								items="{path: 'detail>lines', templateShareable: false}">
+								<Text id="keyPopoverSapRowLine" text="{detail>}"/>
+							</VBox>
+
+							<!--
+								Engeres Raster als im Kopf: Datum, Charge und Drucker
+								sind kurz, da passen bei 12rem drei Spalten nebeneinander.
+							-->
+							<grid:CSSGrid
+								id="keyPopoverSapRowAttrGrid"
+								gridTemplateColumns="repeat(auto-fit, minmax(12rem, 1fr))"
+								gridGap="0.25rem 1.5rem"
+								class="sapUiTinyMarginTop"
+								items="{path: 'detail>attrs', templateShareable: false}">
+								<HBox id="keyPopoverSapRowAttrBox" justifyContent="SpaceBetween" alignItems="Center">
+									<Label id="keyPopoverSapRowAttrLabel" text="{detail>label}"/>
+									<Text
+										id="keyPopoverSapRowAttrValue"
+										text="{detail>value}"
+										class="sapUiTinyMarginBegin"/>
+								</HBox>
+							</grid:CSSGrid>
+
+						</VBox>
+					</CustomListItem>
 				</List>
 			</Panel>
 
