@@ -57,8 +57,11 @@ export interface SapRow {
 export interface SapDetail {
 	available: boolean;
 	hint: string;
+	/** Titel des Feld-Panels: Materialstamm bzw. TA-Kopf. */
 	header: string;
 	fields: SapField[];
+	/** Titel des Zeilen-Panels: TA-Positionen. Leer, wenn es keine gibt. */
+	rowsHeader: string;
 	rows: SapRow[];
 }
 
@@ -296,12 +299,73 @@ async function loadMaterial(
 	];
 }
 
-/** TA-Positionen aus LTAK/LTAP - die Felder, fuer die man sonst LT21 braucht. */
+/**
+ * Auftragskopf aus LTAK.
+ *
+ * WARUM GETRENNT VON DEN POSITIONEN
+ * LTAK-Felder sind je TA EINMAL vorhanden. In der ersten Fassung steckten
+ * sie als Positionsattribute mit drin - die Bewegungsart stand damit bei
+ * jeder Position identisch, und alles Uebrige (Ersteller, Anlagezeit,
+ * TA-Quittierung, Gruppe, Transportbedarf, Materialbeleg, Anzahl
+ * Positionen) fiel ganz weg, weil in einer Positionszeile kein Platz
+ * dafuer war. Ein eigenes Panel zeigt sie einmal und vollstaendig.
+ *
+ * Alle Zeilen tragen dieselben Kopfdaten - die erste genuegt.
+ */
+function headerFields(oRow: Record<string, unknown> | undefined, oBundle: ResourceBundle): SapField[] {
+	if (!oRow) {
+		return [];
+	}
+	const aFields: SapField[] = [];
+
+	const sWm = text(oRow.WarehouseProcessType).trim();
+	const sMm = text(oRow.GoodsMovementType).trim();
+	pushIf(aFields, field(oBundle, "sapHdrMovement",
+		sWm && sMm ? `${sWm} / ${sMm}` : (sWm || sMm)));
+
+	const sDate = text(oRow.CreationDate).trim();
+	const sTime = text(oRow.CreationTime).trim();
+	pushIf(aFields, field(oBundle, "sapHdrCreated", [sDate, sTime].filter((x) => x).join(" ")));
+	pushIf(aFields, field(oBundle, "sapHdrCreatedBy", text(oRow.CreatedByUser)));
+
+	const bConf = isFlagged(oRow.OrderIsConfirmed);
+	pushIf(aFields, field(oBundle, "sapHdrConfirmed",
+		oBundle.getText(bConf ? "sapHdrConfirmedYes" : "sapHdrConfirmedNo",
+			bConf ? [text(oRow.OrderConfirmationDate).trim() || "?"] : undefined) ?? "",
+		bConf ? "Success" : "Warning"));
+
+	pushIf(aFields, field(oBundle, "sapHdrItems", text(oRow.NumberOfItems)));
+	pushIf(aFields, field(oBundle, "sapHdrDelivery", text(oRow.HeaderDeliveryDocument)));
+
+	const sReqType = text(oRow.RequirementType).trim();
+	const sReqNo = text(oRow.RequirementNumber).trim();
+	pushIf(aFields, field(oBundle, "sapHdrRequirement",
+		sReqType && sReqNo ? `${sReqType} ${sReqNo}` : (sReqType || sReqNo)));
+
+	pushIf(aFields, field(oBundle, "sapHdrGroup", text(oRow.GroupNumber)));
+	pushIf(aFields, field(oBundle, "sapHdrTransferReq", text(oRow.TransferRequirement)));
+
+	const sDoc = text(oRow.MaterialDocument).trim();
+	const sYear = text(oRow.MaterialDocumentYear).trim();
+	pushIf(aFields, field(oBundle, "sapHdrMatDoc", sDoc ? `${sDoc} / ${sYear}` : ""));
+
+	/*
+	 * DRUKZ steuert zusammen mit LGTYP die Druckerfindung ueber ZLGTYP_SORT.
+	 * Dort fehlt der Eintrag fuer 'AS' - deshalb steht das Kennzeichen hier,
+	 * auch wenn es fuer sich genommen unscheinbar ist.
+	 */
+	pushIf(aFields, field(oBundle, "sapHdrPrintInd", text(oRow.PrintIndicator)));
+	pushIf(aFields, field(oBundle, "sapHdrDeliveryDate", text(oRow.DeliveryDate)));
+
+	return aFields;
+}
+
+/** TA-Positionen aus LTAP - die Felder, fuer die man sonst LT21 braucht. */
 async function loadTransferOrder(
 	oModel: ODataModel,
 	sTransferOrder: string,
 	oBundle: ResourceBundle
-): Promise<SapRow[]> {
+): Promise<{ header: SapField[]; rows: SapRow[] }> {
 	const sTanum = sTransferOrder.trim();
 	const aRows = await fetchRows(
 		oModel,
@@ -310,7 +374,7 @@ async function loadTransferOrder(
 		MAX_ITEMS
 	);
 
-	return aRows.map((oRow) => {
+	const aItems = aRows.map((oRow) => {
 		const bConfirmed = isFlagged(oRow.ItemIsConfirmed);
 		const sUser = text(oRow.ConfirmedByUser).trim();
 
@@ -323,6 +387,10 @@ async function loadTransferOrder(
 		 * Soll/Ist und Von->Nach bleiben immer stehen: sie sind der Kern
 		 * einer TA-Position, und eine fehlende Menge waere selbst ein
 		 * Befund.
+		 *
+		 * ⚠ Die Bewegungsart steht NICHT mehr hier - sie kommt aus LTAK und
+		 * waere bei jeder Position derselbe Wert. Sie sitzt jetzt im
+		 * Kopf-Panel.
 		 */
 		const aAttrs = [
 			oBundle.getText("sapAttrQty", [
@@ -334,7 +402,6 @@ async function loadTransferOrder(
 				`${text(oRow.SourceStorageType) || "–"}/${text(oRow.SourceStorageBin) || "–"}`,
 				`${text(oRow.DestStorageType) || "–"}/${text(oRow.DestStorageBin) || "–"}`
 			]) ?? "",
-			attr(oBundle, "sapLblMove", text(oRow.WarehouseProcessType)),
 			attr(oBundle, "sapLblGr", text(oRow.GoodsReceiptDate)),
 			attr(oBundle, "sapLblBbd", text(oRow.ShelfLifeExpirationDate)),
 			attr(oBundle, "sapLblBatch", text(oRow.Batch)),
@@ -358,6 +425,8 @@ async function loadTransferOrder(
 			attrs: aAttrs.filter((sAttr) => sAttr)
 		};
 	});
+
+	return { header: headerFields(aRows[0], oBundle), rows: aItems };
 }
 
 /**
@@ -373,8 +442,9 @@ export async function load(
 	const oEmpty: SapDetail = {
 		available: false,
 		hint: oBundle.getText("sapUnavailable") ?? "",
-		header: oBundle.getText(sKind === "ITEM" ? "sapPanelMaterial" : "sapPanelTa") ?? "",
+		header: oBundle.getText(sKind === "ITEM" ? "sapPanelMaterial" : "sapPanelTaHead") ?? "",
 		fields: [],
+		rowsHeader: "",
 		rows: []
 	};
 
@@ -386,13 +456,14 @@ export async function load(
 		if (sKind === "ITEM") {
 			return { ...oEmpty, available: true, hint: "", fields: await loadMaterial(oModel, sValue, oBundle) };
 		}
-		const aRows = await loadTransferOrder(oModel, sValue, oBundle);
+		const oResult = await loadTransferOrder(oModel, sValue, oBundle);
 		return {
 			...oEmpty,
 			available: true,
 			hint: "",
-			header: oBundle.getText("sapPanelTaCount", [String(aRows.length)]) ?? "",
-			rows: aRows
+			fields: oResult.header,
+			rowsHeader: oBundle.getText("sapPanelTaCount", [String(oResult.rows.length)]) ?? "",
+			rows: oResult.rows
 		};
 	} catch {
 		return oEmpty;

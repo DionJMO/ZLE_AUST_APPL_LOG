@@ -425,7 +425,7 @@ export default class Main extends BaseController {
 	private _detailModel(): JSONModel {
 		let oModel = this.getView()?.getModel("detail") as JSONModel | undefined;
 		if (!oModel) {
-			oModel = new JSONModel({ log: [], logVisible: false, sap: { available: false, hint: "", header: "", fields: [], rows: [] } });
+			oModel = new JSONModel({ log: [], logVisible: false, sap: { available: false, hint: "", header: "", fields: [], rowsHeader: "", rows: [] } });
 			this.getView()?.setModel(oModel, "detail");
 		}
 		return oModel;
@@ -525,7 +525,7 @@ export default class Main extends BaseController {
 		} catch {
 			oDetail.setProperty("/logHeader", this._bundle().getText("popLoadFailed") ?? "");
 			oDetail.setProperty("/logVisible", true);
-			oDetail.setProperty("/sap", { available: false, hint: "", header: "", fields: [], rows: [] });
+			oDetail.setProperty("/sap", { available: false, hint: "", header: "", fields: [], rowsHeader: "", rows: [] });
 		} finally {
 			oDetail.setProperty("/busy", false);
 		}
@@ -566,7 +566,7 @@ export default class Main extends BaseController {
 		oDetail.setProperty("/subtitle", oBundle.getText("cascSubtitle") ?? "");
 		oDetail.setProperty("/logHeader", oBundle.getText("popLogPanel", [String(oRow.StepCount)]) ?? "");
 		oDetail.setProperty("/busy", false);
-		oDetail.setProperty("/sap", { available: false, hint: "", header: "", fields: [], rows: [] });
+		oDetail.setProperty("/sap", { available: false, hint: "", header: "", fields: [], rowsHeader: "", rows: [] });
 		// Im Kaskaden-Popover IST der Verlauf der Inhalt, nicht die Beigabe.
 		oDetail.setProperty("/logVisible", true);
 		oDetail.setProperty("/log", (oRow.Steps ?? []).map((oStep) => ({

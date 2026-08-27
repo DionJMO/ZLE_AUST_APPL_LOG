@@ -112,11 +112,25 @@
 					</CustomListItem>
 				</List>
 
+			</Panel>
+
+			<!--
+				Zweites Panel: die Positionen. LTAK-Felder stehen im Panel
+				darueber, weil sie je TA EINMAL gelten - stuende die
+				Bewegungsart als Positionsattribut, waere sie bei jeder Zeile
+				derselbe Wert, und fuer Ersteller, Anlagezeit oder
+				Materialbeleg waere in einer Positionszeile gar kein Platz.
+			-->
+			<Panel
+				id="keyPopoverSapRowPanel"
+				headerText="{detail>/sap/rowsHeader}"
+				expandable="true"
+				expanded="true"
+				visible="{= ${detail>/sap/rows}.length > 0 }">
 				<List
 					id="keyPopoverSapRowList"
 					items="{detail>/sap/rows}"
-					showSeparators="Inner"
-					visible="{= ${detail>/sap/rows}.length > 0 }">
+					showSeparators="Inner">
 					<ObjectListItem
 						id="keyPopoverSapRowItem"
 						title="{detail>title}"
