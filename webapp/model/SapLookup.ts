@@ -1,6 +1,6 @@
 import ODataModel from "sap/ui/model/odata/v4/ODataModel";
 import ResourceBundle from "sap/base/i18n/ResourceBundle";
-import { normalizeMaterial, dashIfEmpty, quantityOrDash } from "./formatter";
+import { normalizeMaterial, quantityOrDash } from "./formatter";
 
 /**
  * Phase 2 des Detail-Popovers: die SAP-Felder, die im Log nicht stehen.
@@ -94,7 +94,38 @@ function literal(sValue: string): string {
 }
 
 function field(oBundle: ResourceBundle, sKey: string, sValue: string, sState = "None"): SapField {
-	return { label: oBundle.getText(sKey) ?? sKey, value: sValue, state: sState };
+	/*
+	 * Ein markiertes Feld OHNE Text laese sich wie ein Darstellungsfehler -
+	 * roter Punkt, nichts dahinter. Wenn die Leere der Befund ist, wird sie
+	 * deshalb ausgeschrieben.
+	 */
+	const sShown = sValue.trim() || (sState !== "None" ? (oBundle.getText("sapEmptyValue") ?? "") : "");
+	return { label: oBundle.getText(sKey) ?? sKey, value: sShown, state: sState };
+}
+
+/**
+ * DIE REGEL FUER LEERE FELDER: weglassen statt "-" anzeigen.
+ *
+ * Ein Popover, das zur Haelfte aus Gedankenstrichen besteht, verbirgt die
+ * Zeilen, auf die es ankommt. Gezeigt wird ein Feld deshalb nur, wenn es
+ * einen Wert hat.
+ *
+ * ⚠ MIT EINER AUSNAHME, UND DIE IST DER SPRINGENDE PUNKT: traegt das Feld
+ * einen Zustand ungleich "None", ist seine LEERE selbst der Befund - etwa
+ * eine gesendete Mengeneinheit, die leer ist. Solche Zeilen muessen
+ * bleiben, sonst verschwindet genau die Information, wegen der jemand das
+ * Popover geoeffnet hat.
+ */
+function pushIf(aTarget: SapField[], oField: SapField): void {
+	if (oField.value.trim() || oField.state !== "None") {
+		aTarget.push(oField);
+	}
+}
+
+/** Beschriftetes Attribut, leer wenn ohne Wert - zum Herausfiltern. */
+function attr(oBundle: ResourceBundle, sKey: string, sValue: string): string {
+	const sTrimmed = sValue.trim();
+	return sTrimmed ? `${oBundle.getText(sKey) ?? sKey}: ${sTrimmed}` : "";
 }
 
 /*
@@ -112,13 +143,31 @@ function unitFields(oWm: Record<string, unknown> | undefined, oBundle: ResourceB
 	}
 
 	const sSent = text(oWm.SentUnit).trim();
-	const aFields = [
-		field(oBundle, "sapUnitProposal", dashIfEmpty(text(oWm.UnitProposal))),
-		field(oBundle, "sapWarehouseUnit", dashIfEmpty(text(oWm.WarehouseUnit))),
-		field(oBundle, "sapSentUnit", dashIfEmpty(sSent), sSent ? "None" : "Error"),
-		field(oBundle, "sapPutAwayInd",
-			`${dashIfEmpty(text(oWm.PutAwayIndicator))} / ${dashIfEmpty(text(oWm.StockRemovalIndicator))}`)
-	];
+	const sVomem = text(oWm.UnitProposal).trim();
+	const aFields: SapField[] = [];
+
+	/*
+	 * Die gesendete ME steht immer da - leer ist sie ein Befund und bleibt
+	 * ueber pushIf erhalten.
+	 */
+	pushIf(aFields, field(oBundle, "sapSentUnit", sSent, sSent ? "None" : "Error"));
+
+	/*
+	 * VOMEM und LVSME erklaeren, WIE die gesendete ME zustande kam - das ist
+	 * nur interessant, wenn die WM-Einheit ueberhaupt greift. Bei VOMEM
+	 * ungleich 'M' liefert die Regel schlicht MARA-MEINS, und beide Felder
+	 * waeren zwei Zeilen Rauschen.
+	 */
+	if (sVomem === "M") {
+		pushIf(aFields, field(oBundle, "sapUnitProposal", sVomem));
+		pushIf(aFields, field(oBundle, "sapWarehouseUnit", text(oWm.WarehouseUnit)));
+	}
+
+	const sPut = text(oWm.PutAwayIndicator).trim();
+	const sRem = text(oWm.StockRemovalIndicator).trim();
+	if (sPut || sRem) {
+		pushIf(aFields, field(oBundle, "sapPutAwayInd", `${sPut || "–"} / ${sRem || "–"}`));
+	}
 
 	if (text(oWm.HasEmptyUnit).trim()) {
 		aFields.push(field(oBundle, "sapEmptyUnit", oBundle.getText("sapEmptyUnitHint") ?? "", "Error"));
@@ -130,11 +179,12 @@ function unitFields(oWm: Record<string, unknown> | undefined, oBundle: ResourceB
 function weightFields(oBase: Record<string, unknown>, oBundle: ResourceBundle): SapField[] {
 	const sUnit = text(oBase.WeightUnit).trim();
 	const bTrap = hasValue(oBase.GrossWeight) && !sUnit;
-	const aFields = [
-		field(oBundle, "sapGrossWeight",
-			`${quantityOrDash(oBase.GrossWeight as string | number | null)} ${sUnit || "?"}`,
-			bTrap ? "Error" : "None")
-	];
+	const aFields: SapField[] = [];
+	pushIf(aFields, field(oBundle, "sapGrossWeight",
+		hasValue(oBase.GrossWeight)
+			? `${quantityOrDash(oBase.GrossWeight as string | number | null)} ${sUnit || "?"}`
+			: "",
+		bTrap ? "Error" : "None"));
 	if (bTrap) {
 		aFields.push(field(oBundle, "sapWeightNoUnit", oBundle.getText("sapWeightNoUnitHint") ?? "", "Error"));
 	}
@@ -143,7 +193,8 @@ function weightFields(oBase: Record<string, unknown>, oBundle: ResourceBundle): 
 
 /** Chargenpflicht und Loeschvormerkung. */
 function batchFields(oBase: Record<string, unknown>, oBundle: ResourceBundle): SapField[] {
-	const aFields = [field(oBundle, "sapBatchType", dashIfEmpty(text(oBase.SentBatchHandlingType)))];
+	const aFields: SapField[] = [];
+	pushIf(aFields, field(oBundle, "sapBatchType", text(oBase.SentBatchHandlingType)));
 
 	if (text(oBase.BatchMgmtRequiredInPlant) !== text(oBase.BatchMgmtRequiredClientWide)) {
 		aFields.push(field(oBundle, "sapBatchMismatch", oBundle.getText("sapBatchMismatchHint") ?? "", "Warning"));
@@ -161,14 +212,17 @@ function dimensionFields(oUom: Record<string, unknown> | undefined, oBundle: Res
 	}
 	const sUnit = text(oUom.DimensionUnit).trim();
 	const bDims = hasValue(oUom.ProductLength) || hasValue(oUom.ProductWidth) || hasValue(oUom.ProductHeight);
-	const aFields = [
+	if (!bDims) {
+		return [];
+	}
+	const aFields: SapField[] = [
 		field(oBundle, "sapDimensions",
 			`${quantityOrDash(oUom.ProductLength as string | number | null)} × `
 			+ `${quantityOrDash(oUom.ProductWidth as string | number | null)} × `
 			+ `${quantityOrDash(oUom.ProductHeight as string | number | null)} ${sUnit || "?"}`,
-			bDims && !sUnit ? "Warning" : "None")
+			sUnit ? "None" : "Warning")
 	];
-	if (bDims && !sUnit) {
+	if (!sUnit) {
 		aFields.push(field(oBundle, "sapDimNoUnit", oBundle.getText("sapDimNoUnitHint") ?? "", "Warning"));
 	}
 	return aFields;
@@ -200,9 +254,12 @@ async function loadMaterial(
 	// genau die gehen an HiLIS.
 	const oUom = aUom.find((o) => text(o.AlternativeUnit) === text(oWm?.SentUnit)) ?? aUom[0];
 
+	const aHead: SapField[] = [];
+	pushIf(aHead, field(oBundle, "sapMaterialName", text(oBase.MaterialName)));
+	pushIf(aHead, field(oBundle, "sapBaseUnit", text(oBase.BaseUnit)));
+
 	return [
-		field(oBundle, "sapMaterialName", dashIfEmpty(text(oBase.MaterialName))),
-		field(oBundle, "sapBaseUnit", dashIfEmpty(text(oBase.BaseUnit))),
+		...aHead,
 		...unitFields(oWm, oBundle),
 		...weightFields(oBase, oBundle),
 		...batchFields(oBase, oBundle),
@@ -226,29 +283,34 @@ async function loadTransferOrder(
 
 	return aRows.map((oRow) => {
 		const bConfirmed = text(oRow.ItemIsConfirmed).trim() !== "";
+
+		/*
+		 * Je Attribut eine Zeile, und leere fallen HERAUS statt als "-" zu
+		 * erscheinen. Vorher standen zusammengesetzte Texte drin
+		 * ("WE-Datum - · MHD -"), die bei halb gefuellten Positionen
+		 * kaputt aussahen und die gefuellten Angaben zudeckten.
+		 *
+		 * Soll/Ist und Von->Nach bleiben immer stehen: sie sind der Kern
+		 * einer TA-Position, und eine fehlende Menge waere selbst ein
+		 * Befund.
+		 */
 		const aAttrs = [
 			oBundle.getText("sapAttrQty", [
 				quantityOrDash(oRow.DestTargetQtyInAltUnit as string | number | null),
 				quantityOrDash(oRow.DestActualQtyInAltUnit as string | number | null),
-				dashIfEmpty(text(oRow.AlternativeUnit))
+				text(oRow.AlternativeUnit)
 			]) ?? "",
 			oBundle.getText("sapAttrBin", [
-				`${dashIfEmpty(text(oRow.SourceStorageType))}/${dashIfEmpty(text(oRow.SourceStorageBin))}`,
-				`${dashIfEmpty(text(oRow.DestStorageType))}/${dashIfEmpty(text(oRow.DestStorageBin))}`
+				`${text(oRow.SourceStorageType) || "–"}/${text(oRow.SourceStorageBin) || "–"}`,
+				`${text(oRow.DestStorageType) || "–"}/${text(oRow.DestStorageBin) || "–"}`
 			]) ?? "",
-			oBundle.getText("sapAttrMove", [
-				dashIfEmpty(text(oRow.WarehouseProcessType)),
-				dashIfEmpty(text(oRow.GoodsMovementType))
-			]) ?? "",
-			oBundle.getText("sapAttrDates", [
-				dashIfEmpty(text(oRow.GoodsReceiptDate)),
-				dashIfEmpty(text(oRow.ShelfLifeExpirationDate))
-			]) ?? "",
-			oBundle.getText("sapAttrBatch", [
-				dashIfEmpty(text(oRow.Batch)),
-				dashIfEmpty(text(oRow.SpecialStockNumber))
-			]) ?? "",
-			oBundle.getText("sapAttrDelivery", [dashIfEmpty(text(oRow.DeliveryDocument))]) ?? ""
+			attr(oBundle, "sapLblMove", text(oRow.WarehouseProcessType)),
+			attr(oBundle, "sapLblGr", text(oRow.GoodsReceiptDate)),
+			attr(oBundle, "sapLblBbd", text(oRow.ShelfLifeExpirationDate)),
+			attr(oBundle, "sapLblBatch", text(oRow.Batch)),
+			attr(oBundle, "sapLblSpecial", text(oRow.SpecialStockNumber)),
+			attr(oBundle, "sapLblDelivery", text(oRow.DeliveryDocument)),
+			attr(oBundle, "sapLblPrinter", text(oRow.PrinterName))
 		];
 
 		return {
@@ -256,12 +318,12 @@ async function loadTransferOrder(
 				text(oRow.TransferOrderItem),
 				normalizeMaterial(text(oRow.Material)) || "–"
 			]) ?? "",
-			intro: dashIfEmpty(text(oRow.MaterialName)),
+			intro: text(oRow.MaterialName),
 			status: oBundle.getText(bConfirmed ? "sapConfirmed" : "sapOpen", [
-				dashIfEmpty(text(oRow.ConfirmedByUser))
+				text(oRow.ConfirmedByUser) || "?"
 			]) ?? "",
 			statusState: bConfirmed ? "Success" : "Warning",
-			attrs: aAttrs.filter((s) => s)
+			attrs: aAttrs.filter((sAttr) => sAttr)
 		};
 	});
 }
