@@ -15,6 +15,7 @@ import * as ChartColors from "../model/ChartColors";
 import * as ProcessAxis from "../model/ProcessAxis";
 import * as KeyDetailLoader from "../model/KeyDetailLoader";
 import * as CascadeGrouper from "../model/CascadeGrouper";
+import * as SapLookup from "../model/SapLookup";
 import Sorter from "sap/ui/model/Sorter";
 import Fragment from "sap/ui/core/Fragment";
 import Popover from "sap/m/Popover";
@@ -301,7 +302,7 @@ export default class Main extends BaseController {
 	private _detailModel(): JSONModel {
 		let oModel = this.getView()?.getModel("detail") as JSONModel | undefined;
 		if (!oModel) {
-			oModel = new JSONModel({ log: [], tpa: [] });
+			oModel = new JSONModel({ log: [], tpa: [], sap: { available: false, hint: "", header: "", fields: [], rows: [] } });
 			this.getView()?.setModel(oModel, "detail");
 		}
 		return oModel;
@@ -337,6 +338,13 @@ export default class Main extends BaseController {
 		await this._openPopover(oSource);
 
 		try {
+			const oSap = SapLookup.load(
+				this.getView()?.getModel("lookupModel") as ODataModel | undefined,
+				sKind,
+				sRaw,
+				this._bundle()
+			);
+
 			const oDetailData = await KeyDetailLoader.loadKeyDetail(
 				this.getView()?.getModel("mainModel") as ODataModel,
 				this.getView()?.getModel("tpaModel") as ODataModel,
@@ -347,8 +355,12 @@ export default class Main extends BaseController {
 			Object.keys(oDetailData).forEach((sKey) => {
 				oDetail.setProperty("/" + sKey, (oDetailData as unknown as Record<string, unknown>)[sKey]);
 			});
+			// Phase 2 wird PARALLEL geladen und erst hier erwartet: faellt der
+			// Lookup-Service aus, steht Phase 1 trotzdem schon.
+			oDetail.setProperty("/sap", await oSap);
 		} catch {
 			oDetail.setProperty("/logHeader", this._bundle().getText("popLoadFailed") ?? "");
+			oDetail.setProperty("/sap", { available: false, hint: "", header: "", fields: [], rows: [] });
 		} finally {
 			oDetail.setProperty("/busy", false);
 		}
@@ -392,6 +404,7 @@ export default class Main extends BaseController {
 		oDetail.setProperty("/tpaExpanded", false);
 		oDetail.setProperty("/tpa", []);
 		oDetail.setProperty("/busy", false);
+		oDetail.setProperty("/sap", { available: false, hint: "", header: "", fields: [], rows: [] });
 		oDetail.setProperty("/log", (oRow.Steps ?? []).map((oStep) => ({
 			stamp:   this.formatter.timestamp(oStep.CreatedAtStamp),
 			logType: oStep.LogType ?? "",

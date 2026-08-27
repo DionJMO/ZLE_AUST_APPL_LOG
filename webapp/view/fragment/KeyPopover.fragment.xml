@@ -19,8 +19,7 @@
 -->
 <core:FragmentDefinition
 	xmlns="sap.m"
-	xmlns:core="sap.ui.core"
-	xmlns:f="sap.ui.layout.form">
+	xmlns:core="sap.ui.core">
 
 	<ResponsivePopover
 		id="keyPopover"
@@ -116,11 +115,59 @@
 				</List>
 			</Panel>
 
+			<Panel
+				id="keyPopoverSapPanel"
+				headerText="{detail>/sap/header}"
+				expandable="true"
+				expanded="true"
+				visible="{= ${detail>/sap/available} === true }">
+
+				<List
+					id="keyPopoverSapFieldList"
+					items="{detail>/sap/fields}"
+					showSeparators="None"
+					visible="{= ${detail>/sap/fields}.length > 0 }">
+					<CustomListItem id="keyPopoverSapFieldItem">
+						<HBox id="keyPopoverSapFieldBox" justifyContent="SpaceBetween" class="sapUiTinyMargin">
+							<Label id="keyPopoverSapFieldLabel" text="{detail>label}"/>
+							<ObjectStatus
+								id="keyPopoverSapFieldValue"
+								text="{detail>value}"
+								state="{detail>state}"/>
+						</HBox>
+					</CustomListItem>
+				</List>
+
+				<List
+					id="keyPopoverSapRowList"
+					items="{detail>/sap/rows}"
+					showSeparators="Inner"
+					visible="{= ${detail>/sap/rows}.length > 0 }">
+					<ObjectListItem
+						id="keyPopoverSapRowItem"
+						title="{detail>title}"
+						intro="{detail>intro}"
+						attributes="{detail>attrs}"
+						type="Inactive">
+						<firstStatus>
+							<ObjectStatus
+								id="keyPopoverSapRowStatus"
+								text="{detail>status}"
+								state="{detail>statusState}"/>
+						</firstStatus>
+						<attributes>
+							<ObjectAttribute id="keyPopoverSapRowAttr" text="{detail>}"/>
+						</attributes>
+					</ObjectListItem>
+				</List>
+			</Panel>
+
 			<MessageStrip
-				id="keyPopoverPhaseHint"
-				text="{i18n>popPhaseHint}"
+				id="keyPopoverSapHint"
+				text="{detail>/sap/hint}"
 				type="Information"
 				showIcon="true"
+				visible="{= ${detail>/sap/available} !== true }"
 				class="sapUiSmallMargin"/>
 
 		</VBox>

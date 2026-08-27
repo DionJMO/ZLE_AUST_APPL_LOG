@@ -57,6 +57,13 @@
           "localUri": "localService/tpaService/metadata.xml",
           "odataVersion": "4.0"
         }
+      },
+      "lookupService": {
+        "uri": "/sap/opu/odata4/sap/zle_aust_sb_lookup/srvd/sap/zle_aust_sd_lookup/0001/",
+        "type": "OData",
+        "settings": {
+          "odataVersion": "4.0"
+        }
       }
     }
   },
@@ -131,6 +138,14 @@
             ""
           ],
           "fallbackLocale": ""
+        }
+      },
+      "lookupModel": {
+        "dataSource": "lookupService",
+        "settings": {
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": false
         }
       }
     },
