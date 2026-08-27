@@ -325,6 +325,7 @@
 										</SegmentedButton>
 										<SearchField
 											id="idMsgSearch"
+											value="{ui>/searchTerm}"
 											width="16rem"
 											placeholder="{i18n>searchPlaceholder}"
 											tooltip="{i18n>searchTooltip}"

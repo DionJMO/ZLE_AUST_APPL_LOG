@@ -1,6 +1,7 @@
 import UIComponent from "sap/ui/core/UIComponent";
 import JSONModel from "sap/ui/model/json/JSONModel";
 import Device from "sap/ui/Device";
+import * as ProcessAxis from "./model/ProcessAxis";
 
 /**
  * @namespace zui5_zle_aust_mon
@@ -29,8 +30,12 @@ export default class Component extends UIComponent {
 		this.setModel(new JSONModel({
 			lastRefreshText: "",
 			// Reiterzustand der Meldungssicht. selectedType leer = alle Typen.
-			selectedProcess: "IB",
+			selectedProcess: ProcessAxis.KEY_DEFAULT,
 			selectedType: "",
+			// Beide auch hier, damit sie nie undefined sind - sie stehen in
+			// der URL und werden von dort zurueckgeschrieben.
+			searchTerm: "",
+			grouped: false,
 			chartTruncated: false,
 			kpi: {
 				gesamt: "0",

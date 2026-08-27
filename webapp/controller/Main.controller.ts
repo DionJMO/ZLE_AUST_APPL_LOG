@@ -53,8 +53,44 @@ export default class Main extends BaseController {
 	/** Zeitfenster des Verlaufs-Charts in Tagen. */
 	private static readonly CHART_DAYS = 7;
 
+	/**
+	 * Die Sicht als URL: Reiter, Typfilter, Suche, Gruppierung.
+	 *
+	 * Zweck ist weniger das Ueberleben eines Neuladens als das VERSCHICKEN -
+	 * "schau dir mal das an" ist in einem Werkzeug, das zwischen drei Leuten
+	 * hin und her geht, mehr wert als es klingt.
+	 *
+	 * ⚠ Kurze Schluessel, weil sie in der Adresszeile stehen und dort auch
+	 * von Hand gelesen und getippt werden.
+	 */
+	private static readonly URL_KEYS = {
+		p: "/selectedProcess",
+		t: "/selectedType",
+		q: "/searchTerm",
+		g: "/grouped"
+	};
+
+	/**
+	 * Sperre gegen Rueckkopplung Modell -> URL.
+	 *
+	 * ⚠ Startwert TRUE, und das ist kein Versehen. onInit laeuft VOR dem
+	 * ersten patternMatched und ruft _applyMsgFilter( ). Duerfte der dabei
+	 * schon die URL schreiben, ueberschriebe der Standardzustand eine
+	 * mitgegebene Adresse - wer einen Link mit ?p=OB&t=E oeffnet, landete
+	 * beim Standardreiter. Erst der erste Routentreffer gibt frei.
+	 */
+	private _bApplyingUrl = true;
+
 	public onInit(): void {
 		this.getView()?.setModel(new JSONModel({ days: [] }), "chart");
+
+		// Pfeilfunktion statt Methodenreferenz plus Listener-Kontext: eine
+		// losgeloeste Methode traegt ihr "this" nicht mit, und ESLint weist
+		// mit unbound-method zu Recht darauf hin.
+		(this.getOwnerComponent() as UIComponent).getRouter()
+			.getRoute("RouteMain")?.attachPatternMatched((oEvent: Event) => {
+				this._onRouteMatched(oEvent);
+			});
 
 		Object.keys(Main.DEFAULT_VISIBLE).forEach((sTableId) => {
 			const oTable = this._table(sTableId);
@@ -130,6 +166,10 @@ export default class Main extends BaseController {
 	 * deshalb nicht auf diese Zahl.
 	 */
 	private _applyMsgFilter(): void {
+		// Alle vier Zustaende laufen hier zusammen - ein Anschlusspunkt
+		// genuegt, statt ihn in jeden Handler einzeln zu haengen.
+		this._syncUrl();
+
 		if (this.getUiModel().getProperty("/grouped") as boolean) {
 			void this._loadCascades();
 			return;
@@ -579,5 +619,70 @@ export default class Main extends BaseController {
 			this.getView()?.setModel(oModel, "cascade");
 		}
 		return oModel;
+	}
+
+	/**
+	 * URL -> Modell. Laeuft bei jedem Aufruf der Route, also auch beim
+	 * Zurueck-Knopf des Browsers.
+	 */
+	private _onRouteMatched(oEvent: Event): void {
+		const oArgs = (oEvent.getParameter("arguments" as never) ?? {}) as Record<string, unknown>;
+		const oQuery = (oArgs["?query"] ?? {}) as Record<string, string>;
+		const oUi = this.getUiModel();
+
+		this._bApplyingUrl = true;
+		Object.entries(Main.URL_KEYS).forEach(([sKey, sPath]) => {
+			const sValue = oQuery[sKey];
+			if (sValue === undefined) {
+				return;
+			}
+			oUi.setProperty(sPath, sPath === "/grouped" ? sValue === "1" : sValue);
+		});
+		this._bApplyingUrl = false;
+
+		this._bindMsgRows(oUi.getProperty("/grouped") as boolean);
+		this._applyMsgFilter();
+	}
+
+	/**
+	 * Modell -> URL.
+	 *
+	 * ⚠ replace: true, KEIN neuer Eintrag in der Chronik. Sonst legte jeder
+	 * Klick auf einen Reiter einen Verlaufsschritt an, und der
+	 * Zurueck-Knopf braeuchte ein Dutzend Betaetigungen, um die App zu
+	 * verlassen.
+	 *
+	 * ⚠ Standardwerte fallen aus der URL heraus. Eine Adresse mit vier
+	 * Parametern, von denen drei nichts aussagen, laedt niemanden zum
+	 * Weiterschicken ein.
+	 */
+	private _syncUrl(): void {
+		if (this._bApplyingUrl) {
+			return;
+		}
+		const oUi = this.getUiModel();
+		const oQuery: Record<string, string> = {};
+
+		const sProcess = oUi.getProperty("/selectedProcess") as string;
+		if (sProcess && sProcess !== ProcessAxis.KEY_DEFAULT) {
+			oQuery.p = sProcess;
+		}
+		const sType = oUi.getProperty("/selectedType") as string;
+		if (sType) {
+			oQuery.t = sType;
+		}
+		const sSearch = oUi.getProperty("/searchTerm") as string;
+		if (sSearch) {
+			oQuery.q = sSearch;
+		}
+		if (oUi.getProperty("/grouped") as boolean) {
+			oQuery.g = "1";
+		}
+
+		(this.getOwnerComponent() as UIComponent).getRouter().navTo(
+			"RouteMain",
+			Object.keys(oQuery).length ? { "?query": oQuery } : {},
+			true
+		);
 	}
 }

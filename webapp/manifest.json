@@ -174,7 +174,7 @@
       "routes": [
         {
           "name": "RouteMain",
-          "pattern": "",
+          "pattern": ":?query:",
           "target": [
             "TargetMain"
           ]

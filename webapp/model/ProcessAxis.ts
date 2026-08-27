@@ -65,6 +65,15 @@ export interface ProcessDef {
 export const KEY_UNASSIGNED = "NONE";
 export const KEY_ALL = "ALL";
 export const KEY_ORDERS = "TPA";
+/**
+ * Der Reiter, auf dem die App startet.
+ *
+ * Steht hier und nicht in Component.ts, weil ihn zwei Stellen brauchen:
+ * der Startzustand des ui-Modells und _syncUrl( ), das ihn aus der Adresse
+ * heraushaelt. Zwei Kopien wuerden auseinanderlaufen, und dann traege jede
+ * URL einen Parameter, der nichts aussagt.
+ */
+export const KEY_DEFAULT = "IB";
 /* eslint-enable @sap-ux/fiori-tools/sap-no-global-variable */
 
 // eslint-disable-next-line @sap-ux/fiori-tools/sap-no-global-variable
