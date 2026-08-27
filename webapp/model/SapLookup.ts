@@ -33,8 +33,16 @@ import { normalizeMaterial, quantityOrDash } from "./formatter";
  * wie in model/ProcessAxis.ts und model/formatter.ts.
  */
 /* eslint-disable @sap-ux/fiori-tools/sap-no-global-variable */
-/** Die Lagernummer des AutoStore. Projektweit fest, wie in allen Klassen. */
-const LGNUM = "001";
+/**
+ * Rueckfall-Lagernummer.
+ *
+ * ⚠ Bis 27.08.2026 war das eine harte Annahme: der Wert stand als einzige
+ * Quelle im Filter. Seit ZLE_AUST_APL_LOG ein eigenes Feld LGNUM traegt
+ * (Michaels Logging-Umbau) kommt die Lagernummer aus dem Logsatz, und diese
+ * Konstante greift nur noch, wenn das Feld leer ist - also bei Altbestand und
+ * bei den Aufrufstellen, die es noch nicht versorgen.
+ */
+const LGNUM_FALLBACK = "001";
 /** Obergrenze fuer TA-Positionen je Auftrag. */
 const MAX_ITEMS = 50;
 /* eslint-enable @sap-ux/fiori-tools/sap-no-global-variable */
@@ -173,11 +181,11 @@ function pushIf(aTarget: SapField[], oField: SapField): void {
  */
 
 /** Mengeneinheit - die haeufigste Abbruchursache der Trigger. */
-function unitFields(oWm: Record<string, unknown> | undefined, oBundle: ResourceBundle): SapField[] {
+function unitFields(oWm: Record<string, unknown> | undefined, oBundle: ResourceBundle, sWhs: string): SapField[] {
 	if (!oWm) {
 		// Genau der Fall hinter "HiLIS-Stammdaten nicht lesbar": ohne
 		// MLGN-Satz faellt das Material aus ZI_LE_AUST_SAPMAT heraus.
-		return [field(oBundle, "sapNoMlgn", oBundle.getText("sapNoMlgnHint", [LGNUM]) ?? "", "Error")];
+		return [field(oBundle, "sapNoMlgn", oBundle.getText("sapNoMlgnHint", [sWhs]) ?? "", "Error")];
 	}
 
 	const sSent = text(oWm.SentUnit).trim();
@@ -270,7 +278,8 @@ function dimensionFields(oUom: Record<string, unknown> | undefined, oBundle: Res
 async function loadMaterial(
 	oModel: ODataModel,
 	sMaterial: string,
-	oBundle: ResourceBundle
+	oBundle: ResourceBundle,
+	sWhs: string
 ): Promise<SapField[]> {
 	const sBare = normalizeMaterial(sMaterial);
 	const sPadded = sBare.padStart(18, "0");
@@ -279,7 +288,7 @@ async function loadMaterial(
 	const [aBase, aWm, aUom] = await Promise.all([
 		fetchRows(oModel, "/MaterialBase", sMatFilter, 1),
 		fetchRows(oModel, "/MaterialWarehouse",
-			`(${sMatFilter}) and WarehouseNumber eq ${literal(LGNUM)}`, 1),
+			`(${sMatFilter}) and WarehouseNumber eq ${literal(sWhs)}`, 1),
 		fetchRows(oModel, "/MaterialUnit", sMatFilter, 20)
 	]);
 
@@ -298,7 +307,7 @@ async function loadMaterial(
 
 	return [
 		...aHead,
-		...unitFields(oWm, oBundle),
+		...unitFields(oWm, oBundle, sWhs),
 		...weightFields(oBase, oBundle),
 		...batchFields(oBase, oBundle),
 		...dimensionFields(oUom, oBundle)
@@ -396,13 +405,14 @@ function headerFields(oRow: Record<string, unknown> | undefined, oBundle: Resour
 async function loadTransferOrder(
 	oModel: ODataModel,
 	sTransferOrder: string,
-	oBundle: ResourceBundle
+	oBundle: ResourceBundle,
+	sWhs: string
 ): Promise<{ header: SapField[]; rows: SapRow[] }> {
 	const sTanum = tanumFrom(sTransferOrder);
 	const aRows = await fetchRows(
 		oModel,
 		"/TransferOrderItem",
-		`WarehouseNumber eq ${literal(LGNUM)} and TransferOrder eq ${literal(sTanum)}`,
+		`WarehouseNumber eq ${literal(sWhs)} and TransferOrder eq ${literal(sTanum)}`,
 		MAX_ITEMS
 	);
 
@@ -474,7 +484,7 @@ async function loadTransferOrder(
 	if (!aRows.length) {
 		return {
 			header: [field(oBundle, "sapNoTransferOrder",
-				oBundle.getText("sapNoTransferOrderHint", [sTanum, LGNUM]) ?? "", "Warning")],
+				oBundle.getText("sapNoTransferOrderHint", [sTanum, sWhs]) ?? "", "Warning")],
 			rows: []
 		};
 	}
@@ -490,8 +500,11 @@ export async function load(
 	oModel: ODataModel | undefined,
 	sKind: "TPA" | "ITEM",
 	sValue: string,
-	oBundle: ResourceBundle
+	oBundle: ResourceBundle,
+	sLgnum = ""
 ): Promise<SapDetail> {
+	// Aus dem Logsatz, wenn er sie traegt - sonst die Rueckfallebene.
+	const sWhs = sLgnum.trim() || LGNUM_FALLBACK;
 	const oEmpty: SapDetail = {
 		available: false,
 		hint: oBundle.getText("sapUnavailable") ?? "",
@@ -507,9 +520,9 @@ export async function load(
 
 	try {
 		if (sKind === "ITEM") {
-			return { ...oEmpty, available: true, hint: "", fields: await loadMaterial(oModel, sValue, oBundle) };
+			return { ...oEmpty, available: true, hint: "", fields: await loadMaterial(oModel, sValue, oBundle, sWhs) };
 		}
-		const oResult = await loadTransferOrder(oModel, sValue, oBundle);
+		const oResult = await loadTransferOrder(oModel, sValue, oBundle, sWhs);
 		return {
 			...oEmpty,
 			available: true,

@@ -372,7 +372,7 @@
 									<t:Table
 										id="idMsgTable"
 										visible="{= ${ui>/selectedProcess} !== 'TPA' &amp;&amp; ${ui>/grouped} !== true }"
-										rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, sorter: {path: 'CreatedAtStamp', descending: true}}"
+										rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, sorter: [{path: 'CreatedAtStamp', descending: true}, {path: 'SeqNr', descending: true}]}"
 										selectionMode="None"
 										ariaLabelledBy="msgHeading">
 										<t:rowMode>

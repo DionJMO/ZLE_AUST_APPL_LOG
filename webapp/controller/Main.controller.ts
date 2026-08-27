@@ -461,17 +461,33 @@ export default class Main extends BaseController {
 		 * Die Feldnamen der Vorgangszeilen sind absichtlich die der
 		 * Logzeilen, deshalb genuegt sMainField fuer beide.
 		 */
-		const aSources: [string, string][] = [
-			["mainModel", sMainField],
-			["cascade", sMainField],
-			["tpaModel", sTpaField]
+		/*
+		 * hasLogFields sagt, ob die Zeile die Felder aus ZLE_AUST_APL_LOG
+		 * traegt. Der Auftragspuffer (Tpa) hat sie NICHT - dort waere ein
+		 * getProperty("Lgnum") ein Zugriff auf eine Eigenschaft, die es in
+		 * der Entitaet gar nicht gibt.
+		 */
+		const aSources: { model: string; field: string; hasLogFields: boolean }[] = [
+			{ model: "mainModel", field: sMainField, hasLogFields: true },
+			{ model: "cascade", field: sMainField, hasLogFields: true },
+			{ model: "tpaModel", field: sTpaField, hasLogFields: false }
 		];
 
 		let sRaw = "";
-		for (const [sModel, sField] of aSources) {
-			const sValue = (oSource.getBindingContext(sModel)?.getProperty(sField) as string) ?? "";
+		let sLgnum = "";
+		let sBusinessKey = "";
+		for (const oSrc of aSources) {
+			const oCtx = oSource.getBindingContext(oSrc.model);
+			const sValue = (oCtx?.getProperty(oSrc.field) as string) ?? "";
 			if (sValue.trim()) {
 				sRaw = sValue;
+				if (oSrc.hasLogFields) {
+					// Seit Michaels Logging-Umbau traegt der Logsatz die
+					// Lagernummer selbst - vorher stand dafuer ein hart
+					// codiertes "001" im Lookup.
+					sLgnum = (oCtx?.getProperty("Lgnum") as string) ?? "";
+					sBusinessKey = (oCtx?.getProperty("BusinessKey") as string) ?? "";
+				}
 				break;
 			}
 		}
@@ -500,7 +516,8 @@ export default class Main extends BaseController {
 				this.getView()?.getModel("lookupModel") as ODataModel | undefined,
 				sKind,
 				sRaw,
-				this._bundle()
+				this._bundle(),
+				sLgnum
 			);
 			oDetail.setProperty("/sap", oSapData);
 
@@ -514,7 +531,8 @@ export default class Main extends BaseController {
 					this.getView()?.getModel("mainModel") as ODataModel,
 					sKind,
 					sRaw,
-					oBundle
+					oBundle,
+					sBusinessKey
 				);
 				oDetail.setProperty("/logHeader", oDetailData.logHeader);
 				oDetail.setProperty("/log", oDetailData.log);

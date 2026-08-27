@@ -26,6 +26,8 @@ import { normalizeMaterial, timestamp, dashIfEmpty } from "./formatter";
 const MAX_LOG = 100;
 /** Laenge von MATNR - fuer die gepolsterte Schreibweise. */
 const MATNR_LEN = 18;
+/** Laenge von LTAK-TANUM. */
+const TANUM_LEN = 10;
 /* eslint-enable @sap-ux/fiori-tools/sap-no-global-variable */
 
 export type KeyKind = "TPA" | "ITEM";
@@ -70,6 +72,28 @@ function keyForms(sValue: string, bPad: boolean): string[] {
 	return sBare === sPadded ? [sBare] : [sBare, sPadded];
 }
 
+/**
+ * Die reine TA-Nummer aus jeder Schreibweise.
+ *
+ * 🔴 DER GRUND: TPA_NUMBER traegt ZWEI Formate nebeneinander. Die
+ * Trigger-Klassen schreiben die blanke TANUM (10), die Consumer-Schicht die
+ * zusammengesetzte HiLIS-Auftragsnummer (17 bei PutAway, 13 bei Pick). Ein
+ * Filter auf Gleichheit fand deshalb IMMER NUR EINE HAELFTE der Geschichte:
+ * klickte man die lange Form an, fehlten die Trigger-Meldungen, klickte man
+ * die kurze, fehlten die HTTP-Fehler des Consumers.
+ *
+ * Beide Formate BEGINNEN mit der TANUM - darauf laesst sich der Filter
+ * stellen. Eine Verwechslung ist ausgeschlossen, weil TANUM immer zehn
+ * Stellen hat; eine fremde TA kann nicht mit dieser beginnen.
+ */
+function tanumFrom(sValue: string): string {
+	const sTrimmed = (sValue ?? "").trim();
+	if (!sTrimmed || !/^\d+$/.test(sTrimmed)) {
+		return sTrimmed;
+	}
+	return sTrimmed.length > TANUM_LEN ? sTrimmed.slice(0, TANUM_LEN) : sTrimmed.padStart(TANUM_LEN, "0");
+}
+
 /** OData-Stringliteral: einfache Anfuehrungszeichen werden verdoppelt. */
 function literal(sValue: string): string {
 	return `'${sValue.replace(/'/g, "''")}'`;
@@ -77,6 +101,11 @@ function literal(sValue: string): string {
 
 function orFilter(sField: string, aValues: string[]): string {
 	return aValues.map((s) => `${sField} eq ${literal(s)}`).join(" or ");
+}
+
+/** Ein Praefix, mehrere Felder, ODER-verknuepft. */
+function startsWithFilter(aFields: string[], sPrefix: string): string {
+	return aFields.map((s) => `startswith(${s},${literal(sPrefix)})`).join(" or ");
 }
 
 async function fetchRows(
@@ -136,20 +165,40 @@ export async function loadKeyDetail(
 	oMainModel: ODataModel,
 	sKind: KeyKind,
 	sRawValue: string,
-	oBundle: ResourceBundle
+	oBundle: ResourceBundle,
+	sBusinessKey = ""
 ): Promise<KeyDetail> {
 	const bItem = sKind === "ITEM";
 	const aForms = keyForms(sRawValue, bItem);
 	const sDisplay = bItem ? normalizeMaterial(sRawValue) : (sRawValue ?? "").trim();
 
-	const sLogField = bItem ? "ItemNumber" : "TpaNumber";
+	/*
+	 * BEI EINER TPA WIRD UEBER DIE TA-NUMMER GESUCHT, NICHT UEBER DEN
+	 * ANGEKLICKTEN WERT.
+	 *
+	 * Sonst zeigt das Panel je nach angeklickter Zelle nur die eine oder die
+	 * andere Haelfte (s. tanumFrom). Gesucht wird in ZWEI Feldern:
+	 *   TpaNumber   - beide Formate beginnen mit der TANUM
+	 *   BusinessKey - seit Michaels Logging-Umbau der massgebliche fachliche
+	 *                 Schluessel; die Trigger fuellen ihn, die Consumer noch
+	 *                 nicht. Deshalb ODER, nicht statt.
+	 *
+	 * Mit jeder Aufrufstelle, die BUSINESS_KEY nachtraegt, wird das Ergebnis
+	 * besser, ohne dass hier etwas zu aendern waere.
+	 */
+	const sFilter = bItem
+		? orFilter("ItemNumber", aForms)
+		: startsWithFilter(["TpaNumber", "BusinessKey"], tanumFrom(sRawValue))
+			+ (sBusinessKey.trim() ? ` or BusinessKey eq ${literal(sBusinessKey.trim())}` : "");
 
 	const aLogRows = await fetchRows(
 		oMainModel,
 		"/AppLog",
-		"LogUuid,CreatedAtStamp,LogType,HistoryType,TpaNumber,OrderLineNr,ItemNumber,HttpStatus,Message,JsonPayload",
-		orFilter(sLogField, aForms),
-		"CreatedAtStamp desc",
+		"LogUuid,CreatedAtStamp,SeqNr,LogType,HistoryType,TpaNumber,OrderLineNr,ItemNumber,HttpStatus,Message,JsonPayload",
+		sFilter,
+		// SeqNr als Tiebreak: CREATED_AT ist TIMESTAMPL und kann innerhalb
+		// einer LUW kollidieren - genau dafuer gibt es das Feld.
+		"CreatedAtStamp desc,SeqNr desc",
 		MAX_LOG
 	);
 
