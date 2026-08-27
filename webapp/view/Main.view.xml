@@ -478,7 +478,7 @@
 																			<t:Column id="idMsgKeyTypeColumn" width="8rem" sortProperty="KeyType">
 																				<Label id="msLblKeyType" text="{i18n>colKeyType}"/>
 																				<t:template>
-																					<Text id="msTxtKeyType" text="{path: 'mainModel>KeyType', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
+																					<Text id="msTxtKeyType" text="{path: 'mainModel>KeyType', formatter: '.formatter.keyTypeText'}" wrapping="false"/>
 																				</t:template>
 																			</t:Column>
 																			<t:Column id="idMsgLgnumColumn" width="6rem" sortProperty="Lgnum">

@@ -233,12 +233,19 @@ export default class Main extends BaseController {
 		 *
 		 * Message ist mit drin, weil "Stammdaten" oder "ME-Abweichung" die
 		 * naheliegendste Suche ist, wenn man einem Fehlerbild nachgeht.
+		 *
+		 * 🔴 BusinessKey MUSS dabei sein, und das war er bis 27.08.2026 nicht.
+		 * Wer die 17-stellige HiLIS-Auftragsnummer aus einem HiLIS-Bildschirm
+		 * einfuegt, fand ohne ihn NUR die Consumer-Zeilen - die Trigger-Zeilen
+		 * tragen in TpaNumber die 10-stellige TANUM und die lange Form
+		 * ausschliesslich im BusinessKey. Derselbe Defekt wie im Popover, nur
+		 * an der zweiten Stelle.
 		 */
 		const sSearch = this.getUiModel().getProperty("/searchTerm") as string;
 		if (sSearch) {
 			aFilters.push(new Filter({
 				and: false,
-				filters: ["TpaNumber", "ItemNumber", "Message"].map((sField) => new Filter({
+				filters: ["TpaNumber", "BusinessKey", "ItemNumber", "Message"].map((sField) => new Filter({
 					path: sField, operator: FilterOperator.Contains, value1: sSearch
 				}))
 			}));

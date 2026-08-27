@@ -294,3 +294,30 @@ export function tabCount(bGrouped?: boolean | null, vCount?: number | string | n
 	}
 	return vCount === undefined || vCount === null ? "" : String(vCount);
 }
+
+/**
+ * Der Schluesseltyp als lesbarer Text.
+ *
+ * 🔴 BEWUSST HIER UND NICHT AUS DER DOMAENE. Die Festwerttexte von
+ * ZLE_AUST_KEY_TYPE sind im DDIC VERTAUSCHT - PICK traegt "Wareneingang (IB)"
+ * und PUT "Warenausgang (OB)", also jeweils das Gegenteil. Wer die
+ * Domaenentexte als Beschriftung uebernimmt, beschriftet spiegelverkehrt.
+ * Dass es ein Versehen ist, belegt die Schwesterdomaene ZLE_AUST_ACTION, die
+ * es richtig hat (PICK_CREAT = "OB Anlage").
+ *
+ * Die Zuordnung hier folgt der RICHTIGEN Bedeutung: PUT = PutAway =
+ * Einlagerung, PICK = Auslagerung. Solange die Domaene nicht berichtigt ist,
+ * ist das die einzige Stelle, an der die App das richtig anzeigt.
+ *
+ * Unbekannte Werte bleiben unveraendert stehen - ein fuenfter Festwert soll
+ * sichtbar sein und nicht stillschweigend zu einem Gedankenstrich werden.
+ */
+export function keyTypeText(sKeyType?: string | null): string {
+	switch ((sKeyType ?? "").trim().toUpperCase()) {
+		case "PUT": return "Einlagerung";
+		case "PICK": return "Auslagerung";
+		case "MATNR": return "Materialstamm";
+		case "ADVICE": return "Lieferanzeige";
+		default: return (sKeyType ?? "").trim() || "–";
+	}
+}
