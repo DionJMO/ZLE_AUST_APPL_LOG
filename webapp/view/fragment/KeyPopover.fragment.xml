@@ -1,16 +1,18 @@
 <!--
 	Detailsicht zu einer TPA- oder Materialnummer.
 
-	PHASE 1: zeigt ausschliesslich, was die beiden vorhandenen OData-Services
-	schon liefern - Logzeilen und Pufferzeilen. Der Zweck ist, den Wechsel in
-	die SAP GUI zu sparen, bei dem man nur nachsehen wollte, was zu diesem
-	Auftrag alles passiert ist.
+	ZWEI PANELS, UND DAS IST ABSICHT:
+	  SAP      - Stammdaten bzw. TA-Positionen. Der Grund, warum jemand das
+	             Popover oeffnet, deshalb aufgeklappt.
+	  Verlauf  - alle Logzeilen zu diesem Schluessel, zugeklappt. Er ist NICHT
+	             dasselbe wie die Tabelle dahinter (die ist nach Prozess und
+	             Typ gefiltert) und der einzige Zugang zum JSON_PAYLOAD.
 
-	PHASE 2 fuellt dieselbe Huelle mit SAP-Feldern aus LTAK/LTAP bzw.
-	MARA/MAKT/MARC/MLGN. Dafuer braucht es einen CDS-View plus Service; die
-	Standardtabellen sind vom Frontend aus nicht erreichbar. Plan und
-	Feldlisten in project2/CLAUDE.md, Abschnitt "Popover auf TPA- und
-	Materialnummer".
+	⚠ Ein drittes Panel mit den Pufferzeilen aus ZLE_AUST_TPA gab es bis zum
+	  27.08.2026. Es ist entfallen: seit die TA-Positionen aus LTAK/LTAP da
+	  sind, zeigte es dieselbe Sache aus der schwaecheren Quelle - HiLIS'
+	  Sicht statt SAPs -, und den Puffer gibt es ohnehin als eigenen Reiter.
+	  Nebeneffekt: eine OData-Abfrage weniger je Oeffnen.
 
 	Gebunden wird gegen das JSON-Modell "detail", nicht direkt gegen OData -
 	die Daten werden im Controller geladen, sortiert und aufbereitet. Zwei
@@ -55,7 +57,7 @@
 				id="keyPopoverLogPanel"
 				headerText="{detail>/logHeader}"
 				expandable="true"
-				expanded="true">
+				expanded="{detail>/logExpanded}">
 				<List
 					id="keyPopoverLogList"
 					items="{detail>/log}"
@@ -79,37 +81,6 @@
 							<ObjectAttribute id="keyPopoverLogHttp" text="{detail>http}"/>
 							<ObjectAttribute id="keyPopoverLogLine" text="{detail>line}"/>
 							<ObjectAttribute id="keyPopoverLogPayloadHint" text="{i18n>popPayloadHint}" visible="{= !!${detail>payload} }"/>
-						</attributes>
-					</ObjectListItem>
-				</List>
-			</Panel>
-
-			<Panel
-				id="keyPopoverTpaPanel"
-				headerText="{detail>/tpaHeader}"
-				expandable="true"
-				expanded="{detail>/tpaExpanded}">
-				<List
-					id="keyPopoverTpaList"
-					items="{detail>/tpa}"
-					noDataText="{i18n>popNoTpa}"
-					showSeparators="Inner">
-					<ObjectListItem
-						id="keyPopoverTpaItem"
-						title="{detail>title}"
-						intro="{detail>intro}"
-						type="Inactive">
-						<firstStatus>
-							<ObjectStatus
-								id="keyPopoverTpaStatus"
-								text="{detail>status}"
-								state="{path: 'detail>status', formatter: '.formatter.orderStatusState'}"
-								icon="{path: 'detail>status', formatter: '.formatter.orderStatusIcon'}"/>
-						</firstStatus>
-						<attributes>
-							<ObjectAttribute id="keyPopoverTpaQty" text="{detail>qty}"/>
-							<ObjectAttribute id="keyPopoverTpaBatch" text="{detail>batch}"/>
-							<ObjectAttribute id="keyPopoverTpaSync" text="{detail>sync}"/>
 						</attributes>
 					</ObjectListItem>
 				</List>

@@ -302,7 +302,7 @@ export default class Main extends BaseController {
 	private _detailModel(): JSONModel {
 		let oModel = this.getView()?.getModel("detail") as JSONModel | undefined;
 		if (!oModel) {
-			oModel = new JSONModel({ log: [], tpa: [], sap: { available: false, hint: "", header: "", fields: [], rows: [] } });
+			oModel = new JSONModel({ log: [], logExpanded: true, sap: { available: false, hint: "", header: "", fields: [], rows: [] } });
 			this.getView()?.setModel(oModel, "detail");
 		}
 		return oModel;
@@ -333,7 +333,7 @@ export default class Main extends BaseController {
 		const oDetail = this._detailModel();
 		oDetail.setProperty("/busy", true);
 		oDetail.setProperty("/log", []);
-		oDetail.setProperty("/tpa", []);
+		oDetail.setProperty("/logExpanded", true);
 
 		await this._openPopover(oSource);
 
@@ -347,7 +347,6 @@ export default class Main extends BaseController {
 
 			const oDetailData = await KeyDetailLoader.loadKeyDetail(
 				this.getView()?.getModel("mainModel") as ODataModel,
-				this.getView()?.getModel("tpaModel") as ODataModel,
 				sKind,
 				sRaw,
 				this._bundle()
@@ -357,7 +356,17 @@ export default class Main extends BaseController {
 			});
 			// Phase 2 wird PARALLEL geladen und erst hier erwartet: faellt der
 			// Lookup-Service aus, steht Phase 1 trotzdem schon.
-			oDetail.setProperty("/sap", await oSap);
+			const oSapData = await oSap;
+			oDetail.setProperty("/sap", oSapData);
+
+			/*
+			 * Stehen die SAP-Felder zur Verfuegung, sind SIE der Grund, warum
+			 * jemand das Popover geoeffnet hat - der Verlauf wiederholt im
+			 * Wesentlichen die Tabelle dahinter. Also klappt er zu und das
+			 * SAP-Panel auf. Ohne SAP-Daten bleibt der Verlauf offen, sonst
+			 * waere das Popover leer.
+			 */
+			oDetail.setProperty("/logExpanded", !oSapData.available);
 		} catch {
 			oDetail.setProperty("/logHeader", this._bundle().getText("popLoadFailed") ?? "");
 			oDetail.setProperty("/sap", { available: false, hint: "", header: "", fields: [], rows: [] });
@@ -400,11 +409,10 @@ export default class Main extends BaseController {
 		oDetail.setProperty("/title", oBundle.getText("cascTitle", [String(oRow.StepCount)]) ?? "");
 		oDetail.setProperty("/subtitle", oBundle.getText("cascSubtitle") ?? "");
 		oDetail.setProperty("/logHeader", oBundle.getText("popLogPanel", [String(oRow.StepCount)]) ?? "");
-		oDetail.setProperty("/tpaHeader", oBundle.getText("popTpaPanel", ["0"]) ?? "");
-		oDetail.setProperty("/tpaExpanded", false);
-		oDetail.setProperty("/tpa", []);
 		oDetail.setProperty("/busy", false);
 		oDetail.setProperty("/sap", { available: false, hint: "", header: "", fields: [], rows: [] });
+		// Im Kaskaden-Popover IST der Verlauf der Inhalt, nicht die Beigabe.
+		oDetail.setProperty("/logExpanded", true);
 		oDetail.setProperty("/log", (oRow.Steps ?? []).map((oStep) => ({
 			stamp:   this.formatter.timestamp(oStep.CreatedAtStamp),
 			logType: oStep.LogType ?? "",

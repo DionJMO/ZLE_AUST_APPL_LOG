@@ -1,6 +1,6 @@
 import ODataModel from "sap/ui/model/odata/v4/ODataModel";
 import ResourceBundle from "sap/base/i18n/ResourceBundle";
-import { normalizeMaterial, timestamp, quantityOrDash, dashIfEmpty } from "./formatter";
+import { normalizeMaterial, timestamp, dashIfEmpty } from "./formatter";
 
 /**
  * Laedt die Detailsicht zu EINER TPA- oder Materialnummer.
@@ -9,13 +9,11 @@ import { normalizeMaterial, timestamp, quantityOrDash, dashIfEmpty } from "./for
  * aus LTAK/LTAP oder MARA sind vom Frontend nicht erreichbar - dafuer braucht
  * es einen eigenen CDS-View (Phase 2, siehe project2/CLAUDE.md).
  *
- * ⚠ WARUM DIE VERKNUEPFUNG UEBERHAUPT FUNKTIONIERT
- * ZLE_AUST_TPA-ORDER_NUMBER ist CHAR10, HiLIS' orderNumber aber
- * TANUM(10)+TAPOS(4)+LGNUM(3) = 17 Zeichen. ZLE_AUST_TPA_SYNC weist ungeprueft
- * zu, ABAP schneidet still rechts ab - uebrig bleibt exakt die TANUM. Und
- * ZLE_AUST_APL_LOG-TPA_NUMBER traegt ebenfalls die TANUM. Der Join ist damit
- * moeglich, aber unbeabsichtigt: aenderte HiLIS das Format der
- * Auftragsnummer, braeche er lautlos. Befund in ../CLAUDE.md, Offene Punkte.
+ * ⚠ SEIT 27.08.2026 NUR NOCH DER LOG. Die Pufferzeilen aus ZLE_AUST_TPA
+ * sind hier entfallen - seit model/SapLookup.ts die TA-Positionen aus
+ * LTAK/LTAP liefert, zeigten sie dieselbe Sache aus der schwaecheren Quelle
+ * (HiLIS' Sicht statt SAPs), und als eigener Reiter gibt es den Puffer
+ * ohnehin. Damit auch eine OData-Abfrage weniger je Oeffnen.
  */
 
 /*
@@ -26,7 +24,6 @@ import { normalizeMaterial, timestamp, quantityOrDash, dashIfEmpty } from "./for
 /* eslint-disable @sap-ux/fiori-tools/sap-no-global-variable */
 /** Obergrenzen je Abfrage. Wird eine erreicht, sagt es die Kopfzeile. */
 const MAX_LOG = 100;
-const MAX_TPA = 50;
 /** Laenge von MATNR - fuer die gepolsterte Schreibweise. */
 const MATNR_LEN = 18;
 /* eslint-enable @sap-ux/fiori-tools/sap-no-global-variable */
@@ -43,23 +40,11 @@ export interface LogEntry {
 	payload: string;
 }
 
-export interface TpaEntry {
-	title: string;
-	intro: string;
-	status: string;
-	qty: string;
-	batch: string;
-	sync: string;
-}
-
 export interface KeyDetail {
 	title: string;
 	subtitle: string;
 	logHeader: string;
-	tpaHeader: string;
-	tpaExpanded: boolean;
 	log: LogEntry[];
-	tpa: TpaEntry[];
 }
 
 /**
@@ -149,7 +134,6 @@ function countText(oBundle: ResourceBundle, sKey: string, iCount: number, iMax: 
 
 export async function loadKeyDetail(
 	oMainModel: ODataModel,
-	oTpaModel: ODataModel,
 	sKind: KeyKind,
 	sRawValue: string,
 	oBundle: ResourceBundle
@@ -159,26 +143,15 @@ export async function loadKeyDetail(
 	const sDisplay = bItem ? normalizeMaterial(sRawValue) : (sRawValue ?? "").trim();
 
 	const sLogField = bItem ? "ItemNumber" : "TpaNumber";
-	const sTpaField = bItem ? "ItemNumber" : "OrderNumber";
 
-	const [aLogRows, aTpaRows] = await Promise.all([
-		fetchRows(
-			oMainModel,
-			"/AppLog",
-			"LogUuid,CreatedAtStamp,LogType,HistoryType,TpaNumber,OrderLineNr,ItemNumber,HttpStatus,Message,JsonPayload",
-			orFilter(sLogField, aForms),
-			"CreatedAtStamp desc",
-			MAX_LOG
-		),
-		fetchRows(
-			oTpaModel,
-			"/Tpa",
-			"OrderNumber,OrderLineNumber,ItemNumber,Menge,MeasurementUnit,BatchNumber,OrderStatus,LineStatus,LastSyncAt",
-			orFilter(sTpaField, aForms),
-			"OrderNumber,OrderLineNumber",
-			MAX_TPA
-		)
-	]);
+	const aLogRows = await fetchRows(
+		oMainModel,
+		"/AppLog",
+		"LogUuid,CreatedAtStamp,LogType,HistoryType,TpaNumber,OrderLineNr,ItemNumber,HttpStatus,Message,JsonPayload",
+		orFilter(sLogField, aForms),
+		"CreatedAtStamp desc",
+		MAX_LOG
+	);
 
 	const aLog: LogEntry[] = aLogRows.map((oRow) => ({
 		stamp: timestamp(text(oRow.CreatedAtStamp)),
@@ -190,30 +163,10 @@ export async function loadKeyDetail(
 		payload: prettyJson(text(oRow.JsonPayload))
 	}));
 
-	const aTpa: TpaEntry[] = aTpaRows.map((oRow) => ({
-		title: oBundle.getText("popTpaLine", [
-			text(oRow.OrderNumber),
-			dashIfEmpty(text(oRow.OrderLineNumber))
-		]) ?? "",
-		intro: oBundle.getText("popTpaItem", [
-			normalizeMaterial(text(oRow.ItemNumber)) || "–"
-		]) ?? "",
-		status: text(oRow.LineStatus) || text(oRow.OrderStatus),
-		qty: oBundle.getText("popAttrQty", [
-			quantityOrDash(oRow.Menge as string | number | null),
-			dashIfEmpty(text(oRow.MeasurementUnit))
-		]) ?? "",
-		batch: oBundle.getText("popAttrBatch", [dashIfEmpty(text(oRow.BatchNumber))]) ?? "",
-		sync: oBundle.getText("popAttrSync", [timestamp(text(oRow.LastSyncAt))]) ?? ""
-	}));
-
 	return {
 		title: oBundle.getText(bItem ? "popTitleItem" : "popTitleTpa", [sDisplay]) ?? sDisplay,
 		subtitle: oBundle.getText(bItem ? "popSubtitleItem" : "popSubtitleTpa") ?? "",
 		logHeader: countText(oBundle, "popLogPanel", aLog.length, MAX_LOG),
-		tpaHeader: countText(oBundle, "popTpaPanel", aTpa.length, MAX_TPA),
-		tpaExpanded: aTpa.length > 0 && aLog.length <= 5,
-		log: aLog,
-		tpa: aTpa
+		log: aLog
 	};
 }
