@@ -443,13 +443,40 @@ export default class Main extends BaseController {
 		// no-unnecessary-type-assertion urteilt hier falsch.
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 		const oSource = oEvent.getSource() as Control;
-		const oMainContext = oSource.getBindingContext("mainModel");
-		const oTpaContext = oSource.getBindingContext("tpaModel");
-		const sRaw = (oMainContext
-			? (oMainContext.getProperty(sMainField) as string)
-			: (oTpaContext?.getProperty(sTpaField) as string)) ?? "";
 
-		if (!sRaw.trim()) {
+		/*
+		 * Der Schluessel wird in ALLEN drei Modellen gesucht, weil dieselben
+		 * Handler aus drei Tabellen gerufen werden:
+		 *   idMsgTable      -> mainModel  (OData, Einzelmeldungen)
+		 *   idCascadeTable  -> cascade    (JSON, verdichtete Vorgaenge)
+		 *   idTpaTable      -> tpaModel   (OData, Auftragspuffer)
+		 *
+		 * ⚠ Vorher standen hier nur mainModel und tpaModel. Aus der
+		 * Vorgangstabelle fand der Handler damit nichts, sRaw blieb leer und
+		 * die Methode stieg still aus - die Links sahen anklickbar aus und
+		 * taten nichts. Derselbe Fehlertyp wie bei den leeren Zellen: ein
+		 * Zeilenkontext haengt immer an EINEM Modell, und der Name muss
+		 * stimmen.
+		 *
+		 * Die Feldnamen der Vorgangszeilen sind absichtlich die der
+		 * Logzeilen, deshalb genuegt sMainField fuer beide.
+		 */
+		const aSources: [string, string][] = [
+			["mainModel", sMainField],
+			["cascade", sMainField],
+			["tpaModel", sTpaField]
+		];
+
+		let sRaw = "";
+		for (const [sModel, sField] of aSources) {
+			const sValue = (oSource.getBindingContext(sModel)?.getProperty(sField) as string) ?? "";
+			if (sValue.trim()) {
+				sRaw = sValue;
+				break;
+			}
+		}
+
+		if (!sRaw) {
 			return;
 		}
 
