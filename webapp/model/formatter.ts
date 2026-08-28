@@ -1,3 +1,4 @@
+import { isInitialUuid } from "./CascadeGrouper";
 import DateFormat from "sap/ui/core/format/DateFormat";
 import NumberFormat from "sap/ui/core/format/NumberFormat";
 
@@ -394,4 +395,21 @@ export function showMsgTable(sProcess?: string | null, bGrouped?: boolean | null
 /** Vorgangs-Tabelle: Meldungssicht UND gruppiert. */
 export function showCascadeTable(sProcess?: string | null, bGrouped?: boolean | null): boolean {
 	return isMessageView(sProcess) && bGrouped === true;
+}
+
+/**
+ * Gehoert die Zeile zu einem echten Vorgang?
+ *
+ * Nur dann laesst sich von ihr aus zu den uebrigen Meldungen desselben
+ * Vorgangs springen. Saetze aus der Zeit vor Michaels Logging-Umbau tragen
+ * eine INITIALE Korrelations-ID - dort fuehrt der Sprung ins Leere bzw.
+ * wuerde den gesamten Altbestand einsammeln, deshalb erscheint das Symbol
+ * dort gar nicht erst.
+ *
+ * ⚠ Die Erkennung kommt aus CascadeGrouper.isInitialUuid und wird bewusst
+ * NICHT nachgebaut: sie behandelt alle Schreibweisen (Guid mit Bindestrichen,
+ * reine Hex-Kette, leer) und muss mit der Gruppierung uebereinstimmen.
+ */
+export function hasCorrelation(sCorrUuid?: string | null): boolean {
+	return !isInitialUuid(sCorrUuid);
 }

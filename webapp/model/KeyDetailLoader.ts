@@ -28,6 +28,9 @@ const MAX_LOG = 100;
 const MATNR_LEN = 18;
 /** Laenge von LTAK-TANUM. */
 const TANUM_LEN = 10;
+/** Feldliste beider Ladewege - JsonPayload ist dabei, TpaNumber fuer den Bezug. */
+const LOG_SELECT = "LogUuid,CreatedAtStamp,SeqNr,LogType,HistoryType,TpaNumber,"
+	+ "OrderLineNr,ItemNumber,HttpStatus,Message,JsonPayload";
 /* eslint-enable @sap-ux/fiori-tools/sap-no-global-variable */
 
 export type KeyKind = "TPA" | "ITEM";
@@ -161,6 +164,80 @@ function countText(oBundle: ResourceBundle, sKey: string, iCount: number, iMax: 
 	return oBundle.getText(sKey, [`${iCount}${sSuffix}`]) ?? "";
 }
 
+/**
+ * 🔴 ZWEI LITERALFORMEN, WEIL DER TYP NICHT SICHER IST.
+ *
+ * CORR_UUID haengt an der Domaene SYSUUID_X16 (RAW 16). SADL bildet das
+ * ueblicherweise auf Edm.Guid ab - dessen Literal steht in OData V4 OHNE
+ * Anfuehrungszeichen. Kommt es dagegen als Edm.String heraus, braucht es
+ * welche. Welches von beidem gilt, steht im $metadata des Service und war
+ * beim Bauen nicht einsehbar.
+ *
+ * Statt zu raten: erst die Guid-Form, bei Fehlschlag die String-Form. Der
+ * Wert selbst stammt aus der Zeile, seine Schreibweise passt also per
+ * Konstruktion.
+ */
+async function fetchByCorr(oModel: ODataModel, sCorrUuid: string): Promise<Record<string, unknown>[]> {
+	if (!sCorrUuid) {
+		return [];
+	}
+	for (const sLiteral of [sCorrUuid, literal(sCorrUuid)]) {
+		try {
+			return await fetchRows(
+				oModel,
+				"/AppLog",
+				LOG_SELECT,
+				`CorrUuid eq ${sLiteral}`,
+				"SeqNr asc",
+				MAX_LOG
+			);
+		} catch {
+			// naechste Literalform versuchen
+		}
+	}
+	return [];
+}
+
+/** Eine Logzeile in einen Popover-Eintrag - fuer beide Ladewege dieselbe. */
+function toEntry(oBundle: ResourceBundle): (oRow: Record<string, unknown>) => LogEntry {
+	return (oRow) => ({
+		stamp: timestamp(text(oRow.CreatedAtStamp)),
+		logType: text(oRow.LogType),
+		message: text(oRow.Message),
+		process: oBundle.getText("popAttrProcess", [dashIfEmpty(text(oRow.HistoryType))]) ?? "",
+		http: oRow.HttpStatus ? (oBundle.getText("popAttrHttp", [text(oRow.HttpStatus)]) ?? "") : "",
+		line: oRow.OrderLineNr ? (oBundle.getText("popAttrLine", [text(oRow.OrderLineNr)]) ?? "") : "",
+		payload: prettyJson(text(oRow.JsonPayload))
+	});
+}
+
+/**
+ * Alle Meldungen EINES Vorgangs, ueber die Korrelations-ID.
+ *
+ * Das ist die Antwort auf „wo seh ich die restlichen Abbruchmeldungen zur
+ * Zeile?" aus der Einzelmeldungs-Sicht: dort gibt es - anders als in der
+ * Vorgangssicht mit ihrer Schritte-Spalte - sonst keinen Weg zu den
+ * Geschwisterzeilen.
+ *
+ * ⚠ AUFSTEIGEND nach SEQ_NR, nicht absteigend wie sonst in dieser App. Ein
+ * Vorgang wird von vorn gelesen; und genau dafuer gibt es das Feld, weil
+ * CREATED_AT innerhalb einer LUW kollidieren kann.
+ */
+export async function loadCorrDetail(
+	oMainModel: ODataModel,
+	sCorrUuid: string,
+	oBundle: ResourceBundle
+): Promise<KeyDetail> {
+	const aRows = await fetchByCorr(oMainModel, (sCorrUuid ?? "").trim());
+	const aLog = aRows.map(toEntry(oBundle));
+	return {
+		title: oBundle.getText("popTitleCorr", [String(aLog.length)]) ?? "",
+		subtitle: "",
+		logHeader: countText(oBundle, "popLogPanel", aLog.length, MAX_LOG),
+		log: aLog
+	};
+}
+
 export async function loadKeyDetail(
 	oMainModel: ODataModel,
 	sKind: KeyKind,
@@ -194,7 +271,7 @@ export async function loadKeyDetail(
 	const aLogRows = await fetchRows(
 		oMainModel,
 		"/AppLog",
-		"LogUuid,CreatedAtStamp,SeqNr,LogType,HistoryType,TpaNumber,OrderLineNr,ItemNumber,HttpStatus,Message,JsonPayload",
+		LOG_SELECT,
 		sFilter,
 		// SeqNr als Tiebreak: CREATED_AT ist TIMESTAMPL und kann innerhalb
 		// einer LUW kollidieren - genau dafuer gibt es das Feld.
@@ -202,15 +279,7 @@ export async function loadKeyDetail(
 		MAX_LOG
 	);
 
-	const aLog: LogEntry[] = aLogRows.map((oRow) => ({
-		stamp: timestamp(text(oRow.CreatedAtStamp)),
-		logType: text(oRow.LogType),
-		message: text(oRow.Message),
-		process: oBundle.getText("popAttrProcess", [dashIfEmpty(text(oRow.HistoryType))]) ?? "",
-		http: oRow.HttpStatus ? (oBundle.getText("popAttrHttp", [text(oRow.HttpStatus)]) ?? "") : "",
-		line: oRow.OrderLineNr ? (oBundle.getText("popAttrLine", [text(oRow.OrderLineNr)]) ?? "") : "",
-		payload: prettyJson(text(oRow.JsonPayload))
-	}));
+	const aLog: LogEntry[] = aLogRows.map(toEntry(oBundle));
 
 	return {
 		title: oBundle.getText(bItem ? "popTitleItem" : "popTitleTpa", [sDisplay]) ?? sDisplay,

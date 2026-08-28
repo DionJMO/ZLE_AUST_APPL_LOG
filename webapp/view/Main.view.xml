@@ -476,6 +476,20 @@
 																							tooltip="{i18n>popPayloadHint}"
 																							press=".onMessagePayloadPress"
 																							class="sapUiTinyMarginBegin"/>
+																						<!--
+																							Sprung zu allen Meldungen desselben Vorgangs.
+																							Erscheint nur, wo es einen echten Vorgang gibt -
+																							Altbestand traegt eine initiale Korrelations-ID,
+																							dort fuehrte der Sprung ins Leere.
+																						-->
+																						<core:Icon
+																							id="msIcnCorr"
+																							src="sap-icon://history"
+																							decorative="false"
+																							visible="{path: 'mainModel>CorrUuid', formatter: '.formatter.hasCorrelation'}"
+																							tooltip="{i18n>corrHint}"
+																							press=".onCorrPress"
+																							class="sapUiTinyMarginBegin"/>
 																					</HBox>
 																				</t:template>
 																			</t:Column>

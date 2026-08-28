@@ -466,6 +466,55 @@ export default class Main extends BaseController {
 		);
 	}
 
+	/**
+	 * Alle Meldungen desselben Vorgangs - aus einer EINZELNEN Zeile heraus.
+	 *
+	 * In der Vorgangssicht fuehrt die Schritte-Spalte dorthin; in der
+	 * Einzelmeldungs-Sicht gab es bis dahin keinen Weg zu den
+	 * Geschwisterzeilen. Genau danach war aus dem Fachbereich gefragt worden
+	 * („wo seh ich denn die restlichen Abbruchmeldungen? zur zeile?").
+	 *
+	 * Anders als das Schluessel-Popover zeigt das hier den VORGANG, nicht die
+	 * Vorgeschichte eines Schluessels: also den einen Ablauf mit seinen
+	 * Schritten, in der Reihenfolge, in der sie passiert sind.
+	 */
+	public onCorrPress(oEvent: Event): void {
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+		const oSource = oEvent.getSource() as Control;
+		const oContext = oSource.getBindingContext("mainModel");
+		const sCorr = (oContext?.getProperty("CorrUuid") as string) ?? "";
+		if (!sCorr.trim()) {
+			return;
+		}
+		void this._openCorrPopover(oSource, sCorr);
+	}
+
+	private async _openCorrPopover(oSource: Control, sCorr: string): Promise<void> {
+		const oDetail = this._detailModel();
+		oDetail.setProperty("/busy", true);
+		oDetail.setProperty("/log", []);
+		oDetail.setProperty("/logVisible", true);
+		// Kein SAP-Teil: ein Vorgang ist kein Schluessel, es gibt nichts
+		// nachzuschlagen. Gleiche Entscheidung wie im Kaskaden-Popover.
+		oDetail.setProperty("/sap",
+			{ available: false, hint: "", header: "", fields: [], rowsHeader: "", rows: [] });
+
+		await this._openPopover(oSource);
+
+		try {
+			const oData = await KeyDetailLoader.loadCorrDetail(
+				this.getODataModel("mainModel"), sCorr, this._bundle());
+			oDetail.setProperty("/title", oData.title);
+			oDetail.setProperty("/logHeader", oData.logHeader);
+			oDetail.setProperty("/log", oData.log);
+		} catch (oError) {
+			// eslint-disable-next-line no-console
+			console.error("[Vorgang] Laden fehlgeschlagen:", oError);
+		} finally {
+			oDetail.setProperty("/busy", false);
+		}
+	}
+
 	public onKeyPopoverClose(): void {
 		void this._pKeyPopover?.then((oPopover) => oPopover.close());
 	}
