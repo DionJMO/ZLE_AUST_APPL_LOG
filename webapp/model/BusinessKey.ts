@@ -14,12 +14,28 @@
  * "TANUM-TAPOS-LGNUM" in der ABAP Doc ist nur Notation - beide build_*-
  * Methoden bauen per String-Template und CONDENSE ... NO-GAPS.
  *
- * 🔴 DIE PRUEFUNGEN SIND ABSICHTLICH DIESELBEN wie in ABAP, in derselben
- * Reihenfolge:
- *   1. trimmen, dann EXAKTE Laengenpruefung (17 bzw. 13) - bei Abweichung
- *      sofort raus, alle Felder leer, ok = false
+ * 🔴 DIE PRUEFUNGEN FOLGEN DEM ABAP-GEGENSTUECK, in derselben Reihenfolge:
+ *   1. Leerraum entfernen, dann EXAKTE Laengenpruefung (17 bzw. 13) - bei
+ *      Abweichung sofort raus, alle Felder leer, ok = false
  *   2. Ziffernpruefung auf die ersten 14 (PUT) bzw. 10 Stellen (PICK)
  *   3. erst dann zerlegen
+ *
+ * ⚠ EIN UNTERSCHIED, BEWUSST: ABAP macht in Schritt 1 CONDENSE, hier steht
+ * trim( ). CONDENSE entfernt zusaetzlich MEHRFACHE INNERE Leerzeichen bzw.
+ * zieht sie auf eines zusammen. Fuer jeden realistischen Wert ist das
+ * gleichbedeutend - ein BUSINESS_KEY besteht aus Ziffern, und die
+ * CHAR50-Auffuellung sind Randleerzeichen, die trim( ) genauso entfernt.
+ *
+ * Abweichend ist genau ein Fall, gemessen: ein Schluessel mit MEHREREN
+ * aufeinanderfolgenden inneren Leerzeichen, den CONDENSE auf exakt 17
+ * zusammenzoege.
+ *
+ *   "00060244110001  01"   ABAP: ok = true, lgnum = " 01"
+ *                          hier: ok = false
+ *
+ * Das ist hier absichtlich strenger. Ein solcher Schluessel ist ohnehin
+ * kaputt, und ABAPs Nachsicht liefert eine Lagernummer MIT Leerzeichen -
+ * fuer eine Anzeige die schlechtere Antwort als "nicht zerlegbar".
  *
  * Und daraus folgt die Zusicherung, die die Doku ausdruecklich gibt: weil 17
  * und 13 exakt geprueft werden, sind die beiden Formate NICHT verwechselbar.
