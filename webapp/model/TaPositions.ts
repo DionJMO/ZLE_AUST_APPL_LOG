@@ -36,8 +36,8 @@ import ODataModel from "sap/ui/model/odata/v4/ODataModel";
 const CHUNK = 50;
 /** Obergrenze fuer die Anreicherung - so viele Positionen werden gelesen. */
 const MAX_POS = 2000;
-/** Obergrenze fuer die AS-Sicht. */
-const MAX_AS = 3000;
+/** Obergrenze fuer die AS-Sicht. Wird sie erreicht, sagt es die Oberflaeche. */
+export const MAX_AS = 3000;
 /* eslint-enable @sap-ux/fiori-tools/sap-no-global-variable */
 
 export interface TaPos {
@@ -54,6 +54,20 @@ export interface TaPos {
 	ItemIsConfirmed?: unknown;
 	CreationDate?: string;
 	DestTargetQtyInAltUnit?: string | number;
+}
+
+/**
+ * Ergebnis eines Lesevorgangs samt Kappungshinweis.
+ *
+ * ⚠ KEINE STILLEN DECKEL - die Regel steht so im Projekt und wird von
+ * LogAggregator und CascadeGrouper bereits eingehalten. Eine gekappte Menge
+ * ohne Hinweis liest sich wie eine vollstaendige, und gerade bei einer
+ * VOLLSTAENDIGKEITSpruefung waere das der schlimmste Fehler: sie behauptete
+ * dann, es gebe keine weiteren Faelle.
+ */
+export interface TaPosResult {
+	rows: TaPos[];
+	truncated: boolean;
 }
 
 /** Eine TA, deren Pick-Auftrag nicht ausgeloest werden kann. */
@@ -139,10 +153,11 @@ export function posKey(sOrder: string, vItem: string | number | null | undefined
 export async function loadByOrders(
 	oModel: ODataModel | undefined,
 	aOrders: string[]
-): Promise<Record<string, TaPos>> {
+): Promise<{ map: Record<string, TaPos>; truncated: boolean }> {
 	const mResult: Record<string, TaPos> = {};
+	let bTruncated = false;
 	if (!oModel || !aOrders.length) {
-		return mResult;
+		return { map: mResult, truncated: false };
 	}
 
 	const aUnique = Array.from(new Set(aOrders.map((s) => (s ?? "").trim()).filter((s) => s)));
@@ -152,6 +167,7 @@ export async function loadByOrders(
 			const aChunk = aUnique.slice(i, i + CHUNK);
 			const sFilter = aChunk.map((s) => `TransferOrder eq ${literal(s)}`).join(" or ");
 			const aRows = await fetchRows(oModel, sFilter, MAX_POS);
+			bTruncated = bTruncated || aRows.length >= MAX_POS;
 			aRows.forEach((oRow) => {
 				mResult[posKey(text(oRow.TransferOrder), oRow.TransferOrderItem)] = oRow;
 			});
@@ -159,30 +175,37 @@ export async function loadByOrders(
 	} catch {
 		// Kein Wurf nach aussen: die Anreicherung ist eine Zugabe, kein
 		// Bestandteil der Tabelle.
-		return mResult;
+		return { map: mResult, truncated: bTruncated };
 	}
 
-	return mResult;
+	return { map: mResult, truncated: bTruncated };
 }
 
-/** Liest alle AutoStore-Positionen ab einem Datum (ISO, YYYY-MM-DD). */
+/**
+ * Liest alle AutoStore-Positionen ab einem Datum (ISO, YYYY-MM-DD).
+ *
+ * Meldet ueber `truncated` mit, ob die Obergrenze erreicht wurde - dann ist
+ * die Pruefung unvollstaendig und darf nicht als "nichts gefunden" gelesen
+ * werden.
+ */
 export async function loadAutoStore(
 	oModel: ODataModel | undefined,
 	sFromDate: string
-): Promise<TaPos[]> {
+): Promise<TaPosResult> {
 	if (!oModel) {
-		return [];
+		return { rows: [], truncated: false };
 	}
 	try {
 		// CreationDate ist Edm.Date - das Literal steht OHNE Anfuehrungszeichen
 		// und ohne Zeitanteil, wie bei CreatedAt in LogAggregator.
-		return await fetchRows(
+		const aRows = await fetchRows(
 			oModel,
 			`(IsAutoStorePick eq true or IsAutoStorePutAway eq true) and CreationDate ge ${sFromDate}`,
 			MAX_AS
 		);
+		return { rows: aRows, truncated: aRows.length >= MAX_AS };
 	} catch {
-		return [];
+		return { rows: [], truncated: false };
 	}
 }
 

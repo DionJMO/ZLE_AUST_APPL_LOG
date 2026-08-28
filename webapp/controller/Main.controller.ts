@@ -298,9 +298,13 @@ export default class Main extends BaseController {
 			const aContexts = await oBinding.requestContexts(0, 2000);
 			const aOrders = aContexts.map((oContext) =>
 				(oContext.getProperty("OrderNumber") as string) ?? "");
-			oModel.setProperty("/map",
-				await TaPositions.loadByOrders(
-					this.getView()?.getModel("lookupModel") as ODataModel | undefined, aOrders));
+			const oResult = await TaPositions.loadByOrders(
+				this.getView()?.getModel("lookupModel") as ODataModel | undefined, aOrders);
+			oModel.setProperty("/map", oResult.map);
+			// ⚠ tsc hat DIESE Stelle nicht gemeldet, als loadByOrders seinen
+			// Rueckgabetyp aenderte - setProperty nimmt any. Die Umstellung
+			// muss hier von Hand nachgezogen werden.
+			this.getUiModel().setProperty("/sapPosTruncated", oResult.truncated);
 		} catch (oError) {
 			// Zugabe, kein Bestandteil: faellt sie aus, bleiben die zwei
 			// Spalten leer wie vorher.
@@ -320,13 +324,20 @@ export default class Main extends BaseController {
 		const oModel = this._jsonModel("wacheck", { rows: [] });
 		const oFrom = new Date();
 		oFrom.setDate(oFrom.getDate() - Main.WA_CHECK_DAYS);
-		const aRows = await TaPositions.loadAutoStore(
+		const oResult = await TaPositions.loadAutoStore(
 			this.getView()?.getModel("lookupModel") as ODataModel | undefined,
 			oFrom.toISOString().slice(0, 10)
 		);
-		const aShadowed = TaPositions.shadowedPicks(aRows);
+		const aShadowed = TaPositions.shadowedPicks(oResult.rows);
 		oModel.setProperty("/rows", aShadowed);
 		this.getUiModel().setProperty("/waCheckCount", aShadowed.length);
+		/*
+		 * 🔴 Bei einer VOLLSTAENDIGKEITSpruefung ist ein stiller Deckel der
+		 * schlimmste Fehler: die Liste behauptete dann, es gebe keine weiteren
+		 * Faelle. Deshalb wird die Kappung angezeigt, wie beim Verlauf und bei
+		 * der Vorgangsverdichtung auch.
+		 */
+		this.getUiModel().setProperty("/waCheckTruncated", oResult.truncated);
 	}
 
 	/** Legt ein JSON-Modell einmalig an und liefert es. */

@@ -398,6 +398,14 @@
 											text="{cascade>/summary}"
 											visible="{= ${ui>/grouped} === true }"
 											class="sapUiSmallMarginBegin"/>
+										<ObjectStatus
+											id="idWaCheckTruncatedObjectStatus"
+											state="Warning"
+											icon="sap-icon://alert"
+											text="{i18n>waCheckTruncated}"
+											tooltip="{i18n>waCheckTruncatedTip}"
+											visible="{= ${ui>/selectedProcess} === 'WACHECK' &amp;&amp; ${ui>/waCheckTruncated} === true }"
+											class="sapUiSmallMarginBegin"/>
 										<ToolbarSpacer id="idMsgToolbarSpacer"/>
 										<Button
 											id="idMsgColumnsButton"
