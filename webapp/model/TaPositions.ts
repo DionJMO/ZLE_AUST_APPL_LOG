@@ -195,18 +195,47 @@ export async function loadAutoStore(
 	if (!oModel) {
 		return { rows: [], truncated: false };
 	}
-	try {
-		// CreationDate ist Edm.Date - das Literal steht OHNE Anfuehrungszeichen
-		// und ohne Zeitanteil, wie bei CreatedAt in LogAggregator.
-		const aRows = await fetchRows(
-			oModel,
-			`(IsAutoStorePick eq true or IsAutoStorePutAway eq true) and CreationDate ge ${sFromDate}`,
-			MAX_AS
-		);
-		return { rows: aRows, truncated: aRows.length >= MAX_AS };
-	} catch {
-		return { rows: [], truncated: false };
+	/*
+	 * 🔴 ZWEI SCHREIBWEISEN DER KENNZEICHEN, WEIL DER TYP NICHT SICHER IST.
+	 *
+	 * IsAutoStorePick/-PutAway sind im View BERECHNET:
+	 *
+	 *   @Semantics.booleanIndicator: true
+	 *   case when ltap.vltyp = 'AS' then 'X' else '' end as IsAutoStorePick
+	 *
+	 * Also ein CHAR1 mit 'X'/'' und KEIN Datenelement mit XFELD-Domaene. Ob
+	 * SADL daraus wegen der Annotation ein Edm.Boolean macht oder es als
+	 * Edm.String stehen laesst, steht im $metadata und ist von hier nicht
+	 * einsehbar.
+	 *
+	 * ⚠ Und der Unterschied ist nicht harmlos: bei falscher Schreibweise
+	 * antwortet der Service mit 400, der Fehler wird gefangen, und der Reiter
+	 * zeigt STILL eine 0 - also "keine betroffenen Auftraege", obwohl die
+	 * Frage gar nicht gestellt wurde. Genau die Verwechslung, die eine
+	 * Vollstaendigkeitspruefung nie erlauben darf.
+	 *
+	 * Deshalb beide Formen nacheinander. Im Normalfall kostet das eine
+	 * Abfrage; die zweite laeuft nur, wenn die erste am Typ scheitert.
+	 *
+	 * ℹ CreationDate (ltak.bdatu, DATS) ist dagegen eindeutig Edm.Date - das
+	 * Literal steht ohne Anfuehrungszeichen und ohne Zeitanteil, wie bei
+	 * CreatedAt in LogAggregator.
+	 */
+	const aForms = ["eq true", "eq 'X'"];
+	for (const sForm of aForms) {
+		try {
+			const aRows = await fetchRows(
+				oModel,
+				`(IsAutoStorePick ${sForm} or IsAutoStorePutAway ${sForm})`
+					+ ` and CreationDate ge ${sFromDate}`,
+				MAX_AS
+			);
+			return { rows: aRows, truncated: aRows.length >= MAX_AS };
+		} catch {
+			// naechste Schreibweise versuchen
+		}
 	}
+	return { rows: [], truncated: false };
 }
 
 /**
