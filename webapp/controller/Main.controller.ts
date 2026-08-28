@@ -24,7 +24,6 @@ import Fragment from "sap/ui/core/Fragment";
 import Popover from "sap/m/Popover";
 import Dialog from "sap/m/Dialog";
 import Control from "sap/ui/core/Control";
-import ODataModel from "sap/ui/model/odata/v4/ODataModel";
 import ResourceModel from "sap/ui/model/resource/ResourceModel";
 import ResourceBundle from "sap/base/i18n/ResourceBundle";
 
