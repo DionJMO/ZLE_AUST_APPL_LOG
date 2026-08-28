@@ -207,6 +207,14 @@ export async function loadAutoStore(
 	sFromDate: string
 ): Promise<TaPosResult> {
 	if (!oModel) {
+		/*
+		 * ⚠ AUCH DAS PROTOKOLLIEREN. Dieser Zweig war der einzige stille Weg
+		 * zu ok = false - und genau er hat zugeschlagen, als der Aufrufer das
+		 * Modell ueber die View statt ueber die Component holte. Die Konsole
+		 * blieb leer, obwohl der Leerzustand auf sie verwies.
+		 */
+		// eslint-disable-next-line no-console
+		console.error("[WA-Pruefung] Lookup-Modell nicht verfuegbar - Abfrage nicht gestellt.");
 		return { rows: [], truncated: false, ok: false };
 	}
 	/*

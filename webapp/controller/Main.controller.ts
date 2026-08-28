@@ -299,8 +299,26 @@ export default class Main extends BaseController {
 			const aContexts = await oBinding.requestContexts(0, 2000);
 			const aOrders = aContexts.map((oContext) =>
 				(oContext.getProperty("OrderNumber") as string) ?? "");
+			/*
+			 * 🔴 getODataModel( ) - NICHT getView( ).getModel( ).
+			 *
+			 * Waehrend onInit sind die Modelle der Component noch NICHT an die
+			 * View durchgereicht; getView( ).getModel( ) liefert dort
+			 * undefined. Genau daran sind diese Anreicherung UND die
+			 * WA-Pruefung still gescheitert: beide laufen aus _loadData( ) im
+			 * Start, das Popover dagegen erst auf Klick - und funktionierte
+			 * deshalb.
+			 *
+			 * BaseController.getODataModel( ) geht ueber die Component und ist
+			 * damit von Anfang an belastbar. Chart und Kennzahlen benutzen es
+			 * laengst; nur meine drei Lookup-Aufrufe taten es nicht.
+			 *
+			 * ⚠ Dieselbe Falle wie bei _bundle( ) am selben Tag. Dort hatte
+			 * ich sie erkannt und behoben - und die Erkenntnis nicht auf die
+			 * Modellzugriffe uebertragen.
+			 */
 			const oResult = await TaPositions.loadByOrders(
-				this.getView()?.getModel("lookupModel") as ODataModel | undefined, aOrders);
+				this.getODataModel("lookupModel"), aOrders);
 			oModel.setProperty("/map", oResult.map);
 			// ⚠ tsc hat DIESE Stelle nicht gemeldet, als loadByOrders seinen
 			// Rueckgabetyp aenderte - setProperty nimmt any. Die Umstellung
@@ -326,7 +344,7 @@ export default class Main extends BaseController {
 		const oFrom = new Date();
 		oFrom.setDate(oFrom.getDate() - Main.WA_CHECK_DAYS);
 		const oResult = await TaPositions.loadAutoStore(
-			this.getView()?.getModel("lookupModel") as ODataModel | undefined,
+			this.getODataModel("lookupModel"),
 			oFrom.toISOString().slice(0, 10)
 		);
 		const aShadowed = TaPositions.shadowedPicks(oResult.rows);
@@ -715,7 +733,7 @@ export default class Main extends BaseController {
 			 * Rueckfallebene kostet nur dann, wenn sie eintritt.
 			 */
 			const oSapData = await SapLookup.load(
-				this.getView()?.getModel("lookupModel") as ODataModel | undefined,
+				this.getODataModel("lookupModel"),
 				sKind,
 				sRaw,
 				this._bundle(),
@@ -728,7 +746,7 @@ export default class Main extends BaseController {
 
 			if (!oSapData.available) {
 				const oDetailData = await KeyDetailLoader.loadKeyDetail(
-					this.getView()?.getModel("mainModel") as ODataModel,
+					this.getODataModel("mainModel"),
 					sKind,
 					sRaw,
 					oBundle,
