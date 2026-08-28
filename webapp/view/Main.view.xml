@@ -324,18 +324,6 @@
 										design="Horizontal"
 										text="{i18n>tabTPA}"
 										count="{ui>/kpi/gesamt}"/>
-									<!--
-										Die Pruefsicht steht bewusst als eigener Reiter und nicht als Panel:
-										sie ist keine Meldungsliste, sondern eine Sicht auf SAP-Daten - der
-										Typfilter E/W/S gilt fuer sie nicht.
-									-->
-									<IconTabFilter
-										id="idTabWACHECK"
-										key="WACHECK"
-										icon="sap-icon://alert"
-										design="Horizontal"
-										text="{i18n>tabWaCheck}"
-										count="{ui>/waCheckCount}"/>
 								</items>
 								<content>
 									<OverflowToolbar id="idMsgToolbar" height="3rem">
@@ -343,7 +331,7 @@
 											id="idTypeFilter"
 											selectedKey="{ui>/selectedType}"
 											selectionChange=".onTypeFilterChange"
-											visible="{path: 'ui>/selectedProcess', formatter: '.formatter.isMessageView'}">
+											visible="{= ${ui>/selectedProcess} !== 'TPA' }">
 											<items>
 												<SegmentedButtonItem id="idTypeAll" key="" text="{i18n>typeAll}"/>
 												<SegmentedButtonItem id="idTypeE" key="E" text="{i18n>typeE}"/>
@@ -358,7 +346,7 @@
 											placeholder="{i18n>searchPlaceholder}"
 											tooltip="{i18n>searchTooltip}"
 											search=".onMsgSearch"
-											visible="{path: 'ui>/selectedProcess', formatter: '.formatter.isMessageView'}"/>
+											visible="{= ${ui>/selectedProcess} !== 'TPA' }"/>
 										<ToggleButton
 											id="idCascadeToggle"
 											icon="sap-icon://group-2"
@@ -366,7 +354,7 @@
 											tooltip="{i18n>cascToggleTooltip}"
 											pressed="{ui>/grouped}"
 											press=".onCascadeToggle"
-											visible="{path: 'ui>/selectedProcess', formatter: '.formatter.isMessageView'}"/>
+											visible="{= ${ui>/selectedProcess} !== 'TPA' }"/>
 										<Text
 											id="idCascadeSummary"
 											text="{cascade>/summary}"
@@ -383,7 +371,7 @@
 
 									<t:Table
 										id="idMsgTable"
-										visible="{parts: ['ui>/selectedProcess', 'ui>/grouped'], formatter: '.formatter.showMsgTable'}"
+										visible="{= ${ui>/selectedProcess} !== 'TPA' &amp;&amp; ${ui>/grouped} !== true }"
 										rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, sorter: [{path: 'CreatedAtStamp', descending: true}, {path: 'SeqNr', descending: true}]}"
 										selectionMode="None"
 										ariaLabelledBy="msgHeading">
@@ -528,7 +516,7 @@
 									-->
 									<t:Table
 										id="idCascadeTable"
-										visible="{parts: ['ui>/selectedProcess', 'ui>/grouped'], formatter: '.formatter.showCascadeTable'}"
+										visible="{= ${ui>/selectedProcess} !== 'TPA' &amp;&amp; ${ui>/grouped} === true }"
 										rows="{cascade>/rows}"
 										selectionMode="None"
 										ariaLabelledBy="msgHeading">
@@ -585,75 +573,6 @@
 												<Label id="cscLblTpa" text="{i18n>colTpaNumber}"/>
 												<t:template>
 													<Link id="cscLnkTpa" text="{path: 'cascade>TpaNumber', formatter: '.formatter.dashIfEmpty'}" wrapping="false" press=".onTpaNumberPress" tooltip="{i18n>popTooltipTpa}"/>
-												</t:template>
-											</t:Column>
-										</t:columns>
-									</t:Table>
-
-									<!--
-										Vollstaendigkeitspruefung Warenausgang.
-
-										🔴 Sie beantwortet, welche Pick-Auftraege HiLIS gar nicht erreichen
-										KOENNEN: ZXLTOU01 verzweigt mit "elseif", also feuert bei einer TA mit
-										AS-Einlagerungsposition nur der Einlagerungs-Trigger - der Pick-Zweig
-										wird nie erreicht, es gibt keinen POST und keinen Logeintrag. Genau so
-										blieben im August zwoelf von dreissig Pick-TAs zwei Wochen unbemerkt.
-
-										⚠ Gebunden an ein JSON-Modell, nicht an OData: der Befund entsteht durch
-										Gruppierung ueber die Positionen einer TA und laesst sich serverseitig
-										nicht ausdruecken.
-									-->
-									<t:Table
-										id="idWaCheckTable"
-										visible="{= ${ui>/selectedProcess} === 'WACHECK' }"
-										rows="{path: 'wacheck>/rows'}"
-										selectionMode="None"
-										ariaLabelledBy="msgTitle">
-										<t:rowMode>
-											<rm:Auto maxRowCount="12"/>
-										</t:rowMode>
-										<t:noData>
-											<IllustratedMessage
-												id="waCheckNoData"
-												illustrationType="sapIllus-SuccessHighFive"
-												title="{i18n>waCheckEmptyTitle}"
-												description="{i18n>waCheckEmptyText}"/>
-										</t:noData>
-										<t:columns>
-											<t:Column id="idWaCheckOrderCol" width="10rem" sortProperty="TransferOrder">
-												<Label id="waLblOrder" text="{i18n>colTransferOrder}"/>
-												<t:template>
-													<Link id="waTxtOrder" text="{wacheck>TransferOrder}" wrapping="false" press=".onTpaNumberPress" tooltip="{i18n>popTooltipTpa}"/>
-												</t:template>
-											</t:Column>
-											<t:Column id="idWaCheckDateCol" width="8rem" sortProperty="CreationDate">
-												<Label id="waLblDate" text="{i18n>colCreationDate}"/>
-												<t:template>
-													<Text id="waTxtDate" text="{wacheck>CreationDate}" wrapping="false"/>
-												</t:template>
-											</t:Column>
-											<t:Column id="idWaCheckPickCol" width="8rem" hAlign="End" sortProperty="PickItems">
-												<Label id="waLblPick" text="{i18n>colPickItems}"/>
-												<t:template>
-													<ObjectStatus id="waTxtPick" text="{wacheck>PickItems}" state="Error"/>
-												</t:template>
-											</t:Column>
-											<t:Column id="idWaCheckPutCol" width="8rem" hAlign="End" sortProperty="PutAwayItems">
-												<Label id="waLblPut" text="{i18n>colPutAwayItems}"/>
-												<t:template>
-													<Text id="waTxtPut" text="{wacheck>PutAwayItems}" wrapping="false"/>
-												</t:template>
-											</t:Column>
-											<t:Column id="idWaCheckBothCol" width="9rem">
-												<Label id="waLblBoth" text="{i18n>colHasBoth}"/>
-												<t:template>
-													<ObjectStatus id="waTxtBoth" text="{= ${wacheck>HasBoth} ? ${i18n>waBothYes} : '' }" state="Warning"/>
-												</t:template>
-											</t:Column>
-											<t:Column id="idWaCheckMatCol" width="18rem">
-												<Label id="waLblMat" text="{i18n>colMaterials}"/>
-												<t:template>
-													<Text id="waTxtMat" text="{wacheck>Materials}" wrapping="false"/>
 												</t:template>
 											</t:Column>
 										</t:columns>
@@ -743,13 +662,13 @@
 																		<t:Column id="idTpaUomColumn" width="8rem">
 																			<Label id="tpaLblUom" text="{i18n>colMeasurementUnit}"/>
 																			<t:template>
-																				<Text id="tpaTxtUom" text="{parts: ['tpaModel>OrderNumber', 'tpaModel>OrderLineNumber', 'sapPos>/map'], formatter: '.formatter.sapUnit'}" wrapping="false"/>
+																				<Text id="tpaTxtUom" text="{tpaModel>MeasurementUnit}" wrapping="false"/>
 																			</t:template>
 																		</t:Column>
 																		<t:Column id="idTpaBbdColumn" width="8rem">
 																			<Label id="tpaLblBbd" text="{i18n>colBestBeforeDate}"/>
 																			<t:template>
-																				<Text id="tpaTxtBbd" text="{parts: ['tpaModel>OrderNumber', 'tpaModel>OrderLineNumber', 'sapPos>/map'], formatter: '.formatter.sapBestBefore'}" wrapping="false"/>
+																				<Text id="tpaTxtBbd" text="{tpaModel>BestBeforeDate}" wrapping="false"/>
 																			</t:template>
 																		</t:Column>
 																		<t:Column id="idTpaRefNumberColumn" width="10rem">

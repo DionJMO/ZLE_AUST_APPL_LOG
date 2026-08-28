@@ -66,12 +66,6 @@ export const KEY_UNASSIGNED = "NONE";
 export const KEY_ALL = "ALL";
 export const KEY_ORDERS = "TPA";
 /**
- * Vollstaendigkeitspruefung Warenausgang. Wie KEY_ORDERS keine Meldungsachse:
- * eine Sicht auf SAP-Daten, fuer die Typfilter, Suche und Vorgangsverdichtung
- * nicht gelten.
- */
-export const KEY_WACHECK = "WACHECK";
-/**
  * Der Reiter, auf dem die App startet.
  *
  * Steht hier und nicht in Component.ts, weil ihn zwei Stellen brauchen:
