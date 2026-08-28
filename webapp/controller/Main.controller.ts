@@ -40,7 +40,7 @@ export default class Main extends BaseController {
 	 * alle Meldungsreiter und eine fuer die Auftraege.
 	 */
 	private static readonly DEFAULT_VISIBLE: Record<string, number> = {
-		idMsgTable: 5,
+		idMsgTable: 6,
 		idTpaTable: 8
 	};
 

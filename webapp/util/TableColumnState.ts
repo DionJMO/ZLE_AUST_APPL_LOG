@@ -42,9 +42,14 @@ import Table from "sap/ui/table/Table";
  * v6 = 27.08.2026, "Schritte" wieder entfernt - die Vorgangssicht hat eine
  *      eigene Tabelle bekommen, weil eine umgebundene Tabelle ihre Zellen
  *      nicht mitnimmt (Modellpraefix).
+ * v7 = 28.08.2026, Spalte "Position" von Index 7 auf 6 vorgezogen und in die
+ *      Standardauswahl genommen. Ohne sie war die Positionsnummer NIRGENDS
+ *      sichtbar: messageShort schneidet den Praefix "Pos NNNN" aus dem
+ *      Meldungstext, weil er "als Spalte daneben steht" - und genau die war
+ *      ausgeblendet.
  */
 function storageKey(sTableId: string): string {
-	return "colVis_v6_" + sTableId;
+	return "colVis_v7_" + sTableId;
 }
 
 /**

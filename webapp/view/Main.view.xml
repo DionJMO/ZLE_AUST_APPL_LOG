@@ -491,16 +491,16 @@
 																					<Link id="msTxtTpaNumber" text="{path: 'mainModel>TpaNumber', formatter: '.formatter.dashIfEmpty'}" wrapping="false" press=".onTpaNumberPress" tooltip="{i18n>popTooltipTpa}"/>
 																				</t:template>
 																			</t:Column>
-																			<t:Column id="idMsgHistoryColumn" width="10rem" sortProperty="HistoryType">
-																				<Label id="msLblHistoryType" text="{i18n>colHistoryType}"/>
-																				<t:template>
-																					<Text id="msTxtHistoryType" text="{mainModel>HistoryType}" wrapping="false"/>
-																				</t:template>
-																			</t:Column>
 																			<t:Column id="idMsgLineColumn" width="7rem">
 																				<Label id="msLblOrderLineNr" text="{i18n>colOrderLineNr}"/>
 																				<t:template>
 																					<Text id="msTxtOrderLineNr" text="{mainModel>OrderLineNr}" wrapping="false"/>
+																				</t:template>
+																			</t:Column>
+																			<t:Column id="idMsgHistoryColumn" width="10rem" sortProperty="HistoryType">
+																				<Label id="msLblHistoryType" text="{i18n>colHistoryType}"/>
+																				<t:template>
+																					<Text id="msTxtHistoryType" text="{mainModel>HistoryType}" wrapping="false"/>
 																				</t:template>
 																			</t:Column>
 																			<t:Column id="idMsgHttpColumn" width="7rem" hAlign="End">
