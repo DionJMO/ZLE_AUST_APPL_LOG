@@ -20,22 +20,10 @@
  *   2. Ziffernpruefung auf die ersten 14 (PUT) bzw. 10 Stellen (PICK)
  *   3. erst dann zerlegen
  *
- * ⚠ EIN UNTERSCHIED, BEWUSST: ABAP macht in Schritt 1 CONDENSE, hier steht
- * trim( ). CONDENSE entfernt zusaetzlich MEHRFACHE INNERE Leerzeichen bzw.
- * zieht sie auf eines zusammen. Fuer jeden realistischen Wert ist das
- * gleichbedeutend - ein BUSINESS_KEY besteht aus Ziffern, und die
- * CHAR50-Auffuellung sind Randleerzeichen, die trim( ) genauso entfernt.
- *
- * Abweichend ist genau ein Fall, gemessen: ein Schluessel mit MEHREREN
- * aufeinanderfolgenden inneren Leerzeichen, den CONDENSE auf exakt 17
- * zusammenzoege.
- *
- *   "00060244110001  01"   ABAP: ok = true, lgnum = " 01"
- *                          hier: ok = false
- *
- * Das ist hier absichtlich strenger. Ein solcher Schluessel ist ohnehin
- * kaputt, und ABAPs Nachsicht liefert eine Lagernummer MIT Leerzeichen -
- * fuer eine Anzeige die schlechtere Antwort als "nicht zerlegbar".
+ * ⚠ AUCH DAS CONDENSE IST NACHGEBAUT, nicht nur ein trim( ) - siehe die
+ * Funktion condense( ) unten. Fuer realistische Werte macht das keinen
+ * Unterschied; der Grund ist der Abgleich mit der ABAP-Fassung, nicht die
+ * Fachlichkeit.
  *
  * Und daraus folgt die Zusicherung, die die Doku ausdruecklich gibt: weil 17
  * und 13 exakt geprueft werden, sind die beiden Formate NICHT verwechselbar.
@@ -73,6 +61,28 @@ export interface KeyParts {
 /* eslint-disable-next-line @sap-ux/fiori-tools/sap-no-global-variable -- Modul-Scope, s. oben */
 const EMPTY: KeyParts = { ok: false, tanum: "", tapos: "", lgnum: "", material: "" };
 
+/**
+ * Das Gegenstueck zu ABAPs CONDENSE: fuehrenden und folgenden Leerraum
+ * entfernen UND mehrfache innere Leerzeichen auf eines zusammenziehen.
+ *
+ * `trim( )` allein taete es fuer jeden realistischen Wert - ein BUSINESS_KEY
+ * besteht aus Ziffern, und die CHAR50-Auffuellung sind Randleerzeichen. Hier
+ * steht trotzdem die vollstaendige Entsprechung, und der Grund ist NICHT
+ * fachlich, sondern der Abgleich: dieselbe Regel wird an zwei Stellen
+ * implementiert, in ABAP und hier. Zwei Fassungen, die sich in einem Randfall
+ * unterscheiden, muss beim naechsten Anfassen jemand erst wieder gegenpruefen -
+ * und das kostet mehr, als der Randfall je einbringt.
+ *
+ * Der abweichende Fall waere gewesen: "00060244110001  01" (zwei innere
+ * Leerzeichen, 18 Zeichen) wird durch CONDENSE 17 Zeichen lang und damit
+ * zerlegbar, mit lgnum = " 01". Ein solcher Schluessel ist kaputt; ihn strenger
+ * abzuweisen waere vertretbar gewesen, aber nicht wichtig genug, um von der
+ * Referenz abzuweichen.
+ */
+function condense(sValue: string): string {
+	return sValue.trim().replace(/\s+/g, " ");
+}
+
 function digitsOnly(sValue: string): boolean {
 	return /^\d+$/.test(sValue);
 }
@@ -86,7 +96,7 @@ function digitsOnly(sValue: string): boolean {
  * sind, aber der Typ ist der bessere Weg.
  */
 export function split(sKey?: string | null, sKeyType?: string | null): KeyParts {
-	const sValue = (sKey ?? "").trim();
+	const sValue = condense(sKey ?? "");
 	const sType = (sKeyType ?? "").trim().toUpperCase();
 	if (!sValue) {
 		return EMPTY;
