@@ -423,11 +423,36 @@
 											type="Transparent"
 											press=".onOpenMsgColumns"/>
 									</OverflowToolbar>
+										<!--
+											🔴 $select IST HIER PFLICHT, nicht Feintuning.
+
+											Mit autoExpandSelect holt OData V4 nur die Felder, die
+											in der View auch GEBUNDEN sind. Lgnum, BusinessKey und
+											KeyType liest aber der CONTROLLER (_openKeyPopover), und
+											Lgnum hat nur eine standardmaessig ausgeblendete Spalte -
+											die Bindung entsteht also gar nicht.
+
+											Folge war "Failed to drill-down into (...)/Lgnum, invalid
+											segment": der Wert kam als undefined zurueck, das Popover
+											fiel still auf die Rueckfall-Lagernummer.
+
+											Die uebrigen standen nur ZUFAELLIG im $select, weil
+											irgendeine sichtbare Zelle sie bindet - BusinessKey und
+											KeyType ueber die Positionsspalte, CorrUuid und
+											JsonPayload ueber die zwei Symbole. Wird eine davon
+											umgebaut oder ausgeblendet, braeche es genauso still.
+
+											⚠ DIE REGEL, die daraus folgt: was der Controller aus
+											einem OData-Kontext liest, gehoert in dieses $select -
+											unabhaengig davon, ob zufaellig eine Zelle dasselbe Feld
+											bindet. Eine ausgeblendete Spalte erzeugt KEINE Bindung,
+											und genau daran ist Lgnum gescheitert.
+										-->
 
 									<t:Table
 										id="idMsgTable"
 										visible="{parts: ['ui>/selectedProcess', 'ui>/grouped'], formatter: '.formatter.showMsgTable'}"
-										rows="{path: 'mainModel>/AppLog', parameters: {$count: true}, sorter: [{path: 'CreatedAtStamp', descending: true}, {path: 'SeqNr', descending: true}]}"
+										rows="{path: 'mainModel>/AppLog', parameters: {$count: true, $select: 'Lgnum,BusinessKey,KeyType,CorrUuid,JsonPayload,Message,CreatedAtStamp'}, sorter: [{path: 'CreatedAtStamp', descending: true}, {path: 'SeqNr', descending: true}]}"
 										selectionMode="None"
 										ariaLabelledBy="msgHeading">
 										<t:rowMode>
