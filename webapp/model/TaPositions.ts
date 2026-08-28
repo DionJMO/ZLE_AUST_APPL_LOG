@@ -38,6 +38,10 @@ const CHUNK = 50;
 const MAX_POS = 2000;
 /** Obergrenze fuer die AS-Sicht. Wird sie erreicht, sagt es die Oberflaeche. */
 export const MAX_AS = 3000;
+/** Die Lagernummer des AutoStore - zugleich das fuehrende Schluesselfeld von LTAP. */
+const LGNUM = "001";
+/** Lagertyp des AutoStore, wie in den Trigger-Klassen. */
+const AS_TYPE = "AS";
 /* eslint-enable @sap-ux/fiori-tools/sap-no-global-variable */
 
 export interface TaPos {
@@ -206,47 +210,50 @@ export async function loadAutoStore(
 		return { rows: [], truncated: false, ok: false };
 	}
 	/*
-	 * 🔴 ZWEI SCHREIBWEISEN DER KENNZEICHEN, WEIL DER TYP NICHT SICHER IST.
+	 * 🔴 GEFILTERT WIRD AUF DIE ECHTEN LAGERTYPEN, NICHT AUF DIE BERECHNETEN
+	 * KENNZEICHEN. Der erste Anlauf tat das und wurde ABGEWIESEN - beide
+	 * Schreibweisen (eq true und eq 'X'), was den Typ als Ursache ausschliesst.
 	 *
-	 * IsAutoStorePick/-PutAway sind im View BERECHNET:
+	 * SourceStorageType / DestStorageType sind LTAP-VLTYP und -NLTYP, also
+	 * echte CHAR-Felder. Das loest drei Probleme auf einmal:
 	 *
-	 *   @Semantics.booleanIndicator: true
-	 *   case when ltap.vltyp = 'AS' then 'X' else '' end as IsAutoStorePick
+	 *   1. KEINE TYPFRAGE mehr. IsAutoStorePick ist im View ein berechneter
+	 *      case-Ausdruck mit @Semantics.booleanIndicator - ob SADL daraus
+	 *      Edm.Boolean oder Edm.String macht, und ob so ein Feld ueberhaupt
+	 *      filterbar ist, muss damit niemand mehr wissen.
+	 *   2. INDIZIERBAR. WarehouseNumber ist das fuehrende Schluesselfeld von
+	 *      LTAP. Ohne diese Einschraenkung lief die Abfrage ueber die ganze
+	 *      Tabelle, verbunden mit LTAK, mit einem ODER ueber zwei berechnete
+	 *      Ausdruecke - auf einem produktiven System ein Kandidat fuer einen
+	 *      Abbruch.
+	 *   3. Gleiche Semantik: die Kennzeichen SIND genau vltyp = 'AS' bzw.
+	 *      nltyp = 'AS'.
 	 *
-	 * Also ein CHAR1 mit 'X'/'' und KEIN Datenelement mit XFELD-Domaene. Ob
-	 * SADL daraus wegen der Annotation ein Edm.Boolean macht oder es als
-	 * Edm.String stehen laesst, steht im $metadata und ist von hier nicht
-	 * einsehbar.
-	 *
-	 * ⚠ Und der Unterschied ist nicht harmlos: bei falscher Schreibweise
-	 * antwortet der Service mit 400, der Fehler wird gefangen, und der Reiter
-	 * zeigt STILL eine 0 - also "keine betroffenen Auftraege", obwohl die
-	 * Frage gar nicht gestellt wurde. Genau die Verwechslung, die eine
-	 * Vollstaendigkeitspruefung nie erlauben darf.
-	 *
-	 * Deshalb beide Formen nacheinander. Im Normalfall kostet das eine
-	 * Abfrage; die zweite laeuft nur, wenn die erste am Typ scheitert.
-	 *
-	 * ℹ CreationDate (ltak.bdatu, DATS) ist dagegen eindeutig Edm.Date - das
-	 * Literal steht ohne Anfuehrungszeichen und ohne Zeitanteil, wie bei
-	 * CreatedAt in LogAggregator.
+	 * ℹ Die zurueckgelieferten Kennzeichen werden weiter verwendet - fuer die
+	 * AUSWERTUNG in shadowedPicks( ) ueber isFlagged( ), das 'X' und true
+	 * gleichermassen behandelt. Als Daten sind sie unproblematisch; nur im
+	 * FILTER waren sie es nicht.
 	 */
-	const aForms = ["eq true", "eq 'X'"];
-	for (const sForm of aForms) {
-		try {
-			const aRows = await fetchRows(
-				oModel,
-				`(IsAutoStorePick ${sForm} or IsAutoStorePutAway ${sForm})`
-					+ ` and CreationDate ge ${sFromDate}`,
-				MAX_AS
-			);
-			return { rows: aRows, truncated: aRows.length >= MAX_AS, ok: true };
-		} catch {
-			// naechste Schreibweise versuchen
-		}
+	try {
+		const aRows = await fetchRows(
+			oModel,
+			`WarehouseNumber eq ${literal(LGNUM)}`
+				+ ` and (SourceStorageType eq ${literal(AS_TYPE)}`
+				+ ` or DestStorageType eq ${literal(AS_TYPE)})`
+				+ ` and CreationDate ge ${sFromDate}`,
+			MAX_AS
+		);
+		return { rows: aRows, truncated: aRows.length >= MAX_AS, ok: true };
+	} catch (oError) {
+		/*
+		 * ⚠ NICHT STILL SCHLUCKEN. Der Leerzustand verweist auf die Konsole -
+		 * dann muss dort auch etwas stehen. Beim ersten Anlauf tat es das
+		 * nicht, und der Grund des Fehlschlags war deshalb nicht auffindbar.
+		 */
+		// eslint-disable-next-line no-console
+		console.error("[WA-Pruefung] Lesen der TA-Positionen fehlgeschlagen:", oError);
+		return { rows: [], truncated: false, ok: false };
 	}
-	// Keine Schreibweise hat getragen - das ist KEIN leeres Ergebnis.
-	return { rows: [], truncated: false, ok: false };
 }
 
 /**
