@@ -695,11 +695,16 @@
 											<rm:Auto maxRowCount="12"/>
 										</t:rowMode>
 										<t:noData>
+											<!--
+												Zwei verschiedene Leerzustaende, und sie duerfen
+												NICHT gleich aussehen: "geprueft, nichts gefunden"
+												ist Entwarnung, "nicht geprueft" ist ein Befund.
+											-->
 											<IllustratedMessage
 												id="waCheckNoData"
-												illustrationType="sapIllus-SuccessHighFive"
-												title="{i18n>waCheckEmptyTitle}"
-												description="{i18n>waCheckEmptyText}"/>
+												illustrationType="{= ${ui>/waCheckOk} === false ? 'sapIllus-UnableToLoad' : 'sapIllus-SuccessHighFive' }"
+												title="{= ${ui>/waCheckOk} === false ? ${i18n>waCheckFailTitle} : ${i18n>waCheckEmptyTitle} }"
+												description="{= ${ui>/waCheckOk} === false ? ${i18n>waCheckFailText} : ${i18n>waCheckEmptyText} }"/>
 										</t:noData>
 										<t:columns>
 											<t:Column id="idWaCheckOrderCol" width="10rem" sortProperty="TransferOrder">

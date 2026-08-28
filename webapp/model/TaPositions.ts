@@ -68,6 +68,16 @@ export interface TaPos {
 export interface TaPosResult {
 	rows: TaPos[];
 	truncated: boolean;
+	/**
+	 * Hat die Abfrage ueberhaupt STATTGEFUNDEN?
+	 *
+	 * 🔴 OHNE DAS IST EINE 0 NICHT LESBAR. "Keine betroffenen Auftraege" und
+	 * "nicht geprueft" sehen in einer leeren Tabelle gleich aus - und bei
+	 * einer VOLLSTAENDIGKEITSpruefung ist das der gefaehrlichste aller
+	 * Zustaende: die Oberflaeche behauptet Entwarnung, wo sie keine Aussage
+	 * hat.
+	 */
+	ok: boolean;
 }
 
 /** Eine TA, deren Pick-Auftrag nicht ausgeloest werden kann. */
@@ -193,7 +203,7 @@ export async function loadAutoStore(
 	sFromDate: string
 ): Promise<TaPosResult> {
 	if (!oModel) {
-		return { rows: [], truncated: false };
+		return { rows: [], truncated: false, ok: false };
 	}
 	/*
 	 * 🔴 ZWEI SCHREIBWEISEN DER KENNZEICHEN, WEIL DER TYP NICHT SICHER IST.
@@ -230,12 +240,13 @@ export async function loadAutoStore(
 					+ ` and CreationDate ge ${sFromDate}`,
 				MAX_AS
 			);
-			return { rows: aRows, truncated: aRows.length >= MAX_AS };
+			return { rows: aRows, truncated: aRows.length >= MAX_AS, ok: true };
 		} catch {
 			// naechste Schreibweise versuchen
 		}
 	}
-	return { rows: [], truncated: false };
+	// Keine Schreibweise hat getragen - das ist KEIN leeres Ergebnis.
+	return { rows: [], truncated: false, ok: false };
 }
 
 /**

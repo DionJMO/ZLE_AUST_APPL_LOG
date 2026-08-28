@@ -339,6 +339,16 @@ export default class Main extends BaseController {
 		 * der Vorgangsverdichtung auch.
 		 */
 		this.getUiModel().setProperty("/waCheckTruncated", oResult.truncated);
+		/*
+		 * 🔴 "Geprueft, nichts gefunden" gegen "nicht geprueft".
+		 *
+		 * Beides ergibt eine leere Tabelle und eine 0 am Reiter. Der
+		 * Leerzustand darf aber nur im ERSTEN Fall Entwarnung geben - im
+		 * zweiten waere er eine Behauptung ohne Grundlage. Genau danach war
+		 * gefragt worden ("kann ich die Null hier finden?"), und die Antwort
+		 * war: nein, nicht ohne dieses Kennzeichen.
+		 */
+		this.getUiModel().setProperty("/waCheckOk", oResult.ok);
 	}
 
 	/** Legt ein JSON-Modell einmalig an und liefert es. */
