@@ -495,7 +495,7 @@
 																							id="msIcnCorr"
 																							src="sap-icon://history"
 																							decorative="false"
-																							visible="{path: 'mainModel>CorrUuid', formatter: '.formatter.hasCorrelation'}"
+																							visible="{path: 'mainModel>CorrUuid', targetType: 'any', formatter: '.formatter.hasCorrelation'}"
 																							tooltip="{i18n>corrHint}"
 																							press=".onCorrPress"
 																							class="sapUiTinyMarginBegin"/>
