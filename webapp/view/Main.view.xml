@@ -508,13 +508,13 @@
 																			<t:Column id="idMsgLineColumn" width="7rem">
 																				<Label id="msLblOrderLineNr" text="{i18n>colOrderLineNr}"/>
 																				<t:template>
-																					<Text id="msTxtOrderLineNr" text="{mainModel>OrderLineNr}" wrapping="false"/>
+																					<Text id="msTxtOrderLineNr" text="{parts: ['mainModel>OrderLineNr', 'mainModel>BusinessKey', 'mainModel>KeyType'], formatter: '.formatter.orderLine'}" tooltip="{parts: ['mainModel>OrderLineNr', 'mainModel>BusinessKey', 'mainModel>KeyType'], formatter: '.formatter.orderLineSource'}" wrapping="false"/>
 																				</t:template>
 																			</t:Column>
 																			<t:Column id="idMsgHistoryColumn" width="10rem" sortProperty="HistoryType">
 																				<Label id="msLblHistoryType" text="{i18n>colHistoryType}"/>
 																				<t:template>
-																					<Text id="msTxtHistoryType" text="{mainModel>HistoryType}" wrapping="false"/>
+																					<Text id="msTxtHistoryType" text="{path: 'mainModel>HistoryType', formatter: '.formatter.historyTypeText'}" tooltip="{mainModel>HistoryType}" wrapping="false"/>
 																				</t:template>
 																			</t:Column>
 																			<t:Column id="idMsgHttpColumn" width="7rem" hAlign="End">

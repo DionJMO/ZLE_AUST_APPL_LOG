@@ -1,4 +1,5 @@
 import { isInitialUuid } from "./CascadeGrouper";
+import { positionFrom } from "./BusinessKey";
 import DateFormat from "sap/ui/core/format/DateFormat";
 import NumberFormat from "sap/ui/core/format/NumberFormat";
 
@@ -412,4 +413,97 @@ export function showCascadeTable(sProcess?: string | null, bGrouped?: boolean | 
  */
 export function hasCorrelation(sCorrUuid?: string | null): boolean {
 	return !isInitialUuid(sCorrUuid);
+}
+
+/*
+ * Klartext fuer HISTORY_TYPE.
+ *
+ * 🔴 DIE APP IST DIE EINZIG MOEGLICHE QUELLE. Das Datenelement
+ * ZLE_AUST_HIST_TYPE ist CHAR20 OHNE DOMAENE (am System bestaetigt: das Feld
+ * `domain` ist leer). Es gibt also keine Festwerte, keine Pruefung und keine
+ * F4-Hilfe - die Werte sind reine Konvention. Ein lesbarer Text kann nirgends
+ * sonst herkommen.
+ *
+ * ⚠ Die PICK-*-Bedeutungen sind aus ZCL_ZLE_AUST_MOD_OU_TPA abgeleitet
+ * (Punkt 10: Auftragstyp, WA-Buchung, TPA-Druck), nicht aus einer
+ * Wertebeschreibung - es gibt keine.
+ */
+/* eslint-disable @sap-ux/fiori-tools/sap-no-global-variable */
+const HIST_TEXT: Record<string, string> = {
+	IB_CREATE:  "Einlagerung anlegen",
+	IB_CANCEL:  "Einlagerung stornieren",
+	IB_CONFIRM: "Einlagerung quittieren",
+	IB_GET:     "Einlagerung lesen",
+	IB_STAT:    "Einlagerung Status",
+	IB_LSTAT:   "Einlagerung Zeilenstatus",
+	IB_LIST:    "Einlagerung Liste",
+	IB_ADDLN:   "Einlagerung Zeile ergänzen",
+	IB_UPDATE:  "Einlagerung ändern",
+	IB_CANCLN:  "Einlagerung Zeile stornieren",
+	OB_CREATE:  "Auslagerung anlegen",
+	OB_CANCEL:  "Auslagerung stornieren",
+	OB_CONFIRM: "Auslagerung quittieren",
+	ITEM_GET:    "Material lesen",
+	ITEM_LIST:   "Materialliste",
+	ITEM_CREATE: "Material anlegen",
+	ITEM_UPDATE: "Material ändern",
+	ITEM_DELETE: "Material löschen",
+	ITEM_IMG:    "Materialbild",
+	"PICK-ORDCAT":     "Pick: Auftragstyp",
+	"PICK-WA-BUCHUNG": "Pick: Warenausgangsbuchung",
+	"PICK-TPA-DRUCK":  "Pick: TPA-Druck",
+	STOCKCORRECTION:   "Bestandskorrektur"
+};
+/* eslint-enable @sap-ux/fiori-tools/sap-no-global-variable */
+
+/**
+ * HISTORY_TYPE als lesbarer Text.
+ *
+ * ⚠ Unbekannte Werte bleiben UNVERAENDERT stehen. Das Vokabular ist laut
+ * Michaels Doku (P18) noch uneinheitlich - mehrere Namensschemata parallel,
+ * teils hartcodiert. Ein unbekannter Wert soll deshalb sichtbar bleiben und
+ * nicht zu einem Gedankenstrich werden; sonst verschwindet genau das, was
+ * beim Aufraeumen zu finden waere.
+ */
+export function historyTypeText(sHistoryType?: string | null): string {
+	const sRaw = (sHistoryType ?? "").trim();
+	if (!sRaw) {
+		return "–";
+	}
+	return HIST_TEXT[sRaw.toUpperCase()] ?? sRaw;
+}
+
+/**
+ * Die Positionsnummer einer Meldung.
+ *
+ * Bevorzugt das protokollierte Feld. Fehlt es - Michaels offener Punkt P17,
+ * viele Aufrufer geben es nicht mit -, wird es bei KEY_TYPE = PUT aus dem
+ * BUSINESS_KEY abgeleitet: dort steckt die TAPOS an Stelle 11 bis 14.
+ *
+ * Bei PICK gibt es keine Position: eine PickOrder umfasst die ganze TA.
+ */
+export function orderLine(
+	sOrderLineNr?: string | null,
+	sBusinessKey?: string | null,
+	sKeyType?: string | null
+): string {
+	const sLogged = (sOrderLineNr ?? "").trim();
+	if (sLogged) {
+		return sLogged;
+	}
+	return positionFrom(sBusinessKey, sKeyType) || "–";
+}
+
+/** Woher die angezeigte Positionsnummer stammt - als Tooltip. */
+export function orderLineSource(
+	sOrderLineNr?: string | null,
+	sBusinessKey?: string | null,
+	sKeyType?: string | null
+): string {
+	if ((sOrderLineNr ?? "").trim()) {
+		return "";
+	}
+	return positionFrom(sBusinessKey, sKeyType)
+		? "Aus dem Business-Key abgeleitet - der Aufrufer hat die Position nicht protokolliert."
+		: "";
 }

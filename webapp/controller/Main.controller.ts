@@ -17,6 +17,7 @@ import * as KeyDetailLoader from "../model/KeyDetailLoader";
 import * as CascadeGrouper from "../model/CascadeGrouper";
 import * as SapLookup from "../model/SapLookup";
 import * as TaPositions from "../model/TaPositions";
+import * as BusinessKey from "../model/BusinessKey";
 import { normalizeMaterial as formatterNormalize } from "../model/formatter";
 import Sorter from "sap/ui/model/Sorter";
 import Fragment from "sap/ui/core/Fragment";
@@ -577,6 +578,36 @@ export default class Main extends BaseController {
 	 * Aufrufer WAEHREND onInit dazukam; alle uebrigen laufen nach einer
 	 * Benutzeraktion und trafen die Luecke nie.
 	 */
+	/**
+	 * Titel des Schluessel-Popovers.
+	 *
+	 * Liegt ein zerlegbarer BUSINESS_KEY vor, wird er AUFGESCHLUESSELT statt
+	 * roh angezeigt: aus "00060244110001001" wird
+	 * "TA 0006024411 · Position 0001 · Lager 001". Die Bildungsregel steht in
+	 * Michaels Doku, KEY_TYPE sagt welche gilt - es wird also nichts geraten.
+	 *
+	 * Faellt die Zerlegung durch (`ok = false`), bleibt es beim Rohwert. Genau
+	 * dafuer gibt es das Kennzeichen, und die Doku sagt ausdruecklich: bei
+	 * ok = false sind die Teile leer und nicht "vielleicht doch brauchbar".
+	 */
+	private _keyTitle(
+		sKind: KeyDetailLoader.KeyKind,
+		sRaw: string,
+		sBusinessKey: string,
+		oBundle: ResourceBundle
+	): string {
+		if (sKind === "ITEM") {
+			return oBundle.getText("popTitleItem", [formatterNormalize(sRaw)]) ?? sRaw;
+		}
+		const oParts = BusinessKey.split(sBusinessKey, "");
+		if (oParts.ok && oParts.tanum) {
+			return (oParts.tapos
+				? oBundle.getText("popTitlePut", [oParts.tanum, oParts.tapos, oParts.lgnum])
+				: oBundle.getText("popTitlePick", [oParts.tanum, oParts.lgnum])) ?? sRaw;
+		}
+		return oBundle.getText("popTitleTpa", [sRaw.trim()]) ?? sRaw;
+	}
+
 	private _bundle(): ResourceBundle {
 		const oModel = (this.getView()?.getModel("i18n")
 			?? this.getOwnerComponent()?.getModel("i18n")) as ResourceModel | undefined;
@@ -683,9 +714,7 @@ export default class Main extends BaseController {
 			oDetail.setProperty("/sap", oSapData);
 
 			const oBundle = this._bundle();
-			oDetail.setProperty("/title",
-				oBundle.getText(sKind === "ITEM" ? "popTitleItem" : "popTitleTpa",
-					[sKind === "ITEM" ? formatterNormalize(sRaw) : sRaw.trim()]) ?? sRaw);
+			oDetail.setProperty("/title", this._keyTitle(sKind, sRaw, sBusinessKey, oBundle));
 
 			if (!oSapData.available) {
 				const oDetailData = await KeyDetailLoader.loadKeyDetail(
