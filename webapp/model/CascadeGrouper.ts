@@ -32,6 +32,31 @@
 // eslint-disable-next-line @sap-ux/fiori-tools/sap-no-global-variable
 export const MAX_ROWS = 5000;
 
+/**
+ * Ab wann eine Gruppe kein Vorgang mehr ist, sondern ein SAMMELLAUF.
+ *
+ * 🔴 DER GRUND STEHT IN MICHAELS DOKU, ALS OFFENER PUNKT P19:
+ *
+ *   reset_correlation( ) ... in Batch-Verarbeitungen JE FACHLICHER EINHEIT
+ *   rufen, sonst traegt ein Lauf ueber 10.000 Artikel EINE EINZIGE UUID und
+ *   die Klammer ist wertlos.
+ *
+ * Genau dieser Aufruf fehlt in ZLE_AUST_ITEM_EXPORT. Ein Massenlauf bildet
+ * damit EINEN Vorgang - bei den Materialstamm-Meldungen waeren das leicht
+ * mehrere tausend Schritte in einer Zeile, und das Popover baute sie alle im
+ * Speicher auf.
+ *
+ * Ein echter Vorgang hat eine Handvoll Schritte: der HTTP-Fehler aus der
+ * Consumer-Schicht, die fachliche Meldung des Triggers, die Quittierung.
+ * Michaels Doku nennt drei Saetze je BUSINESS_KEY als den Fall, um den es
+ * geht. 25 ist grosszuegig und liegt zugleich weit unter jedem Sammellauf.
+ *
+ * ⚠ Das bleibt auch nach seinem Fix noetig: der Altbestand behaelt seine
+ * Sammel-UUIDs.
+ */
+// eslint-disable-next-line @sap-ux/fiori-tools/sap-no-global-variable
+export const MAX_STEPS = 25;
+
 export interface LogRow {
 	LogUuid?: string;
 	CorrUuid?: string;
@@ -51,10 +76,24 @@ export interface LogRow {
 }
 
 export interface CascadeRow extends LogRow {
-	/** Anzahl Logzeilen des Vorgangs. 1 = kein Vorgang, nur eine Meldung. */
+	/** Anzahl Logzeilen des Vorgangs - die WAHRE Zahl, auch bei Sammellaeufen. */
 	StepCount: number;
-	/** Alle Zeilen des Vorgangs, nach SeqNr aufsteigend. */
+	/**
+	 * Die Zeilen des Vorgangs, nach SeqNr aufsteigend.
+	 *
+	 * ⚠ Bei einem Sammellauf (IsBulk) auf MAX_STEPS gekappt. StepCount nennt
+	 * weiterhin die wahre Zahl - die Oberflaeche muss beides auseinanderhalten
+	 * und sagen, dass sie nur einen Ausschnitt zeigt.
+	 */
 	Steps: LogRow[];
+	/**
+	 * true = mehr Schritte, als ein Vorgang plausibel hat.
+	 *
+	 * Kein echter Vorgang, sondern ein Programmlauf ohne reset_correlation( ) -
+	 * siehe MAX_STEPS. Die Gruppe bleibt bestehen (technisch ist sie richtig:
+	 * es IST ein Lauf), wird aber gekennzeichnet.
+	 */
+	IsBulk: boolean;
 }
 
 export interface CascadeResult {
@@ -156,6 +195,8 @@ export function group(aRows: LogRow[], bTruncated = false): CascadeResult {
 		aSteps.sort((a, b) => seq(a) - seq(b));
 		const oLead = leadRow(aSteps);
 
+		const bBulk = aSteps.length > MAX_STEPS;
+
 		aResult.push({
 			...oLead,
 			// Der Vorgang beginnt mit seinem ersten Schritt, nicht mit dem
@@ -172,7 +213,11 @@ export function group(aRows: LogRow[], bTruncated = false): CascadeResult {
 			HistoryType: firstFilled(aSteps, "HistoryType"),
 			Lgnum:       firstFilled(aSteps, "Lgnum"),
 			StepCount:   aSteps.length,
-			Steps:       aSteps
+			IsBulk:      bBulk,
+			// Gekappt, nicht weggeworfen: die ungruppierte Sicht zeigt weiter
+			// alles. Hier geht es nur darum, dass ein Sammellauf nicht
+			// tausende Listeneintraege im Popover aufbaut.
+			Steps:       bBulk ? aSteps.slice(0, MAX_STEPS) : aSteps
 		});
 	});
 

@@ -177,6 +177,15 @@
 										withMargin="false"/>
 									<Label id="idStorniertLabel" text="{i18n>kpiStorniert}" design="Bold"/>
 								</VBox>
+								<VBox id="idOhneKeyVBox" alignItems="Center">
+									<NumericContent
+										id="idOhneKeyNumericContent"
+										value="{ui>/kpi/ohneKey}"
+										icon="sap-icon://question-mark"
+										valueColor="Critical"
+										withMargin="false"/>
+									<Label id="idOhneKeyLabel" text="{i18n>kpiOhneKey}" design="Bold"/>
+								</VBox>
 								<VBox id="idFehlerVBox" alignItems="Center">
 									<NumericContent
 										id="idFehlerNumericContent"
@@ -604,7 +613,7 @@
 														id="cscLnkSteps"
 														text="{cascade>StepCount}"
 														press=".onCascadePress"
-														tooltip="{i18n>cascStepsTooltip}"/>
+														tooltip="{parts: ['cascade>StepCount', 'cascade>IsBulk'], formatter: '.formatter.cascSteps'}"/>
 												</t:template>
 											</t:Column>
 											<t:Column id="idCascTypeColumn" width="7rem" sortProperty="LogType">

@@ -63,6 +63,22 @@ export const metrics: KpiDefinition[] = [
 	{ key: "tab" + ProcessAxis.KEY_UNASSIGNED, model: "mainModel", path: "/AppLog",
 	  select: "LogUuid", filter: ProcessAxis.odataUnassigned() },
 
+	/*
+	 * Meldungen OHNE fachlichen Schluessel.
+	 *
+	 * Das Mass fuer Michaels offenen Punkt P17 ("viele Log-Aufrufe ohne
+	 * Vorgangsbezug"). Ohne BUSINESS_KEY haengt ein Satz an keinem Vorgang und
+	 * ist weder mit dem Arbeitsvorrat noch mit einem HiLIS-Callback
+	 * zusammenzufuehren - so steht es in seiner Doku unter "Immer mitgeben".
+	 *
+	 * Der Zaehler bringt die Restgroesse in die Oberflaeche statt in ein
+	 * Dokument, und er SCHRUMPFT SICHTBAR, waehrend die Aufrufstellen
+	 * nachgezogen werden. Dieselbe Idee wie beim Zaehler der nicht
+	 * zugeordneten Meldungen, die dort schon aufgegangen ist.
+	 */
+	{ key: "ohneKey", model: "mainModel", path: "/AppLog", select: "LogUuid",
+	  filter: "BusinessKey eq ''" },
+
 	// Rohsicht: ungefiltert, bewusst Obermenge der uebrigen Reiter.
 	{ key: "tab" + ProcessAxis.KEY_ALL, model: "mainModel", path: "/AppLog",
 	  select: "LogUuid" }

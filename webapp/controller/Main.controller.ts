@@ -768,8 +768,19 @@ export default class Main extends BaseController {
 		const oBundle = this._bundle();
 		const oDetail = this._detailModel();
 
-		oDetail.setProperty("/title", oBundle.getText("cascTitle", [String(oRow.StepCount)]) ?? "");
-		oDetail.setProperty("/logHeader", oBundle.getText("popLogPanel", [String(oRow.StepCount)]) ?? "");
+		/*
+		 * Bei einem Sammellauf sagen Titel und Kopfzeile ausdruecklich, dass
+		 * nur ein AUSSCHNITT zu sehen ist - StepCount nennt die wahre Zahl,
+		 * Steps ist gekappt. Ein Popover, das "3212 Schritte" ueberschreibt
+		 * und 25 zeigt, waere die schlechteste Variante.
+		 */
+		const bBulk = oRow.IsBulk === true;
+		oDetail.setProperty("/title", (bBulk
+			? oBundle.getText("cascTitleBulk", [String(oRow.StepCount)])
+			: oBundle.getText("cascTitle", [String(oRow.StepCount)])) ?? "");
+		oDetail.setProperty("/logHeader", (bBulk
+			? oBundle.getText("popLogPanelBulk", [String(oRow.Steps?.length ?? 0), String(oRow.StepCount)])
+			: oBundle.getText("popLogPanel", [String(oRow.StepCount)])) ?? "");
 		oDetail.setProperty("/busy", false);
 		oDetail.setProperty("/sap", { available: false, hint: "", header: "", fields: [], rowsHeader: "", rows: [] });
 		// Im Kaskaden-Popover IST der Verlauf der Inhalt, nicht die Beigabe.

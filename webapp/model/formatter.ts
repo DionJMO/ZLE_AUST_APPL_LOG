@@ -507,3 +507,19 @@ export function orderLineSource(
 		? "Aus dem Business-Key abgeleitet - der Aufrufer hat die Position nicht protokolliert."
 		: "";
 }
+
+/**
+ * Tooltip der Schritte-Zahl.
+ *
+ * Bei einem Sammellauf (siehe CascadeGrouper.MAX_STEPS) muss dranstehen, dass
+ * die Gruppe kein Vorgang ist - sonst liest sich "3212 Schritte" wie ein
+ * einzelnes Ereignis mit sehr vielen Meldungen.
+ */
+export function cascSteps(vStepCount?: number | string | null, bIsBulk?: boolean | null): string {
+	if (bIsBulk) {
+		return `Sammellauf mit ${String(vStepCount ?? "")} Meldungen - kein einzelner Vorgang. `
+			+ "Im Programmlauf fehlt reset_correlation( ), deshalb tragen alle Meldungen "
+			+ "dieselbe Korrelations-ID. Es wird nur ein Ausschnitt angezeigt.";
+	}
+	return "Alle Schritte dieses Vorgangs anzeigen";
+}
