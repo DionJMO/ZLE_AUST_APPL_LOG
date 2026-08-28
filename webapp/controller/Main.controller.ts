@@ -16,6 +16,7 @@ import * as ProcessAxis from "../model/ProcessAxis";
 import * as KeyDetailLoader from "../model/KeyDetailLoader";
 import * as CascadeGrouper from "../model/CascadeGrouper";
 import * as SapLookup from "../model/SapLookup";
+import * as TaPositions from "../model/TaPositions";
 import { normalizeMaterial as formatterNormalize } from "../model/formatter";
 import Sorter from "sap/ui/model/Sorter";
 import Fragment from "sap/ui/core/Fragment";
@@ -49,6 +50,15 @@ export default class Main extends BaseController {
 
 	/** Voreinstellung des Verlaufs-Zeitfensters in Tagen. */
 	private static readonly CHART_DAYS = 7;
+
+	/**
+	 * Zeitfenster der Vollstaendigkeitspruefung Warenausgang.
+	 *
+	 * Bewusst laenger als das Verlaufsfenster: der Befund, um den es geht,
+	 * blieb im August zwei Wochen unbemerkt. Ein Fenster von sieben Tagen
+	 * haette ihn wieder verpasst.
+	 */
+	private static readonly WA_CHECK_DAYS = 30;
 
 	/**
 	 * Die Sicht als URL: Reiter, Typfilter, Suche, Gruppierung.
@@ -166,6 +176,11 @@ export default class Main extends BaseController {
 	/** Ein Zahnrad fuer beide Tabellen - je nachdem, welcher Reiter offen ist. */
 	public onOpenMsgColumns(): void {
 		const sProcess = this.getUiModel().getProperty("/selectedProcess") as string;
+		if (sProcess === ProcessAxis.KEY_WACHECK) {
+			// Die Pruefsicht hat sechs feste Spalten - eine Auswahl waere
+			// Ballast, wie schon bei der Vorgangstabelle.
+			return;
+		}
 		this._openColumns(sProcess === ProcessAxis.KEY_ORDERS ? "idTpaTable" : "idMsgTable");
 	}
 
@@ -258,6 +273,72 @@ export default class Main extends BaseController {
 		this._stampRefresh();
 		void this._loadChart();
 		void this._loadKpis();
+		void this._loadSapPositions();
+		void this._loadShadowedPicks();
+	}
+
+	/**
+	 * Reichert die Auftragstabelle um MHD und ME aus LTAP an.
+	 *
+	 * 🔴 F-01 verlangt "Uebersicht offener WE-Auftraege inkl. Status, MHD,
+	 * Charge, ME". ZLE_AUST_TPA_SYNC fuellt MEASUREMENT_UNIT und
+	 * BEST_BEFORE_DATE aber NIE - beide kommen nicht aus GET_ORDER_LIST, die
+	 * Spalten waren strukturell leer. Die Anforderung galt deshalb als "nur
+	 * teilweise erfuellbar". Mit dem Lookup-Service ist sie es nicht mehr.
+	 *
+	 * ⚠ Die Tabelle wird NICHT umgebunden: das Nachschlagewerk haengt als
+	 * Bindungsteil an den zwei Zellen, die es brauchen. So bleiben
+	 * serverseitiges Blaettern und Sortieren der OData-Bindung erhalten.
+	 */
+	private async _loadSapPositions(): Promise<void> {
+		const oModel = this._jsonModel("sapPos", { map: {} });
+		try {
+			const oBinding = this.getODataModel("tpaModel")
+				.bindList("/Tpa", undefined, [], [], { $select: "OrderNumber" });
+			const aContexts = await oBinding.requestContexts(0, 2000);
+			const aOrders = aContexts.map((oContext) =>
+				(oContext.getProperty("OrderNumber") as string) ?? "");
+			oModel.setProperty("/map",
+				await TaPositions.loadByOrders(
+					this.getView()?.getModel("lookupModel") as ODataModel | undefined, aOrders));
+		} catch (oError) {
+			// Zugabe, kein Bestandteil: faellt sie aus, bleiben die zwei
+			// Spalten leer wie vorher.
+			// eslint-disable-next-line no-console
+			console.error("[Auftraege] Anreicherung aus LTAP fehlgeschlagen:", oError);
+		}
+	}
+
+	/**
+	 * Vollstaendigkeitspruefung Warenausgang.
+	 *
+	 * Siehe model/TaPositions.ts - geprueft wird gegen die SAP-Daten, NICHT
+	 * gegen den Log: der Outbound-Pfad protokolliert Erfolge gar nicht, ein
+	 * fehlender Eintrag waere also kein Befund.
+	 */
+	private async _loadShadowedPicks(): Promise<void> {
+		const oModel = this._jsonModel("wacheck", { rows: [], summary: "" });
+		const oFrom = new Date();
+		oFrom.setDate(oFrom.getDate() - Main.WA_CHECK_DAYS);
+		const aRows = await TaPositions.loadAutoStore(
+			this.getView()?.getModel("lookupModel") as ODataModel | undefined,
+			oFrom.toISOString().slice(0, 10)
+		);
+		const aShadowed = TaPositions.shadowedPicks(aRows);
+		oModel.setProperty("/rows", aShadowed);
+		oModel.setProperty("/summary", this._bundle().getText("waCheckSummary",
+			[String(aShadowed.length), String(Main.WA_CHECK_DAYS)]) ?? "");
+		this.getUiModel().setProperty("/waCheckCount", aShadowed.length);
+	}
+
+	/** Legt ein JSON-Modell einmalig an und liefert es. */
+	private _jsonModel(sName: string, oInitial: object): JSONModel {
+		let oModel = this.getView()?.getModel(sName) as JSONModel | undefined;
+		if (!oModel) {
+			oModel = new JSONModel(oInitial);
+			this.getView()?.setModel(oModel, sName);
+		}
+		return oModel;
 	}
 
 	private async _loadChart(): Promise<void> {
