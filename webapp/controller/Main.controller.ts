@@ -317,7 +317,7 @@ export default class Main extends BaseController {
 	 * fehlender Eintrag waere also kein Befund.
 	 */
 	private async _loadShadowedPicks(): Promise<void> {
-		const oModel = this._jsonModel("wacheck", { rows: [], summary: "" });
+		const oModel = this._jsonModel("wacheck", { rows: [] });
 		const oFrom = new Date();
 		oFrom.setDate(oFrom.getDate() - Main.WA_CHECK_DAYS);
 		const aRows = await TaPositions.loadAutoStore(
@@ -326,8 +326,6 @@ export default class Main extends BaseController {
 		);
 		const aShadowed = TaPositions.shadowedPicks(aRows);
 		oModel.setProperty("/rows", aShadowed);
-		oModel.setProperty("/summary", this._bundle().getText("waCheckSummary",
-			[String(aShadowed.length), String(Main.WA_CHECK_DAYS)]) ?? "");
 		this.getUiModel().setProperty("/waCheckCount", aShadowed.length);
 	}
 
@@ -505,9 +503,24 @@ export default class Main extends BaseController {
 		void this._pPayloadDialog?.then((oDialog) => oDialog.close());
 	}
 
+	/**
+	 * Das i18n-Bundle.
+	 *
+	 * 🔴 MIT RUECKFALL AUF DIE COMPONENT, und das ist kein Guertel-und-
+	 * Hosentraeger: waehrend onInit ist das Modell der Component noch NICHT an
+	 * die View durchgereicht - getModel( ) liefert dort undefined. Die frueher
+	 * einzige Zeile schuetzte per "?." nur getView( ), nicht das Modell, und
+	 * lief deshalb in "Cannot read properties of undefined (reading
+	 * 'getResourceBundle')".
+	 *
+	 * Aufgefallen ist es erst, als mit _loadShadowedPicks( ) der erste
+	 * Aufrufer WAEHREND onInit dazukam; alle uebrigen laufen nach einer
+	 * Benutzeraktion und trafen die Luecke nie.
+	 */
 	private _bundle(): ResourceBundle {
-		const oModel = this.getView()?.getModel("i18n") as ResourceModel;
-		return oModel.getResourceBundle() as ResourceBundle;
+		const oModel = (this.getView()?.getModel("i18n")
+			?? this.getOwnerComponent()?.getModel("i18n")) as ResourceModel | undefined;
+		return oModel?.getResourceBundle() as ResourceBundle;
 	}
 
 	private _detailModel(): JSONModel {

@@ -634,7 +634,7 @@
 										visible="{= ${ui>/selectedProcess} === 'WACHECK' }"
 										rows="{path: 'wacheck>/rows'}"
 										selectionMode="None"
-										ariaLabelledBy="msgTitle">
+										ariaLabelledBy="msgHeading">
 										<t:rowMode>
 											<rm:Auto maxRowCount="12"/>
 										</t:rowMode>
@@ -690,7 +690,7 @@
 																			visible="{= ${ui>/selectedProcess} === 'TPA' }"
 																	rows="{path: 'tpaModel>/Tpa', parameters: {$count: true}, sorter: {path: 'OrderNumber'}}"
 																	selectionMode="None"
-																	ariaLabelledBy="tpaTitle">
+																	ariaLabelledBy="msgHeading">
 																	<t:rowMode>
 																		<rm:Auto maxRowCount="12"/>
 																	</t:rowMode>
