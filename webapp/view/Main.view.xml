@@ -74,15 +74,41 @@
 				<core:Fragment fragmentName="zui5_zle_aust_mon.view.fragment.KontaktBar" type="XML"/>
 
 				<Title id="overviewHeading" text="{i18n>groupOverview}" level="H2" titleStyle="H2" class="sapUiLargeMarginTop sapUiSmallMarginBottom"/>
+				<!--
+					🔴 SPALTENZAHL JE BREAKPOINT - der Grund steht hier, weil er
+					sonst nicht zu erraten ist.
+
+					sap.f.GridContainer waehlt das Layout nach der FENSTERbreite
+					(containerQuery ist per Vorgabe false), mit festen Bereichen:
+					XS bis 374, S 375-599, M 600-1023, L ab 1024.
+
+					Und ein Raster wird nie breiter als
+					Spaltenzahl x maxColumnSize. Mit den frueheren VIER Spalten
+					im M-Bereich waren das 4 x 6rem + 3 x 0.75rem = 420px - die
+					Panels spannen zwar columns="12", das Raster selbst konnte
+					aber gar nicht breiter werden.
+
+					Folge: ein Fenster von 1008px (App im Drittel eines
+					16:9-Monitors) liegt SECHZEHN Pixel unter der L-Schwelle,
+					faellt damit in den M-Bereich und der ganze Inhalt stand auf
+					420px zusammengestaucht - obwohl 929px zur Verfuegung
+					standen. Kein Zoom-, sondern ein Konfigurationsfehler.
+
+					Jetzt behaelt M die zwoelf Spalten und bekommt nur eine
+					kleinere Mindestbreite (12 x 2rem + 11 x 0.75rem = 516px,
+					passt also ab 600px). S bekommt acht statt vier
+					(340px, passt ab 375px). Damit gibt es keine Kante mehr, an
+					der die Breite auf ein Drittel faellt.
+				-->
 				<f:GridContainer id="overviewGrid" snapToRow="true">
 					<f:layout>
 						<f:GridContainerSettings columns="12" minColumnSize="4rem" maxColumnSize="6rem" rowSize="2rem" gap="1rem"/>
 					</f:layout>
 					<f:layoutM>
-						<f:GridContainerSettings columns="4" minColumnSize="3.5rem" maxColumnSize="6rem" rowSize="2rem" gap="0.75rem"/>
+						<f:GridContainerSettings columns="12" minColumnSize="2rem" maxColumnSize="6rem" rowSize="2rem" gap="0.75rem"/>
 					</f:layoutM>
 					<f:layoutS>
-						<f:GridContainerSettings columns="4" minColumnSize="3.5rem" maxColumnSize="6rem" rowSize="2rem" gap="0.75rem"/>
+						<f:GridContainerSettings columns="8" minColumnSize="2rem" maxColumnSize="6rem" rowSize="2rem" gap="0.75rem"/>
 					</f:layoutS>
 
 					<!--
@@ -244,10 +270,10 @@
 						<f:GridContainerSettings columns="12" minColumnSize="4rem" maxColumnSize="6rem" rowSize="2rem" gap="1rem"/>
 					</f:layout>
 					<f:layoutM>
-						<f:GridContainerSettings columns="4" minColumnSize="3.5rem" maxColumnSize="6rem" rowSize="2rem" gap="0.75rem"/>
+						<f:GridContainerSettings columns="12" minColumnSize="2rem" maxColumnSize="6rem" rowSize="2rem" gap="0.75rem"/>
 					</f:layoutM>
 					<f:layoutS>
-						<f:GridContainerSettings columns="4" minColumnSize="3.5rem" maxColumnSize="6rem" rowSize="2rem" gap="0.75rem"/>
+						<f:GridContainerSettings columns="8" minColumnSize="2rem" maxColumnSize="6rem" rowSize="2rem" gap="0.75rem"/>
 					</f:layoutS>
 
 					<!--
