@@ -321,3 +321,77 @@ export function keyTypeText(sKeyType?: string | null): string {
 		default: return (sKeyType ?? "").trim() || "–";
 	}
 }
+
+/**
+ * Wert einer TA-Position aus dem Nachschlagewerk von model/TaPositions.ts.
+ *
+ * 🔴 WOFUER: ZLE_AUST_TPA_SYNC fuellt MEASUREMENT_UNIT und BEST_BEFORE_DATE
+ * NIE - beide kommen nicht aus GET_ORDER_LIST, die Spalten waren strukturell
+ * leer. Die Anforderung F-01 verlangt aber ausdruecklich MHD und ME. Beides
+ * steht in LTAP und kommt jetzt von dort.
+ *
+ * ⚠ Bewusst als Formatter mit einem Modell-Teil statt einer Umbindung der
+ * Tabelle: so bleibt die OData-Bindung samt serverseitigem Blaettern und
+ * Sortieren unveraendert. Aendert sich das Nachschlagewerk, aktualisiert UI5
+ * die Zellen von selbst, weil es als Bindungsteil mitgefuehrt wird.
+ */
+function sapPosValue(
+	sOrder: string | null | undefined,
+	vLine: string | number | null | undefined,
+	oMap: Record<string, Record<string, unknown>> | null | undefined,
+	sField: string
+): string {
+	if (!oMap) {
+		return "";
+	}
+	const sOrd = (sOrder ?? "").trim();
+	const nLine = Number(String(vLine ?? "").trim());
+	const sKey = `${sOrd}/${Number.isNaN(nLine) ? String(vLine ?? "").trim() : String(nLine)}`;
+	const vValue = oMap[sKey]?.[sField];
+	return typeof vValue === "string" || typeof vValue === "number" ? String(vValue).trim() : "";
+}
+
+/** MHD der TA-Position (LTAP-VFDAT). Leer, solange das Nachschlagewerk fehlt. */
+export function sapBestBefore(
+	sOrder?: string | null,
+	vLine?: string | number | null,
+	oMap?: Record<string, Record<string, unknown>> | null
+): string {
+	return sapPosValue(sOrder, vLine, oMap, "ShelfLifeExpirationDate") || "–";
+}
+
+/** Mengeneinheit der TA-Position (LTAP-ALTME). */
+export function sapUnit(
+	sOrder?: string | null,
+	vLine?: string | number | null,
+	oMap?: Record<string, Record<string, unknown>> | null
+): string {
+	return sapPosValue(sOrder, vLine, oMap, "AlternativeUnit") || "–";
+}
+
+/**
+ * Ist der gewaehlte Reiter eine MELDUNGSSICHT?
+ *
+ * ⚠ Zentral, weil die Bedingung an fuenf Stellen haengt: Typfilter, Suchfeld,
+ * Vorgangsschalter und beide Meldungstabellen. Als Literalvergleich
+ * ("!== 'TPA'") stand sie fuenfmal im XML - ein sechster Reiter haette sechs
+ * Stellen gebraucht, und eine vergessene faellt erst im Browser auf.
+ *
+ * Auftragspuffer und Warenausgangs-Pruefung sind KEINE Meldungssichten: sie
+ * zeigen SAP- bzw. HiLIS-Daten, fuer die E/W/S, Suche und Vorgangsverdichtung
+ * keinen Sinn ergeben.
+ */
+export function isMessageView(sProcess?: string | null): boolean {
+	const s = (sProcess ?? "").trim();
+	return s !== "TPA" && s !== "WACHECK";
+}
+
+/** Einzelmeldungs-Tabelle: Meldungssicht UND nicht gruppiert. */
+export function showMsgTable(sProcess?: string | null, bGrouped?: boolean | null): boolean {
+	return isMessageView(sProcess) && bGrouped !== true;
+}
+
+/** Vorgangs-Tabelle: Meldungssicht UND gruppiert. */
+export function showCascadeTable(sProcess?: string | null, bGrouped?: boolean | null): boolean {
+	return isMessageView(sProcess) && bGrouped === true;
+}
