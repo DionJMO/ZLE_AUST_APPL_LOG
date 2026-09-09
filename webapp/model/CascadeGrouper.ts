@@ -73,6 +73,8 @@ export interface LogRow {
 	Lgnum?: string;
 	HttpStatus?: number | string;
 	JsonPayload?: string;
+	/** Aus dem Service: 'X' = juengster Satz des Schluessels ist ein Erfolg. */
+	IsResolved?: string;
 }
 
 export interface CascadeRow extends LogRow {

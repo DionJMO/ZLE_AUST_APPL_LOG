@@ -6,7 +6,8 @@
     "i18n": {
       "bundleUrl": "i18n/i18n.properties",
       "supportedLocales": [
-        ""
+        "",
+        "en"
       ],
       "fallbackLocale": ""
     },
@@ -55,6 +56,13 @@
             "tpaAnnotation"
           ],
           "localUri": "localService/tpaService/metadata.xml",
+          "odataVersion": "4.0"
+        }
+      },
+      "reprocService": {
+        "uri": "/sap/opu/odata4/sap/zle_aust_sb_reproc/srvd/sap/zle_aust_sd_reproc/0001/",
+        "type": "OData",
+        "settings": {
           "odataVersion": "4.0"
         }
       },
@@ -107,7 +115,8 @@
         "settings": {
           "bundleName": "zui5_zle_aust_mon.i18n.i18n",
           "supportedLocales": [
-            ""
+            "",
+            "en"
           ],
           "fallbackLocale": ""
         }
@@ -135,9 +144,18 @@
         "settings": {
           "bundleName": "zui5_zle_aust_mon.i18n.i18n",
           "supportedLocales": [
-            ""
+            "",
+            "en"
           ],
           "fallbackLocale": ""
+        }
+      },
+      "reprocModel": {
+        "dataSource": "reprocService",
+        "settings": {
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": true
         }
       },
       "lookupModel": {

@@ -1,0 +1,83 @@
+<!--
+	Kurzanleitung zur Seite.
+
+	ENTSTANDEN AUS EINEM ZU LANGEN TOOLTIP und seither zur Anleitung gewachsen:
+	die Erklaerung zur Aktualisierung hing am Schalter und war dort
+	dreieinhalb Zeilen lang. Ein Tooltip beschriftet ein Steuerelement, er
+	erklaert es nicht - man klickt ihn weg statt ihn zu lesen.
+
+	INHALTLICHER MASSSTAB: hier steht nur, was man durch Hinsehen NICHT lernt.
+	Dass ein Reiter anklickbar ist, gehoert nicht hinein; dass "Alle Meldungen"
+	eine Obermenge ist und die Reiterzahlen sich deshalb nicht aufaddieren,
+	sehr wohl. Ebenso die Faelle, in denen eine 0 oder eine leere Liste NICHT
+	Entwarnung bedeutet - das ist der gefaehrlichste Irrtum in einer
+	Ueberwachungssicht.
+
+	Aufgebaut als flache Folge von Abschnitten, damit ein weiterer Hinweis
+	eine Ueberschrift plus einen Absatz ist. Zeilenumbruch ueber
+	wrapping="true" - ohne das schneidet sap.m.Text im Popover ab, also genau
+	das Problem, das der Umbau geloest hat.
+-->
+<core:FragmentDefinition
+	xmlns="sap.m"
+	xmlns:core="sap.ui.core">
+
+	<Popover
+		id="infoPopover"
+		title="{i18n>infoTitle}"
+		placement="Bottom"
+		contentWidth="28rem"
+		contentHeight="30rem"
+		horizontalScrolling="false"
+		class="sapUiContentPadding">
+
+		<VBox id="infoBox" class="sapUiSmallMargin">
+
+			<Title id="infoTabsTitle" text="{i18n>infoTabsTitle}" level="H4"/>
+			<Text id="infoTabsText" text="{i18n>infoTabsText}" wrapping="true" class="sapUiTinyMarginTop"/>
+
+			<Title id="infoTypesTitle" text="{i18n>infoTypesTitle}" level="H4" class="sapUiSmallMarginTop"/>
+			<Text id="infoTypesText" text="{i18n>infoTypesText}" wrapping="true" class="sapUiTinyMarginTop"/>
+
+			<Title id="infoGroupTitle" text="{i18n>infoGroupTitle}" level="H4" class="sapUiSmallMarginTop"/>
+			<Text id="infoGroupText" text="{i18n>infoGroupText}" wrapping="true" class="sapUiTinyMarginTop"/>
+
+			<Title id="infoOpenOnlyTitle" text="{i18n>infoOpenOnlyTitle}" level="H4" class="sapUiSmallMarginTop"/>
+			<Text id="infoOpenOnlyText" text="{i18n>infoOpenOnlyText}" wrapping="true" class="sapUiTinyMarginTop"/>
+
+			<Title id="infoSearchTitle" text="{i18n>infoSearchTitle}" level="H4" class="sapUiSmallMarginTop"/>
+			<Text id="infoSearchText" text="{i18n>infoSearchText}" wrapping="true" class="sapUiTinyMarginTop"/>
+
+			<Title id="infoDetailTitle" text="{i18n>infoDetailTitle}" level="H4" class="sapUiSmallMarginTop"/>
+			<Text id="infoDetailText" text="{i18n>infoDetailText}" wrapping="true" class="sapUiTinyMarginTop"/>
+
+			<Title id="infoChartTitle" text="{i18n>infoChartTitle}" level="H4" class="sapUiSmallMarginTop"/>
+			<Text id="infoChartText" text="{i18n>infoChartText}" wrapping="true" class="sapUiTinyMarginTop"/>
+
+			<Title id="infoTpaTitle" text="{i18n>infoTpaTitle}" level="H4" class="sapUiSmallMarginTop"/>
+			<Text id="infoTpaText" text="{i18n>infoTpaText}" wrapping="true" class="sapUiTinyMarginTop"/>
+
+			<Title id="infoWaCheckTitle" text="{i18n>infoWaCheckTitle}" level="H4" class="sapUiSmallMarginTop"/>
+			<Text id="infoWaCheckText" text="{i18n>infoWaCheckText}" wrapping="true" class="sapUiTinyMarginTop"/>
+
+			<Title id="infoReprocTitle" text="{i18n>infoReprocTitle}" level="H4" class="sapUiSmallMarginTop"/>
+			<Text id="infoReprocText" text="{i18n>infoReprocText}" wrapping="true" class="sapUiTinyMarginTop"/>
+
+			<Title id="infoRefreshTitle" text="{i18n>infoRefreshTitle}" level="H4" class="sapUiSmallMarginTop"/>
+			<Text id="infoRefreshText" text="{i18n>infoRefreshText}" wrapping="true" class="sapUiTinyMarginTop"/>
+
+			<Title id="infoManualTitle" text="{i18n>infoManualTitle}" level="H4" class="sapUiSmallMarginTop"/>
+			<Text id="infoManualText" text="{i18n>infoManualText}" wrapping="true" class="sapUiTinyMarginTop"/>
+
+			<Title id="infoShareTitle" text="{i18n>infoShareTitle}" level="H4" class="sapUiSmallMarginTop"/>
+			<Text id="infoShareText" text="{i18n>infoShareText}" wrapping="true" class="sapUiTinyMarginTop"/>
+
+		</VBox>
+
+		<endButton>
+			<Button id="infoCloseButton" text="{i18n>popClose}" press=".onInfoClose"/>
+		</endButton>
+
+	</Popover>
+
+</core:FragmentDefinition>

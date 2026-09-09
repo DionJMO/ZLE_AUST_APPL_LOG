@@ -1,0 +1,79 @@
+<!--
+	Arbeitsvorrat zu EINEM Business-Key.
+
+	🔴 WARUM EIN POPOVER UND NICHT EIN KNOPF IN DER ZEILE
+	Der Schluessel von ZLE_AUST_REPROC ist ACTION + BUSINESS_KEY. Zu einer
+	Logzeile koennen also mehrere Saetze gehoeren - Anlage, Storno und
+	Quittierung derselben TA-Position. Die Logzeile traegt aber KEINE Aktion.
+	Ein Knopf in der Zeile muesste sich eine aussuchen; das waere geraten.
+	Hier waehlt der Anwender, und jeder Satz traegt seinen eigenen Knopf.
+-->
+<core:FragmentDefinition
+	xmlns="sap.m"
+	xmlns:core="sap.ui.core"
+	xmlns:l="sap.ui.layout">
+
+	<Popover
+		id="reprocPopover"
+		title="{reproc>/title}"
+		placement="PreferredLeftOrFlip"
+		contentWidth="30rem"
+		horizontalScrolling="false"
+		class="sapUiContentPadding">
+
+		<List
+			id="reprocPopList"
+			items="{path: 'reproc>/entries', templateShareable: false}"
+			noDataText="{i18n>reprocPopNone}">
+
+			<CustomListItem id="reprocPopItem">
+				<l:HorizontalLayout id="reprocPopRow" class="sapUiSmallMargin">
+
+					<VBox id="reprocPopInfo" width="21rem">
+						<Title
+							id="reprocPopAction"
+							level="H4"
+							text="{parts: ['reproc>ActionText', 'reproc>Action'], formatter: '.formatter.reprocAction'}"
+							tooltip="{reproc>Action}"/>
+						<ObjectStatus
+							id="reprocPopStatus"
+							class="sapUiTinyMarginTop"
+							text="{parts: ['reproc>Status', 'reproc>TryCount', 'reproc>MaxCount'], formatter: '.formatter.reprocStatusTries'}"
+							state="{path: 'reproc>StatusCriticality', formatter: '.formatter.criticalityState'}"
+							icon="{path: 'reproc>StatusCriticality', formatter: '.formatter.criticalityIcon'}"/>
+						<Text
+							id="reprocPopWhen"
+							class="sapUiTinyMarginTop"
+							text="{parts: ['i18n>reprocPopLastTry', 'reproc>LastTryAt'], formatter: '.formatter.labelledTimestamp'}"/>
+						<Text
+							id="reprocPopMsg"
+							class="sapUiTinyMarginTop"
+							wrapping="true"
+							text="{path: 'reproc>LastMsg', formatter: '.formatter.messageDisplay'}"
+							tooltip="{reproc>LastMsg}"/>
+					</VBox>
+
+					<!--
+						Nur Symbol, Beschriftung im Tooltip - der ist bei einem Knopf
+						ohne Text zugleich der zugaengliche Name.
+					-->
+					<Button
+						id="reprocPopRetry"
+						icon="sap-icon://restart"
+						type="Emphasized"
+						class="sapUiSmallMarginBegin sapUiSmallMarginTop"
+						tooltip="{i18n>btnRetryTooltip}"
+						press=".onReprocRetryPress"/>
+
+				</l:HorizontalLayout>
+			</CustomListItem>
+
+		</List>
+
+		<endButton>
+			<Button id="reprocPopClose" text="{i18n>popClose}" press=".onReprocClose"/>
+		</endButton>
+
+	</Popover>
+
+</core:FragmentDefinition>

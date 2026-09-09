@@ -159,7 +159,21 @@ function prettyJson(sPayloadRaw: string): string {
 	}
 }
 
-function countText(oBundle: ResourceBundle, sKey: string, iCount: number, iMax: number): string {
+/**
+ * ⚠ SKEY1 ist die Einzahlform und keine Feinheit: ohne sie stand im Popover
+ * "Verlauf (1 Meldungen)". Das faellt genau dort auf, wo man am genauesten
+ * hinsieht - im Detail zu einem einzelnen Vorgang.
+ */
+function countText(
+	oBundle: ResourceBundle,
+	sKey: string,
+	iCount: number,
+	iMax: number,
+	sKey1?: string
+): string {
+	if (iCount === 1 && sKey1) {
+		return oBundle.getText(sKey1) ?? "";
+	}
 	const sSuffix = iCount >= iMax ? "+" : "";
 	return oBundle.getText(sKey, [`${iCount}${sSuffix}`]) ?? "";
 }
@@ -231,9 +245,10 @@ export async function loadCorrDetail(
 	const aRows = await fetchByCorr(oMainModel, (sCorrUuid ?? "").trim());
 	const aLog = aRows.map(toEntry(oBundle));
 	return {
-		title: oBundle.getText("popTitleCorr", [String(aLog.length)]) ?? "",
+		// Ohne Zahl: die steht in der Panel-Kopfzeile direkt darunter.
+		title: oBundle.getText("popTitleCorr") ?? "",
 		subtitle: "",
-		logHeader: countText(oBundle, "popLogPanel", aLog.length, MAX_LOG),
+		logHeader: countText(oBundle, "popLogPanel", aLog.length, MAX_LOG, "popLogPanel1"),
 		log: aLog
 	};
 }
@@ -284,7 +299,7 @@ export async function loadKeyDetail(
 	return {
 		title: oBundle.getText(bItem ? "popTitleItem" : "popTitleTpa", [sDisplay]) ?? sDisplay,
 		subtitle: oBundle.getText(bItem ? "popSubtitleItem" : "popSubtitleTpa") ?? "",
-		logHeader: countText(oBundle, "popLogPanel", aLog.length, MAX_LOG),
+		logHeader: countText(oBundle, "popLogPanel", aLog.length, MAX_LOG, "popLogPanel1"),
 		log: aLog
 	};
 }

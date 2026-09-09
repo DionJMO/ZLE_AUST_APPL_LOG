@@ -5,6 +5,7 @@ import Label from "sap/m/Label";
 import VBox from "sap/m/VBox";
 import Column from "sap/ui/table/Column";
 import Table from "sap/ui/table/Table";
+import ResourceBundle from "sap/base/i18n/ResourceBundle";
 
 /**
  * Spalten-Sichtbarkeit je Tabelle merken und per Dialog pflegen.
@@ -47,9 +48,11 @@ import Table from "sap/ui/table/Table";
  *      sichtbar: messageShort schneidet den Praefix "Pos NNNN" aus dem
  *      Meldungstext, weil er "als Spalte daneben steht" - und genau die war
  *      ausgeblendet.
+ * v8 = 31.08.2026, Spalte "Vorgang" (erledigt/offen) hinter dem Typ
+ *      eingefuegt - alle folgenden Indizes verschieben sich um eins.
  */
 function storageKey(sTableId: string): string {
-	return "colVis_v7_" + sTableId;
+	return "colVis_v8_" + sTableId;
 }
 
 /**
@@ -68,12 +71,12 @@ function isModeDriven(oColumn: Column): boolean {
 	return oColumn.isBound("visible");
 }
 
-function columnLabel(oColumn: Column, iIndex: number): string {
+function columnLabel(oColumn: Column, iIndex: number, oBundle?: ResourceBundle): string {
 	const oLabel = oColumn.getLabel();
 	if (oLabel instanceof Label) {
 		return oLabel.getText();
 	}
-	return "Spalte " + String(iIndex + 1);
+	return oBundle?.getText("colDialogFallback", [String(iIndex + 1)]) ?? String(iIndex + 1);
 }
 
 function readSaved(sTableId: string): boolean[] | null {
@@ -121,7 +124,7 @@ export function restore(oTable: Table, sTableId: string, nDefaultVisible: number
 /**
  * Oeffnet den Spaltenauswahl-Dialog und speichert die Auswahl.
  */
-export function openDialog(oTable: Table, sTableId: string): void {
+export function openDialog(oTable: Table, sTableId: string, oBundle?: ResourceBundle): void {
 	const aColumns = oTable.getColumns();
 	// null fuer modusgesteuerte Spalten - sie bekommen kein Kaestchen, der
 	// Index bleibt aber erhalten, damit die gespeicherten Flags weiter zu
@@ -131,10 +134,10 @@ export function openDialog(oTable: Table, sTableId: string): void {
 		: new CheckBox({ text: columnLabel(oColumn, i), selected: oColumn.getVisible() }));
 
 	const oDialog = new Dialog({
-		title: "Spalten konfigurieren",
+		title: oBundle?.getText("colDialogTitle") ?? "",
 		content: [new VBox({ items: aCheckBoxes.filter((o): o is CheckBox => o !== null) })],
 		beginButton: new Button({
-			text: "OK",
+			text: oBundle?.getText("colDialogOk") ?? "OK",
 			type: "Emphasized",
 			press: () => {
 				aColumns.forEach((oColumn, i) => {
@@ -148,7 +151,7 @@ export function openDialog(oTable: Table, sTableId: string): void {
 			}
 		}),
 		endButton: new Button({
-			text: "Abbrechen",
+			text: oBundle?.getText("colDialogCancel") ?? "",
 			press: () => { oDialog.close(); }
 		}),
 		afterClose: () => { oDialog.destroy(); }

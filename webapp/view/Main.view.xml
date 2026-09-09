@@ -34,17 +34,103 @@
 						text="{i18n>lastRefreshLabel} {ui>/lastRefreshText}"/>
 					<Button
 						id="navTasksButton"
+						visible="{ui>/showTasks}"
 						icon="sap-icon://task"
 						text="{i18n>navToTasks}"
 						tooltip="{i18n>tasksTitle}"
 						type="Transparent"
 						press=".onNavToTasks"/>
+					<!--
+						BEWUSST OHNE ICON. Vorher stand hier sap-icon://synchronize
+						direkt neben sap-icon://refresh des manuellen Knopfes - zwei
+						kreisfoermige Pfeile nebeneinander, die niemand
+						auseinanderhalten kann. Text unterscheidet zuverlaessig,
+						ein aehnlich geformtes Icon nicht.
+					-->
+					<!--
+						BEWUSST EIN ToggleButton MIT SYMBOL, kein sap.m.Switch.
+
+						Am 01.09.2026 einmal auf Switch umgebaut und wieder zurueck:
+						sap.m.Switch hat keine Icon-Eigenschaft - nur Text ueber
+						customTextOn/Off und das feste Haken/Kreuz von
+						type="AcceptReject". Ein Symbol daneben waere moeglich, macht
+						das Symbol aber zum blossen Bezeichner. Zwischen "Schalter"
+						und "Sonne/Mond" hat das Symbol den Vorzug bekommen.
+
+						Das Symbol zeigt die AKTION (im hellen Modus den Mond), s.
+						formatter.darkModeIcon. Der bekannte Vorbehalt bleibt: die
+						gedrueckte Darstellung zeigt den ZUSTAND und laeuft dem
+						entgegen. Ein einfacher Button waere konsequenter.
+					-->
+					<ToggleButton
+						id="darkModeButton"
+						icon="{path: 'ui>/darkMode', formatter: '.formatter.darkModeIcon'}"
+						pressed="{ui>/darkMode}"
+						tooltip="{parts: ['ui>/darkMode', 'i18n>darkModeToLight', 'i18n>darkModeToDark'], formatter: '.formatter.darkModeTooltip'}"
+						type="Transparent"
+						press=".onDarkModeToggle"/>
+					<!--
+						sap.m.Switch statt ToggleButton (Wunsch Maring, 01.09.2026).
+
+						Sachlich der bessere Steuertyp: ein Schalter zeigt seinen
+						Zustand als Stellung, ein ToggleButton nur als Schattierung -
+						und "gedrueckt" gegen "nicht gedrueckt" ist bei einem
+						transparenten Knopf in der Kopfzeile kaum zu sehen. Genau
+						deshalb trug er vorher den Text "Live" als Kruecke.
+
+						DIE BESCHRIFTUNG STECKT IM SCHALTER (Wunsch Maring): statt
+						eines Labels "Live" davor und einem An/Aus darin steht der
+						Zustand jetzt einmal da - "Live" bzw. "Aus". Das spart die
+						Dopplung und eine Steuerelement-Instanz.
+
+						⚠ SAP empfiehlt fuer customTextOn/Off bis zu DREI Zeichen,
+						"Live" sind vier. Es wird gerendert, kann in Horizon aber
+						knapp werden. Sollte es abgeschnitten aussehen: entweder
+						zurueck zu Label + Standardtexten, oder ein kuerzerer Text.
+						Beides haengt nur an den zwei i18n-Schluesseln.
+
+						⚠ Ein Switch traegt keine eigene Beschriftung, und mit dem
+						Wegfall des Labels ist der TOOLTIP der zugaengliche Name.
+						Er darf hier also nicht "aufgeraeumt" werden - wohl aber
+						kurz sein: die Erklaerung steht seit 01.09.2026 im
+						Info-Popover daneben, der Tooltip benennt nur noch.
+					-->
+					<Switch
+						id="autoRefreshSwitch"
+						state="{ui>/autoRefresh}"
+						customTextOn="{i18n>autoRefreshOn}"
+						customTextOff="{i18n>autoRefreshOff}"
+						tooltip="{parts: ['ui>/autoRefresh', 'i18n>autoRefreshToOff', 'i18n>autoRefreshToOn'], formatter: '.formatter.autoRefreshTooltip'}"
+						change=".onAutoRefreshToggle"/>
+					<!--
+						Nur sichtbar, wenn der Live-Schalter aus ist (Wunsch Maring):
+						bei laufendem Takt waere ein Knopf "jetzt laden" die zweite
+						Anzeige derselben Funktion.
+
+						⚠ Der Preis: mit Live an gibt es keinen Weg mehr, SOFORT zu
+						laden - man wartet bis zu 30 Sekunden. Das trifft genau den
+						Moment nach einer Buchung oder einem Wiederanstoss, in dem
+						man nachsehen will. Wer das zurueckdreht, entfernt das
+						visible und passt infoManualText an.
+
+						ℹ Der Ausdruck braucht KEIN targetType: "ui" ist ein
+						JSONModel und traegt keinen Typ, es wird also nichts vor der
+						Auswertung konvertiert. Die Falle gilt nur fuer die
+						OData-Modelle.
+					-->
 					<Button
 						id="refreshButton"
 						icon="sap-icon://refresh"
+						visible="{= !${ui>/autoRefresh} }"
 						tooltip="{i18n>refreshTooltip}"
 						type="Transparent"
 						press=".onRefresh"/>
+					<Button
+						id="infoButton"
+						icon="sap-icon://information"
+						tooltip="{i18n>infoTooltip}"
+						type="Transparent"
+						press=".onInfoPress"/>
 				</f:actions>
 			</f:DynamicPageTitle>
 		</f:title>
@@ -254,19 +340,32 @@
 								uiConfig="{applicationSet:'fiori'}">
 								<viz:dataset>
 									<vizData:FlattenedDataset data="{chart>/days}">
+										<!--
+											identity = stabiler BEZEICHNER, name = ANGEZEIGTE
+											Beschriftung. Vorher trug name beides: die
+											Legende zeigte "Fehler / Warnungen / Erfolg" auch
+											in der englischen Oberflaeche, weil der Name
+											gleichzeitig der Schluessel war, auf den sich
+											FeedItem values bezieht. Mit identity sind die
+											zwei Rollen getrennt und name uebersetzbar.
+
+											⚠ Die values der FeedItems muessen die IDENTITIES
+											nennen, nicht die Namen - sonst findet der Chart
+											seine Reihen nicht und bleibt leer.
+										-->
 										<vizData:dimensions>
-											<vizData:DimensionDefinition name="Tag" value="{chart>label}"/>
+											<vizData:DimensionDefinition identity="day" name="{i18n>chartDimDay}" value="{chart>label}"/>
 										</vizData:dimensions>
 										<vizData:measures>
-											<vizData:MeasureDefinition name="Fehler" value="{chart>error}"/>
-											<vizData:MeasureDefinition name="Warnungen" value="{chart>warning}"/>
-											<vizData:MeasureDefinition name="Erfolg" value="{chart>success}"/>
+											<vizData:MeasureDefinition identity="E" name="{i18n>chartSeriesE}" value="{chart>error}"/>
+											<vizData:MeasureDefinition identity="W" name="{i18n>chartSeriesW}" value="{chart>warning}"/>
+											<vizData:MeasureDefinition identity="S" name="{i18n>chartSeriesS}" value="{chart>success}"/>
 										</vizData:measures>
 									</vizData:FlattenedDataset>
 								</viz:dataset>
 								<viz:feeds>
-									<vizFeeds:FeedItem uid="valueAxis" type="Measure" values="Fehler,Warnungen,Erfolg"/>
-									<vizFeeds:FeedItem uid="categoryAxis" type="Dimension" values="Tag"/>
+									<vizFeeds:FeedItem uid="valueAxis" type="Measure" values="E,W,S"/>
+									<vizFeeds:FeedItem uid="categoryAxis" type="Dimension" values="day"/>
 								</viz:feeds>
 							</viz:VizFrame>
 						</content>
@@ -323,35 +422,35 @@
 										icon="sap-icon://download-from-cloud"
 										design="Horizontal"
 										text="{i18n>tabIB}"
-										count="{parts: ['ui>/grouped', 'ui>/kpi/tabIB'], formatter: '.formatter.tabCount'}"/>
+										count="{path: 'ui>/kpi/tabIB', formatter: '.formatter.tabCount'}"/>
 									<IconTabFilter
 										id="idTabOB"
 										key="OB"
 										icon="sap-icon://upload-to-cloud"
 										design="Horizontal"
 										text="{i18n>tabOB}"
-										count="{parts: ['ui>/grouped', 'ui>/kpi/tabOB'], formatter: '.formatter.tabCount'}"/>
+										count="{path: 'ui>/kpi/tabOB', formatter: '.formatter.tabCount'}"/>
 									<IconTabFilter
 										id="idTabITEM"
 										key="ITEM"
 										icon="sap-icon://product"
 										design="Horizontal"
 										text="{i18n>tabITEM}"
-										count="{parts: ['ui>/grouped', 'ui>/kpi/tabITEM'], formatter: '.formatter.tabCount'}"/>
+										count="{path: 'ui>/kpi/tabITEM', formatter: '.formatter.tabCount'}"/>
 									<IconTabFilter
 										id="idTabNONE"
 										key="NONE"
 										icon="sap-icon://question-mark"
 										design="Horizontal"
 										text="{i18n>tabNONE}"
-										count="{parts: ['ui>/grouped', 'ui>/kpi/tabNONE'], formatter: '.formatter.tabCount'}"/>
+										count="{path: 'ui>/kpi/tabNONE', formatter: '.formatter.tabCount'}"/>
 									<IconTabFilter
 										id="idTabALL"
 										key="ALL"
 										icon="sap-icon://activity-items"
 										design="Horizontal"
 										text="{i18n>tabALL}"
-										count="{parts: ['ui>/grouped', 'ui>/kpi/tabALL'], formatter: '.formatter.tabCount'}"/>
+										count="{path: 'ui>/kpi/tabALL', formatter: '.formatter.tabCount'}"/>
 									<IconTabFilter
 										id="idTabTPA"
 										key="TPA"
@@ -394,18 +493,24 @@
 											tooltip="{i18n>searchTooltip}"
 											search=".onMsgSearch"
 											visible="{path: 'ui>/selectedProcess', formatter: '.formatter.isMessageView'}"/>
+										<!--
+											"Nur offene" gilt in der Meldungssicht und ist
+											deshalb auch nur dort sichtbar - fuer den
+											Auftragspuffer und die WA-Pruefung gibt es keinen
+											Erledigt-Zustand. Ein sichtbarer, aber
+											wirkungsloser Schalter waere schlimmer als keiner.
+										-->
 										<ToggleButton
-											id="idCascadeToggle"
-											icon="sap-icon://group-2"
-											text="{i18n>cascToggle}"
-											tooltip="{i18n>cascToggleTooltip}"
-											pressed="{ui>/grouped}"
-											press=".onCascadeToggle"
+											id="idOpenOnlyToggle"
+											text="{i18n>openOnly}"
+											tooltip="{i18n>openOnlyTooltip}"
+											pressed="{ui>/openOnly}"
+											press=".onOpenOnlyToggle"
 											visible="{path: 'ui>/selectedProcess', formatter: '.formatter.isMessageView'}"/>
 										<Text
 											id="idCascadeSummary"
 											text="{cascade>/summary}"
-											visible="{= ${ui>/grouped} === true }"
+											visible="{path: 'ui>/selectedProcess', formatter: '.formatter.isMessageView'}"
 											class="sapUiSmallMarginBegin"/>
 										<ObjectStatus
 											id="idWaCheckTruncatedObjectStatus"
@@ -419,176 +524,11 @@
 										<Button
 											id="idMsgColumnsButton"
 											icon="sap-icon://action-settings"
+											visible="{= ${ui>/selectedProcess} === 'TPA' }"
 											tooltip="{i18n>columnsTooltip}"
 											type="Transparent"
 											press=".onOpenMsgColumns"/>
 									</OverflowToolbar>
-										<!--
-											🔴 $select IST HIER PFLICHT, nicht Feintuning.
-
-											Mit autoExpandSelect holt OData V4 nur die Felder, die
-											in der View auch GEBUNDEN sind. Lgnum, BusinessKey und
-											KeyType liest aber der CONTROLLER (_openKeyPopover), und
-											Lgnum hat nur eine standardmaessig ausgeblendete Spalte -
-											die Bindung entsteht also gar nicht.
-
-											Folge war "Failed to drill-down into (...)/Lgnum, invalid
-											segment": der Wert kam als undefined zurueck, das Popover
-											fiel still auf die Rueckfall-Lagernummer.
-
-											Die uebrigen standen nur ZUFAELLIG im $select, weil
-											irgendeine sichtbare Zelle sie bindet - BusinessKey und
-											KeyType ueber die Positionsspalte, CorrUuid und
-											JsonPayload ueber die zwei Symbole. Wird eine davon
-											umgebaut oder ausgeblendet, braeche es genauso still.
-
-											⚠ DIE REGEL, die daraus folgt: was der Controller aus
-											einem OData-Kontext liest, gehoert in dieses $select -
-											unabhaengig davon, ob zufaellig eine Zelle dasselbe Feld
-											bindet. Eine ausgeblendete Spalte erzeugt KEINE Bindung,
-											und genau daran ist Lgnum gescheitert.
-										-->
-
-									<t:Table
-										id="idMsgTable"
-										visible="{parts: ['ui>/selectedProcess', 'ui>/grouped'], formatter: '.formatter.showMsgTable'}"
-										rows="{path: 'mainModel>/AppLog', parameters: {$count: true, $select: 'Lgnum,BusinessKey,KeyType,CorrUuid,JsonPayload,Message,CreatedAtStamp'}, sorter: [{path: 'CreatedAtStamp', descending: true}, {path: 'SeqNr', descending: true}]}"
-										selectionMode="None"
-										ariaLabelledBy="msgHeading">
-										<t:rowMode>
-											<rm:Auto maxRowCount="14"/>
-										</t:rowMode>
-										<t:noData>
-											<IllustratedMessage
-												id="idMsgNoData"
-												illustrationType="{= ${ui>/searchTerm} ? 'sapIllus-NoSearchResults' : 'sapIllus-NoEntries' }"
-												title="{= ${ui>/searchTerm} ? ${i18n>noDataSearchTitle} : ${i18n>noDataMsgTitle} }"
-												description="{= ${ui>/searchTerm} ? ${i18n>noDataSearchText} : ${i18n>noDataMsgText} }"/>
-										</t:noData>
-										<t:columns>
-																			<t:Column id="idMsgCreatedAtColumn" width="11.5rem" sortProperty="CreatedAtStamp">
-																				<Label id="msLblCreatedAt" text="{i18n>colCreatedAt}"/>
-																				<t:template>
-																					<Text id="msTxtCreatedAt" text="{path: 'mainModel>CreatedAtStamp', formatter: '.formatter.timestamp'}" wrapping="false"/>
-																				</t:template>
-																			</t:Column>
-											<t:Column id="idMsgTypeColumn" width="7rem" sortProperty="LogType">
-																				<Label id="msLblLogType" text="{i18n>colLogType}"/>
-																				<t:template>
-																					<ObjectStatus
-																						id="idMsgTypeObjectStatus"
-																						text="{mainModel>LogType}"
-																						state="{path: 'mainModel>LogType', formatter: '.formatter.logTypeState'}"
-																						icon="{path: 'mainModel>LogType', formatter: '.formatter.logTypeIcon'}"/>
-																				</t:template>
-																			</t:Column>
-																			<t:Column id="idMsgMessageColumn" minWidth="320">
-																				<Label id="msLblMessage" text="{i18n>colMessage}"/>
-																				<t:template>
-																					<HBox id="msBoxMessage" alignItems="Center">
-																						<Text id="msTxtMessage" text="{path: 'mainModel>Message', formatter: '.formatter.messageShort'}" wrapping="false" tooltip="{mainModel>Message}"/>
-																						<!--
-																							core:Icon statt sap.m.Link: Link hat KEINE
-																							icon-Eigenschaft, das Symbol wurde nie
-																							gerendert. Ein Button waere die Alternative,
-																							erhoeht in einer Tabellenzeile aber die
-																							Zeilenhoehe.
-
-																							⚠ targetType: 'any' ist Pflicht. Eine
-																							Ausdrucksbindung wandelt die referenzierte
-																							Eigenschaft VOR der Auswertung in den Typ der
-																							Zieleigenschaft - hier boolean. UI5 versuchte
-																							also, den JSON-Payload nach boolean zu
-																							konvertieren, und warf je Zeile eine
-																							FormatException.
-																						-->
-																						<core:Icon
-																							id="msIcnPayload"
-																							src="sap-icon://attachment"
-																							decorative="false"
-																							visible="{= !!${path: 'mainModel>JsonPayload', targetType: 'any'} }"
-																							tooltip="{i18n>popPayloadHint}"
-																							press=".onMessagePayloadPress"
-																							class="sapUiTinyMarginBegin"/>
-																						<!--
-																							Sprung zu allen Meldungen desselben Vorgangs.
-																							Erscheint nur, wo es einen echten Vorgang gibt -
-																							Altbestand traegt eine initiale Korrelations-ID,
-																							dort fuehrte der Sprung ins Leere.
-																						-->
-																						<core:Icon
-																							id="msIcnCorr"
-																							src="sap-icon://history"
-																							decorative="false"
-																							visible="{path: 'mainModel>CorrUuid', targetType: 'any', formatter: '.formatter.hasCorrelation'}"
-																							tooltip="{i18n>corrHint}"
-																							press=".onCorrPress"
-																							class="sapUiTinyMarginBegin"/>
-																					</HBox>
-																				</t:template>
-																			</t:Column>
-																			<t:Column id="idMsgItemColumn" width="12rem" sortProperty="ItemNumber">
-																				<Label id="msLblItemNumber" text="{i18n>colItemNumber}"/>
-																				<t:template>
-																					<Link id="msTxtItemNumber" text="{path: 'mainModel>ItemNumber', formatter: '.formatter.materialNumber'}" wrapping="false" press=".onItemNumberPress" tooltip="{i18n>popTooltipItem}"/>
-																				</t:template>
-																			</t:Column>
-																			<t:Column id="idMsgTpaColumn" width="11rem" sortProperty="TpaNumber">
-																				<Label id="msLblTpaNumber" text="{i18n>colTpaNumber}"/>
-																				<t:template>
-																					<Link id="msTxtTpaNumber" text="{path: 'mainModel>TpaNumber', formatter: '.formatter.dashIfEmpty'}" wrapping="false" press=".onTpaNumberPress" tooltip="{i18n>popTooltipTpa}"/>
-																				</t:template>
-																			</t:Column>
-																			<t:Column id="idMsgLineColumn" width="7rem">
-																				<Label id="msLblOrderLineNr" text="{i18n>colOrderLineNr}"/>
-																				<t:template>
-																					<Text id="msTxtOrderLineNr" text="{parts: ['mainModel>OrderLineNr', 'mainModel>BusinessKey', 'mainModel>KeyType'], formatter: '.formatter.orderLine'}" tooltip="{parts: ['mainModel>OrderLineNr', 'mainModel>BusinessKey', 'mainModel>KeyType'], formatter: '.formatter.orderLineSource'}" wrapping="false"/>
-																				</t:template>
-																			</t:Column>
-																			<t:Column id="idMsgHistoryColumn" width="10rem" sortProperty="HistoryType">
-																				<Label id="msLblHistoryType" text="{i18n>colHistoryType}"/>
-																				<t:template>
-																					<Text id="msTxtHistoryType" text="{path: 'mainModel>HistoryType', formatter: '.formatter.historyTypeText'}" tooltip="{mainModel>HistoryType}" wrapping="false"/>
-																				</t:template>
-																			</t:Column>
-																			<t:Column id="idMsgHttpColumn" width="7rem" hAlign="End">
-																				<Label id="msLblHttpStatus" text="{i18n>colHttpStatus}"/>
-																				<t:template>
-																					<Text id="msTxtHttpStatus" text="{mainModel>HttpStatus}" wrapping="false"/>
-																				</t:template>
-																			</t:Column>
-																			<t:Column id="idMsgCorrColumn" width="13rem" sortProperty="CorrUuid">
-																				<Label id="msLblCorr" text="{i18n>colCorrUuid}"/>
-																				<t:template>
-																					<Text id="msTxtCorr" text="{path: 'mainModel>CorrUuid', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
-																				</t:template>
-																			</t:Column>
-																			<t:Column id="idMsgBusKeyColumn" width="12rem" sortProperty="BusinessKey">
-																				<Label id="msLblBusKey" text="{i18n>colBusinessKey}"/>
-																				<t:template>
-																					<Text id="msTxtBusKey" text="{path: 'mainModel>BusinessKey', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
-																				</t:template>
-																			</t:Column>
-																			<t:Column id="idMsgKeyTypeColumn" width="8rem" sortProperty="KeyType">
-																				<Label id="msLblKeyType" text="{i18n>colKeyType}"/>
-																				<t:template>
-																					<Text id="msTxtKeyType" text="{path: 'mainModel>KeyType', formatter: '.formatter.keyTypeText'}" wrapping="false"/>
-																				</t:template>
-																			</t:Column>
-																			<t:Column id="idMsgLgnumColumn" width="6rem" sortProperty="Lgnum">
-																				<Label id="msLblLgnum" text="{i18n>colLgnum}"/>
-																				<t:template>
-																					<Text id="msTxtLgnum" text="{path: 'mainModel>Lgnum', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
-																				</t:template>
-																			</t:Column>
-																			<t:Column id="idMsgSeqColumn" width="6rem" hAlign="End" sortProperty="SeqNr">
-																				<Label id="msLblSeq" text="{i18n>colSeqNr}"/>
-																				<t:template>
-																					<Text id="msTxtSeq" text="{path: 'mainModel>SeqNr', formatter: '.formatter.dashIfEmpty'}" wrapping="false"/>
-																				</t:template>
-																			</t:Column>
-																		</t:columns>
-									</t:Table>
 
 									<!--
 										EIGENE TABELLE FUER DIE VORGANGSSICHT, und das ist kein
@@ -610,12 +550,34 @@
 									-->
 									<t:Table
 										id="idCascadeTable"
-										visible="{parts: ['ui>/selectedProcess', 'ui>/grouped'], formatter: '.formatter.showCascadeTable'}"
+										visible="{path: 'ui>/selectedProcess', formatter: '.formatter.isMessageView'}"
 										rows="{cascade>/rows}"
 										selectionMode="None"
 										ariaLabelledBy="msgHeading">
 										<t:rowMode>
-											<rm:Auto maxRowCount="14"/>
+											<!--
+												rowContentHeight IST DIE HALBE MIETE DES ZEILENUMBRUCHS.
+
+												sap.ui.table.Table laesst Zeilen NICHT mit dem Inhalt
+												wachsen - anders als sap.m.Table. Alle Zeilen sind
+												gleich hoch, und was nicht hineinpasst, wird
+												abgeschnitten. Ein "wrapping=true" allein in der
+												Meldungszelle erzeugt deshalb eine zweite Zeile, die
+												man nicht sieht: sie liegt unter der Zeilenkante.
+
+												44px sind zwei Zeilen sap.m.Text (0,875rem bei
+												Zeilenhoehe 1,4 = knapp 20px) plus die Innenabstaende
+												der Zelle. Wer maxLines in der Meldungszelle aendert,
+												muss diesen Wert mitaendern - die beiden gehoeren
+												zusammen.
+
+												⚠ Der Preis: bei doppelt hohen Zeilen passen in
+												dieselbe Flaeche nur noch rund zehn statt vierzehn.
+												maxRowCount bleibt bei 14, weil rm:Auto die Zahl
+												ohnehin aus dem verfuegbaren Platz ableitet und der
+												Wert nur die Obergrenze ist.
+											-->
+											<rm:Auto maxRowCount="14" rowContentHeight="44"/>
 										</t:rowMode>
 										<t:noData>
 											<IllustratedMessage
@@ -628,10 +590,10 @@
 											<t:Column id="idCascStampColumn" width="11.5rem" sortProperty="CreatedAtStamp">
 												<Label id="cscLblStamp" text="{i18n>colCreatedAt}"/>
 												<t:template>
-													<Text id="cscTxtStamp" text="{path: 'cascade>CreatedAtStamp', formatter: '.formatter.timestamp'}" wrapping="false"/>
+													<Text id="cscTxtStamp" text="{path: 'cascade>CreatedAtStamp', targetType: 'any', formatter: '.formatter.timestamp'}" wrapping="false"/>
 												</t:template>
 											</t:Column>
-											<t:Column id="idCascStepsColumn" width="6rem" hAlign="Center" sortProperty="StepCount">
+											<t:Column id="idCascStepsColumn" width="4.75rem" hAlign="Center" sortProperty="StepCount">
 												<Label id="cscLblSteps" text="{i18n>colSteps}"/>
 												<t:template>
 													<Link
@@ -641,23 +603,200 @@
 														tooltip="{parts: ['cascade>StepCount', 'cascade>IsBulk'], formatter: '.formatter.cascSteps'}"/>
 												</t:template>
 											</t:Column>
-											<t:Column id="idCascTypeColumn" width="7rem" sortProperty="LogType">
+											<!--
+												SPALTENBREITEN Schritte / Typ / Vorgang / Details:
+												alle vier auf die Breite ihrer Ueberschrift bzw. ihres
+												Inhalts gesetzt (Festlegung Maring, 04.09.2026). Sie
+												zeigen eine einstellige Zahl oder ein bis zwei
+												Symbole - alles darueber hinaus waere Leerraum in
+												einer Tabelle, die seitwaerts scrollt. Was hier
+												wegfaellt, geht automatisch an die Meldung: sie ist
+												die einzige Spalte ohne feste Breite.
+
+												hAlign="Center", damit Zahl und Symbol unter der
+												Ueberschrift stehen statt an der linken Kante zu
+												kleben. Bei einer Ein-Symbol-Spalte sieht linksbuendig
+												nach Zufall aus.
+
+												⚠ WIRD NACH EINER DIESER SPALTEN SORTIERT, blendet
+												sap.ui.table einen Sortierpfeil in die Ueberschrift -
+												der braucht rund 1rem, und die Ueberschrift wird dann
+												gekuerzt ("Vorga...", "Ty..."). Bei diesen Breiten ist
+												das der Preis. Wer ihn nicht zahlen will, nimmt der
+												Spalte das sortProperty - bei "Vorgang" waere das
+												verschmerzbar, eine Sortierung nach Vorgangszustand
+												hat wenig Nutzen; bei "Typ" nicht, Fehler
+												zusammenzusortieren ist sinnvoll.
+											-->
+											<t:Column id="idCascTypeColumn" width="3rem" hAlign="Center" sortProperty="LogType">
 												<Label id="cscLblType" text="{i18n>colLogType}"/>
 												<t:template>
+													<!--
+														NUR SYMBOL UND FARBE, das Wort im Tooltip
+														(Festlegung Maring, 03.09.2026). Der Buchstabe
+														E/W/S sagte niemandem etwas, der die Domaene
+														ZLE_AUST_LOG_TYPE nicht kennt - Symbol und Farbe
+														tragen die Aussage ohnehin, und zwar in zwei
+														Sinnen (Zwei-Sinne-Prinzip).
+
+														⚠ Der Tooltip ist damit zugleich der ZUGAENGLICHE
+														NAME der Zelle: ein Symbol ohne Text hat sonst
+														keinen. Er darf hier also nicht "aufgeraeumt"
+														werden.
+													-->
 													<ObjectStatus
 														id="cscStaType"
-														text="{cascade>LogType}"
 														state="{path: 'cascade>LogType', formatter: '.formatter.logTypeState'}"
-														icon="{path: 'cascade>LogType', formatter: '.formatter.logTypeIcon'}"/>
+														icon="{path: 'cascade>LogType', formatter: '.formatter.logTypeIcon'}"
+														tooltip="{parts: ['cascade>LogType', 'i18n>logTypeE', 'i18n>logTypeW', 'i18n>logTypeS'], formatter: '.formatter.logTypeTooltip'}"/>
+												</t:template>
+											</t:Column>
+											<!--
+												🔴 WIEDERHERGESTELLT: diese Spalte gab es nur in der
+												flachen Tabelle. Mit deren Wegfall waere der
+												Erledigt-Zustand nirgends mehr sichtbar gewesen -
+												obwohl "Nur offene" genau darauf filtert. Ein Filter,
+												dessen Kriterium man nicht sehen kann, ist nicht
+												nachvollziehbar.
+
+												ℹ Nicht zu verwechseln mit "Wiederanstoss": hier
+												steht, ob die JUENGSTE Meldung zu diesem Schluessel
+												ein Erfolg war (IsResolved aus dem CDS-View), dort,
+												ob im Arbeitsvorrat noch etwas offen ist. Ein
+												Vorgang kann erledigt sein, ohne je registriert
+												worden zu sein - und umgekehrt.
+											-->
+											<!--
+												VORGANGSZUSTAND UND WIEDERANSTOSS IN EINER SPALTE
+												(Festlegung Maring, 03.09.2026). Vorher zwei Spalten
+												nebeneinander, die in der Regel beide "offen" zeigten -
+												sichtbar redundant, obwohl sie Verschiedenes messen:
+
+												  Zustand      ist die JUENGSTE Meldung zu diesem
+												               Schluessel ein Erfolg? (IsResolved aus
+												               ZLE_AUST_C_APPL_LOG)
+												  Anstossbar   liegt im Arbeitsvorrat noch etwas offen?
+												               (ZLE_AUST_REPROC)
+
+												Beides gehoert zusammen: die Frage "ist das erledigt"
+												und die Handlung "dann stoss es an" sind eine Zelle.
+												Der Text zeigt den Zustand, die Klickbarkeit zeigt,
+												dass es etwas zu tun gibt, und der Tooltip nennt die
+												offenen Aktionen.
+
+												⚠ sap.m.ObjectStatus statt Link, weil nur er Farbe UND
+												Symbol traegt - active="true" macht ihn trotzdem
+												anklickbar (seit UI5 1.54).
+
+												ℹ Alle Bindungsteile gehen gegen JSON-Modelle (cascade,
+												reproc) - kein targetType noetig, obwohl "active" eine
+												boolesche Eigenschaft ist. Bei einem OData-Modell waere
+												genau das die Falle, die hier schon dreimal zuschlug.
+											-->
+											<t:Column id="idCascResolvedColumn" width="4.5rem" hAlign="Center" sortProperty="IsResolved">
+												<Label id="cscLblResolved" text="{i18n>colResolved}"/>
+												<t:template>
+													<!--
+														Nur Symbol und Farbe, Wortlaut im Tooltip - wie in
+														der Typ-Spalte daneben.
+
+														⚠ Der Tooltip traegt hier ZWEI Aussagen: den Zustand
+														(erledigt / offen / kein Vorgangsbezug) UND die
+														offenen Aktionen des Arbeitsvorrats. Ohne die erste
+														waere das Fragezeichen-Symbol unerklaert - vorher
+														stand der Gedankenstrich daneben.
+													-->
+													<ObjectStatus
+														id="cscTxtResolved"
+														state="{parts: ['cascade>IsResolved', 'cascade>BusinessKey'], formatter: '.formatter.resolvedState'}"
+														icon="{parts: ['cascade>IsResolved', 'cascade>BusinessKey'], formatter: '.formatter.resolvedIcon'}"
+														active="{parts: ['cascade>BusinessKey', 'reproc>/map'], formatter: '.formatter.hasReproc'}"
+														press=".onReprocPress"
+														tooltip="{parts: ['cascade>IsResolved', 'cascade>BusinessKey', 'i18n>resolvedYes', 'i18n>resolvedNo', 'i18n>resolvedUnknown', 'reproc>/map', 'i18n>reprocNone'], formatter: '.formatter.resolvedTooltip'}"/>
+												</t:template>
+											</t:Column>
+											<!--
+												EIGENE SPALTE FUER DIE SYMBOLE (Festlegung Maring,
+												04.09.2026) - vorher sassen sie in der Meldungszelle.
+
+												Header "Details", weil BEIDE Symbole eine Detailsicht
+												oeffnen: die Bueroklammer den JSON-Payload dieser
+												Meldung, die Uhr alle Meldungen des Vorgangs.
+												"Verlauf" oder "JSON" traefen je nur eines, ein leerer
+												Header waere fuer Screenreader nichts.
+
+												ℹ Der shrinkFactor, der in der Meldungszelle noetig
+												war, entfaellt hier: die Spalte hat eine feste Breite
+												und keinen langen Text als Nachbarn, der sie
+												zusammendruecken koennte.
+											-->
+											<t:Column id="idCascDetailColumn" width="4.5rem" hAlign="Center">
+												<Label id="cscLblDetail" text="{i18n>colDetails}"/>
+												<t:template>
+													<!--
+														JE SYMBOL EIN FESTER PLATZ. Ein gemeinsamer Kasten
+														mit justifyContent verschoebe sie je nach
+														Sichtbarkeit - eine Uhr ohne Bueroklammer landete
+														woanders als eine mit. So sitzt die Bueroklammer
+														immer links, die Uhr immer rechts.
+													-->
+													<HBox id="cscBoxIcons" alignItems="Center" renderType="Bare">
+														<HBox id="cscSlotPayload" width="1.75rem" alignItems="Center" justifyContent="Center" renderType="Bare">
+															<core:Icon
+																id="cscIcnPayload"
+																src="sap-icon://attachment"
+																color="Marker"
+																decorative="false"
+																alt="{i18n>popPayloadHint}"
+																tooltip="{i18n>popPayloadHint}"
+																visible="{= !!${cascade>JsonPayload} }"
+																press=".onMessagePayloadPress"/>
+														</HBox>
+														<HBox id="cscSlotCorr" width="1.75rem" alignItems="Center" justifyContent="Center" renderType="Bare">
+															<core:Icon
+																id="cscIcnCorr"
+																src="sap-icon://history"
+																color="Marker"
+																decorative="false"
+																alt="{i18n>popTooltipCorr}"
+																tooltip="{i18n>popTooltipCorr}"
+																visible="{path: 'cascade>CorrUuid', formatter: '.formatter.hasCorrelation'}"
+																press=".onCorrPress"/>
+														</HBox>
+													</HBox>
 												</t:template>
 											</t:Column>
 											<t:Column id="idCascMessageColumn" minWidth="320">
 												<Label id="cscLblMessage" text="{i18n>colMessage}"/>
 												<t:template>
-													<Text id="cscTxtMessage" text="{path: 'cascade>Message', formatter: '.formatter.messageShort'}" wrapping="false" tooltip="{cascade>Message}"/>
+													<!--
+														ZWEI ZEILEN, DANN AUSLASSUNGSPUNKTE.
+
+														"wrapping" allein liefert beliebig viele Zeilen -
+														in einer Tabelle mit fester Zeilenhoehe heisst das:
+														die dritte und vierte Zeile sind da, aber
+														unsichtbar. maxLines klemmt den Text sichtbar ab
+														(CSS line-clamp) und setzt die Auslassungspunkte
+														an das Ende der ZWEITEN Zeile - der Leser sieht
+														also, dass noch etwas kommt.
+
+														ℓ Der vollstaendige Originaltext bleibt im Tooltip.
+														Das ist wichtig, weil messageDisplay den Text
+														zusaetzlich um Praefixe kuerzt, die als eigene
+														Spalte dastehen.
+													-->
+													<Text id="cscTxtMessage" text="{path: 'cascade>Message', formatter: '.formatter.messageDisplay'}" wrapping="true" maxLines="2" tooltip="{cascade>Message}"/>
 												</t:template>
 											</t:Column>
-											<t:Column id="idCascItemColumn" width="12rem" sortProperty="ItemNumber">
+											<!--
+												Von 12rem auf 9rem: Materialnummern werden ueber
+												normalizeMaterial ohne fuehrende Nullen angezeigt und
+												sind damit vier- bis sechsstellig. Die drei
+												gewonnenen rem gehen automatisch an die Meldung -
+												sie ist die einzige Spalte ohne feste Breite und
+												nimmt allen Rest auf.
+											-->
+											<t:Column id="idCascItemColumn" width="9rem" sortProperty="ItemNumber">
 												<Label id="cscLblItem" text="{i18n>colItemNumber}"/>
 												<t:template>
 													<Link id="cscLnkItem" text="{path: 'cascade>ItemNumber', formatter: '.formatter.materialNumber'}" wrapping="false" press=".onItemNumberPress" tooltip="{i18n>popTooltipItem}"/>
@@ -746,6 +885,7 @@
 										</t:columns>
 									</t:Table>
 
+
 									<t:Table
 																	id="idTpaTable"
 																			visible="{= ${ui>/selectedProcess} === 'TPA' }"
@@ -812,7 +952,7 @@
 																		<t:Column id="idTpaLastSyncColumn" width="12rem" sortProperty="LastSyncAt">
 																			<Label id="tpaLblLastSync" text="{i18n>colLastSyncAt}"/>
 																			<t:template>
-																				<Text id="tpaTxtLastSync" text="{path: 'tpaModel>LastSyncAt', formatter: '.formatter.timestamp'}" wrapping="false"/>
+																				<Text id="tpaTxtLastSync" text="{path: 'tpaModel>LastSyncAt', targetType: 'any', formatter: '.formatter.timestamp'}" wrapping="false"/>
 																			</t:template>
 																		</t:Column>
 																		<t:Column id="idTpaOrderTypeColumn" width="9rem">
@@ -854,7 +994,7 @@
 																		<t:Column id="idTpaCreationDateColumn" width="11rem">
 																			<Label id="tpaLblCreationDate" text="{i18n>colCreationDate}"/>
 																			<t:template>
-																				<Text id="tpaTxtCreationDate" text="{path: 'tpaModel>CreationDate', formatter: '.formatter.timestamp'}" wrapping="false"/>
+																				<Text id="tpaTxtCreationDate" text="{path: 'tpaModel>CreationDate', targetType: 'any', formatter: '.formatter.timestamp'}" wrapping="false"/>
 																			</t:template>
 																		</t:Column>
 																	</t:columns>

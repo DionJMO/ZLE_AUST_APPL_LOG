@@ -2,6 +2,7 @@ import { isInitialUuid } from "./CascadeGrouper";
 import { positionFrom } from "./BusinessKey";
 import DateFormat from "sap/ui/core/format/DateFormat";
 import NumberFormat from "sap/ui/core/format/NumberFormat";
+import * as MessageText from "./MessageText";
 
 /**
  * Formatter der Monitoring-Oberflaeche.
@@ -50,6 +51,35 @@ export function logTypeState(sLogType?: string | null): string {
 		case "W": return "Warning";
 		case "S": return "Success";
 		default: return "None";
+	}
+}
+
+/**
+ * Klartext zum Meldungstyp - fuer den Tooltip der Typ-Spalte.
+ *
+ * Die Spalte zeigt nur noch Symbol und Farbe (Festlegung Maring, 03.09.2026);
+ * der Buchstabe E/W/S sagte niemandem etwas, der die Domaene nicht kennt.
+ * Das Wort steht deshalb im Tooltip - und weil ein Symbol ohne Text sonst
+ * keinen Namen haette, ist es zugleich der ZUGAENGLICHE NAME der Zelle.
+ *
+ * ⚠ Einzahl, anders als die Filterknoepfe darueber ("Fehler/Abbrueche/
+ * Erfolge"): dort steht eine Menge, hier eine einzelne Meldung.
+ *
+ * Ein unbekannter Wert faellt auf den Rohwert zurueck statt auf einen
+ * Gedankenstrich - ein neuer Festwert soll sichtbar sein, nicht verschwinden.
+ */
+export function logTypeTooltip(
+	sLogType?: string | null,
+	sError?: string | null,
+	sAbort?: string | null,
+	sSuccess?: string | null
+): string {
+	const s = (sLogType ?? "").trim().toUpperCase();
+	switch (s) {
+		case "E": return (sError ?? "").trim();
+		case "W": return (sAbort ?? "").trim();
+		case "S": return (sSuccess ?? "").trim();
+		default: return (sLogType ?? "").trim();
 	}
 }
 
@@ -290,10 +320,7 @@ export function chartTitle(sPattern?: string | null, vDays?: number | string | n
  * beides wahr, der Zaehler waere immer leer. Ein Formatter bekommt die
  * Rohwerte.
  */
-export function tabCount(bGrouped?: boolean | null, vCount?: number | string | null): string {
-	if (bGrouped) {
-		return "";
-	}
+export function tabCount(vCount?: number | string | null): string {
 	return vCount === undefined || vCount === null ? "" : String(vCount);
 }
 
@@ -322,6 +349,171 @@ export function keyTypeText(sKeyType?: string | null): string {
 		case "ADVICE": return "Lieferanzeige";
 		default: return (sKeyType ?? "").trim() || "–";
 	}
+}
+
+/**
+ * Gehoert die Zeile zu einem echten Vorgang?
+ *
+ * Altbestand traegt eine INITIALE Korrelations-ID - dort fuehrte der Sprung
+ * ins Leere. Die Erkennung kommt aus CascadeGrouper und wird bewusst nicht
+ * nachgebaut: sie muss mit der Gruppierung uebereinstimmen, sonst zeigte die
+ * eine Stelle einen Vorgang an, den die andere nicht kennt.
+ */
+export function hasCorrelation(sCorrUuid?: string | null): boolean {
+	return !isInitialUuid(sCorrUuid);
+}
+
+/**
+ * Klartext zum Status eines Arbeitsvorrats-Satzes.
+ *
+ * Festwerte der Domaene ZLE_AUST_REPROC_STAT. 'I' ist der wichtigste Wert und
+ * der unauffaelligste: bleibt ein Satz darauf stehen, war es ein Abbruch OHNE
+ * catch (Kurzdump, Timeout, ICF-Abbruch) - der Totmannschalter des Frameworks.
+ * Deshalb heisst er hier nicht bloss "laufend", sondern nennt den Verdacht.
+ *
+ * ⚠ Deutsch fest verdrahtet, wie keyTypeText und historyTypeText auch. Das
+ * sind die drei verbliebenen deutschsprachigen Stellen einer sonst
+ * durchgaengig ueber i18n uebersetzten Oberflaeche - ein XML-Formatter kommt
+ * an das ResourceBundle nicht heran. Wird das gestoert, ist der Weg der von
+ * model/MessageText.ts: Muster im Code, Wortlaut im Bundle, einmalig ueber
+ * init( ) zwischengespeichert.
+ */
+export function reprocStatusText(sStatus?: string | null): string {
+	switch ((sStatus ?? "").trim().toUpperCase()) {
+		case "I": return "laufend / abgebrochen?";
+		case "O": return "offen";
+		case "D": return "erledigt";
+		case "F": return "endgültig gescheitert";
+		case "C": return "manuell erledigt";
+		default: return (sStatus ?? "").trim() || "–";
+	}
+}
+
+/**
+ * "3 / 5" - Versuchszaehler gegen den Deckel aus ZLE_AUST_REPROCC.
+ *
+ * Ohne gepflegtes MAX_COUNT (oder bei 0) steht dort nur die Zahl: der
+ * Dispatcher prueft den Deckel ausdruecklich nur bei "max_count > 0", ein
+ * "3 / 0" waere also nicht bloss haesslich, sondern sachlich falsch.
+ */
+/**
+ * Beschriftung der Aktionsspalte im Arbeitsvorrat.
+ *
+ * 🔴 ActionText kommt aus ZLE_AUST_REPROCC-DESCRIPTION und ist dort NICHT
+ * fuer jeden Aktionscode gepflegt. Mit dashIfEmpty stand in solchen Zeilen
+ * ein Gedankenstrich - und weil der Schluessel von ZLE_AUST_REPROC aus
+ * ACTION + BUSINESS_KEY besteht, sahen zwei Saetze zur selben TA (Anlage und
+ * Quittierung) dann VOELLIG GLEICH aus. Genau die Spalte, die sie
+ * unterscheidet, war leer.
+ *
+ * Deshalb Rueckfall auf den technischen Code statt auf einen Strich: lieber
+ * PICK_CONFIRM lesen als gar nichts.
+ */
+export function reprocAction(
+	sActionText?: string | null,
+	sAction?: string | null
+): string {
+	const sText = (sActionText ?? "").trim();
+	if (sText) {
+		return sText;
+	}
+	return (sAction ?? "").trim() || DASH;
+}
+
+export function reprocTries(
+	vTry?: number | string | null,
+	vMax?: number | string | null
+): string {
+	const nTry = Number(vTry ?? 0);
+	const nMax = Number(vMax ?? 0);
+	if (!Number.isFinite(nTry)) {
+		return "–";
+	}
+	return Number.isFinite(nMax) && nMax > 0 ? `${nTry} / ${nMax}` : String(nTry);
+}
+
+function reprocEntries<T>(
+	sBusinessKey?: string | null,
+	oMap?: Record<string, T[]> | null
+): T[] {
+	const sKey = (sBusinessKey ?? "").trim();
+	if (!sKey || !oMap) {
+		return [];
+	}
+	return oMap[sKey] ?? [];
+}
+
+/**
+ * Zusammenfassung des Arbeitsvorrats zu einem Business-Key.
+ *
+ * 🔴 Warum keine einzelne Aktion gezeigt wird: zu einem Business-Key koennen
+ * mehrere Saetze gehoeren (Anlage, Storno, Quittierung derselben Position),
+ * und die Logzeile traegt keine Aktion. Bei mehreren steht deshalb nur die
+ * Anzahl - welche gemeint ist, entscheidet der Anwender im Popover.
+ *
+ * ⚠ Deutsch fest verdrahtet, wie bei keyTypeText, historyTypeText und
+ * reprocStatusText. Das sind die vier verbliebenen deutschsprachigen Stellen
+ * einer sonst ueber i18n uebersetzten Oberflaeche - ein XML-Formatter kommt
+ * an das ResourceBundle nicht heran. Wer das aufloest, nimmt den Weg von
+ * model/MessageText.ts: Muster im Code, Wortlaut im Bundle, einmalig ueber
+ * init( ) zwischengespeichert.
+ */
+export function reprocLabel(
+	sBusinessKey?: string | null,
+	oMap?: Record<string, { Status?: string }[]> | null
+): string {
+	const a = reprocEntries(sBusinessKey, oMap);
+	if (a.length === 0) {
+		return DASH;
+	}
+	return a.length === 1 ? reprocStatusText(a[0].Status) : `${a.length} Aktionen`;
+}
+
+/** Gibt es zu diesem Schluessel ueberhaupt etwas anzustossen? */
+export function hasReproc(
+	sBusinessKey?: string | null,
+	oMap?: Record<string, unknown[]> | null
+): boolean {
+	return reprocEntries(sBusinessKey, oMap).length > 0;
+}
+
+/**
+ * Tooltip der Spalte: alle Saetze zum Schluessel, einer je Zeile.
+ *
+ * Der Umbruch ist ein echtes \n - ein title-Attribut bricht daran um. Damit
+ * sieht man ohne Klick, welche Aktionen offen sind.
+ */
+export function reprocTooltip(
+	sBusinessKey?: string | null,
+	oMap?: Record<string, { Action?: string; ActionText?: string; Status?: string }[]> | null,
+	sNone?: string | null
+): string {
+	const a = reprocEntries(sBusinessKey, oMap);
+	if (a.length === 0) {
+		// Nicht leer lassen: ohne Tooltip bliebe offen, ob es keinen Eintrag
+		// gibt oder ob die Zelle nur nichts anzuzeigen weiss.
+		return (sNone ?? "").trim();
+	}
+	return a.map((o) => `${reprocAction(o.ActionText, o.Action)}: ${reprocStatusText(o.Status)}`)
+		.join("\n");
+}
+
+
+/** "offen (2 / 3)" - Status und Versuchszaehler in einem Zug. */
+export function reprocStatusTries(
+	sStatus?: string | null,
+	vTry?: number | string | null,
+	vMax?: number | string | null
+): string {
+	return `${reprocStatusText(sStatus)} (${reprocTries(vTry, vMax)})`;
+}
+
+/** "Letzter Versuch: 03.09.2026 08:12:44" - Beschriftung plus Zeitstempel. */
+export function labelledTimestamp(
+	sLabel?: string | null,
+	vValue?: string | Date | null
+): string {
+	return `${(sLabel ?? "").trim()} ${timestamp(vValue)}`.trim();
 }
 
 /**
@@ -388,32 +580,6 @@ export function isMessageView(sProcess?: string | null): boolean {
 	return s !== "TPA" && s !== "WACHECK";
 }
 
-/** Einzelmeldungs-Tabelle: Meldungssicht UND nicht gruppiert. */
-export function showMsgTable(sProcess?: string | null, bGrouped?: boolean | null): boolean {
-	return isMessageView(sProcess) && bGrouped !== true;
-}
-
-/** Vorgangs-Tabelle: Meldungssicht UND gruppiert. */
-export function showCascadeTable(sProcess?: string | null, bGrouped?: boolean | null): boolean {
-	return isMessageView(sProcess) && bGrouped === true;
-}
-
-/**
- * Gehoert die Zeile zu einem echten Vorgang?
- *
- * Nur dann laesst sich von ihr aus zu den uebrigen Meldungen desselben
- * Vorgangs springen. Saetze aus der Zeit vor Michaels Logging-Umbau tragen
- * eine INITIALE Korrelations-ID - dort fuehrt der Sprung ins Leere bzw.
- * wuerde den gesamten Altbestand einsammeln, deshalb erscheint das Symbol
- * dort gar nicht erst.
- *
- * ⚠ Die Erkennung kommt aus CascadeGrouper.isInitialUuid und wird bewusst
- * NICHT nachgebaut: sie behandelt alle Schreibweisen (Guid mit Bindestrichen,
- * reine Hex-Kette, leer) und muss mit der Gruppierung uebereinstimmen.
- */
-export function hasCorrelation(sCorrUuid?: string | null): boolean {
-	return !isInitialUuid(sCorrUuid);
-}
 
 /*
  * Klartext fuer HISTORY_TYPE.
@@ -522,4 +688,141 @@ export function cascSteps(vStepCount?: number | string | null, bIsBulk?: boolean
 			+ "dieselbe Korrelations-ID. Es wird nur ein Ausschnitt angezeigt.";
 	}
 	return "Alle Schritte dieses Vorgangs anzeigen";
+}
+
+/**
+ * EINZIGER Einstiegspunkt fuer die Anzeige eines Meldungstexts.
+ *
+ * Reihenfolge: sprechende Uebersetzung, sonst die Praefix-Bereinigung,
+ * sonst der Originaltext. Bewusst EINE Funktion und nicht zwei Formatter
+ * hintereinander - sonst arbeiten beide am selben Text und das Ergebnis
+ * haengt davon ab, in welcher Reihenfolge sie im XML stehen.
+ *
+ * Der Originaltext bleibt in der Zelle als Tooltip gebunden.
+ */
+export function messageDisplay(sMessage?: string | null): string {
+	const sSpeaking = MessageText.translate(sMessage);
+	return sSpeaking !== "" ? sSpeaking : messageShort(sMessage);
+}
+
+
+/**
+ * Drei Zustaende, nicht zwei: erledigt, offen und "nicht zuordenbar".
+ *
+ * 🔴 Ein LEERER Business-Key ist NICHT erledigt. Der CDS-View liefert fuer
+ * solche Zeilen ein leeres IsResolved - fachlich richtig "nicht erledigt",
+ * aber nicht dasselbe wie "geprueft und offen". Wer das zusammenwirft,
+ * behauptet einen Befund, wo gar keine Aussage vorliegt. Deshalb bekommt der
+ * Fall eine eigene Auspraegung und in der Oberflaeche ein Fragezeichen.
+ *
+ * Die Luecke ist bekannt und wird ueber die Kennzahl "Ohne Business-Key"
+ * gemessen (Michaels P17) - sie soll sichtbar bleiben, nicht verschwinden.
+ */
+function resolvedKind(sIsResolved?: string | null, sBusinessKey?: string | null): string {
+	if ((sBusinessKey ?? "").trim() === "") {
+		return "unknown";
+	}
+	return (sIsResolved ?? "").trim().toUpperCase() === "X" ? "resolved" : "open";
+}
+
+/**
+ * Tooltip der Vorgangsspalte. Traegt ZWEI Aussagen, weil die Zelle nur noch
+ * ein Symbol zeigt (Festlegung Maring, 03.09.2026):
+ *
+ *   Zeile 1   der Zustand - erledigt, offen, oder kein Vorgangsbezug
+ *   Zeile 2+  was im Arbeitsvorrat dazu offen ist, eine Aktion je Zeile
+ *
+ * 🔴 Ohne Zeile 1 waere die Spalte unlesbar geworden: das Fragezeichen-Symbol
+ * bei fehlendem Business-Key hatte vorher den Gedankenstrich als Erklaerung
+ * daneben. Ein Symbol ohne Text braucht den Namen im Tooltip - und hier ist
+ * es zugleich der zugaengliche Name der Zelle.
+ *
+ * Der Umbruch ist ein echtes \n; ein title-Attribut bricht daran um.
+ */
+export function resolvedTooltip(
+	sIsResolved?: string | null,
+	sBusinessKey?: string | null,
+	sResolved?: string | null,
+	sOpen?: string | null,
+	sUnknown?: string | null,
+	oMap?: Record<string, { Action?: string; ActionText?: string; Status?: string }[]> | null,
+	sNone?: string | null
+): string {
+	const sKind = resolvedKind(sIsResolved, sBusinessKey);
+	let sHead = sUnknown ?? "";
+	if (sKind === "resolved") {
+		sHead = sResolved ?? "";
+	} else if (sKind === "open") {
+		sHead = sOpen ?? "";
+	}
+	const sBody = reprocTooltip(sBusinessKey, oMap, sNone);
+	return [sHead.trim(), sBody.trim()].filter((x) => x !== "").join("\n");
+}
+
+export function resolvedState(sIsResolved?: string | null, sBusinessKey?: string | null): string {
+	const sKind = resolvedKind(sIsResolved, sBusinessKey);
+	if (sKind === "resolved") {
+		return "Success";
+	}
+	return sKind === "open" ? "Warning" : "None";
+}
+
+export function resolvedIcon(sIsResolved?: string | null, sBusinessKey?: string | null): string {
+	const sKind = resolvedKind(sIsResolved, sBusinessKey);
+	if (sKind === "resolved") {
+		return "sap-icon://sys-enter-2";
+	}
+	return sKind === "open" ? "sap-icon://pending" : "sap-icon://question-mark";
+}
+
+
+/**
+ * Tooltip des Aktualisierungsschalters - nennt die AKTION, nicht den Zustand.
+ *
+ * Dieselbe Regel wie beim Dunkelmodus (Festlegung Maring): den Zustand zeigt
+ * der Schalter schon selbst, mit Stellung und Beschriftung "Live" bzw. "Aus".
+ * Ihn im Tooltip zu wiederholen waere doppelt gemoppelt; die offene Frage beim
+ * Draufzeigen ist "was passiert, wenn ich klicke".
+ *
+ * ⚠ Der Tooltip ist zugleich der ZUGAENGLICHE NAME des Schalters - ein
+ * sap.m.Switch traegt keine eigene Beschriftung, und der Label davor ist mit
+ * customTextOn entfallen. "Selbsttaetige Aktualisierung ausschalten" ist als
+ * Name brauchbar; ein blosses "Aus" waere es nicht.
+ */
+export function autoRefreshTooltip(
+	bOn?: boolean | null,
+	sToOff?: string | null,
+	sToOn?: string | null
+): string {
+	return (bOn === true ? sToOff : sToOn) ?? "";
+}
+
+/**
+ * Symbol des Dunkelmodus-Schalters - zeigt die AKTION, nicht den Zustand.
+ *
+ * Festlegung Maring: man klickt auf das, was man haben WILL. Im hellen Modus
+ * steht dort also der Mond, im dunklen die Sonne. Symbol und Tooltip sagen
+ * damit dasselbe und verstaerken sich.
+ *
+ * ⚠ Die gedrueckte Darstellung des ToggleButton zeigt weiterhin den ZUSTAND
+ * und laeuft dieser Logik entgegen (gedrueckt + Sonne = "dunkel ist an, klick
+ * fuer hell"). Wenn das stoert, ist ein einfacher Button die konsequentere
+ * Wahl - dann traegt allein das Symbol die Aussage.
+ *
+ * ℹ 01.09.2026 kurzzeitig durch einen sap.m.Switch ersetzt und wieder
+ * zurueckgebaut: ein Switch hat KEINE Icon-Eigenschaft (nur customTextOn/Off
+ * und das feste Haken/Kreuz von type="AcceptReject"). Zwischen Schalter und
+ * Symbol hat das Symbol den Vorzug bekommen.
+ */
+export function darkModeIcon(bDark?: boolean | null): string {
+	return bDark === true ? "sap-icon://light-mode" : "sap-icon://dark-mode";
+}
+
+/** Tooltip nennt die Aktion, passend zum jeweils anderen Modus. */
+export function darkModeTooltip(
+	bDark?: boolean | null,
+	sToLight?: string | null,
+	sToDark?: string | null
+): string {
+	return (bDark === true ? sToLight : sToDark) ?? "";
 }

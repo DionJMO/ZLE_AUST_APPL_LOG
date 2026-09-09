@@ -84,7 +84,19 @@ export const metrics: KpiDefinition[] = [
 	  select: "LogUuid" }
 ];
 
-export async function loadCount(oModel: ODataModel, oDefinition: KpiDefinition): Promise<number> {
+/**
+ * ⚠ Der Parameter ist bewusst NICHT KpiDefinition, sondern nur deren drei
+ * abfragerelevante Felder. Die Funktion liest "model" und "key" nie - das
+ * Modell kommt als eigenes Argument herein. Mit KpiDefinition waere sie an
+ * die Aufzaehlung in dessen "model" gebunden gewesen, und der Zaehler des
+ * Arbeitsvorrats (reprocModel) haette die Aufzaehlung erweitern muessen,
+ * ohne dass die Funktion das Feld je anfasst. Bestehende Aufrufer mit einer
+ * vollen KpiDefinition passen weiterhin.
+ */
+export async function loadCount(
+	oModel: ODataModel,
+	oDefinition: Pick<KpiDefinition, "path" | "select" | "filter">
+): Promise<number> {
 	const mParameters: Record<string, string | boolean> = {
 		$select: oDefinition.select,
 		$count: true

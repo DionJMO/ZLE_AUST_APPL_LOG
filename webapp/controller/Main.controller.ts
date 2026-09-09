@@ -1,24 +1,28 @@
-import DateFormat from "sap/ui/core/format/DateFormat";
 import UIComponent from "sap/ui/core/UIComponent";
 import Table from "sap/ui/table/Table";
 import JSONModel from "sap/ui/model/json/JSONModel";
 import Filter from "sap/ui/model/Filter";
 import FilterOperator from "sap/ui/model/FilterOperator";
-import ListBinding from "sap/ui/model/ListBinding";
 import Event from "sap/ui/base/Event";
 import VizFrame from "sap/viz/ui5/controls/VizFrame";
 import BaseController from "./BaseController";
 import * as TableColumnState from "../util/TableColumnState";
+import * as ThemeState from "../util/ThemeState";
+import * as AutoRefreshState from "../util/AutoRefreshState";
+import Theming from "sap/ui/core/Theming";
 import * as LogAggregator from "../model/LogAggregator";
 import * as KpiLoader from "../model/KpiLoader";
 import * as ChartColors from "../model/ChartColors";
+import * as MessageText from "../model/MessageText";
 import * as ProcessAxis from "../model/ProcessAxis";
 import * as KeyDetailLoader from "../model/KeyDetailLoader";
 import * as CascadeGrouper from "../model/CascadeGrouper";
+import * as ViewDefaults from "../model/ViewDefaults";
 import * as SapLookup from "../model/SapLookup";
 import * as TaPositions from "../model/TaPositions";
+import * as ReprocLookup from "../model/ReprocLookup";
 import * as BusinessKey from "../model/BusinessKey";
-import { normalizeMaterial as formatterNormalize } from "../model/formatter";
+import { normalizeMaterial as formatterNormalize, timestamp as formatterTimestamp } from "../model/formatter";
 import Sorter from "sap/ui/model/Sorter";
 import Fragment from "sap/ui/core/Fragment";
 import Popover from "sap/m/Popover";
@@ -26,6 +30,9 @@ import Dialog from "sap/m/Dialog";
 import Control from "sap/ui/core/Control";
 import ResourceModel from "sap/ui/model/resource/ResourceModel";
 import ResourceBundle from "sap/base/i18n/ResourceBundle";
+import ODataModel from "sap/ui/model/odata/v4/ODataModel";
+import MessageToast from "sap/m/MessageToast";
+import MessageBox from "sap/m/MessageBox";
 
 /**
  * @namespace zui5_zle_aust_mon.controller
@@ -39,14 +46,83 @@ export default class Main extends BaseController {
 	 * Seit dem Umbau auf Reiter gibt es nur noch zwei Tabellen: eine fuer
 	 * alle Meldungsreiter und eine fuer die Auftraege.
 	 */
+	/**
+	 * Tabellen, die beim Aktualisieren NEU GELESEN werden muessen.
+	 *
+	 * 🔴 Bewusst eine eigene Liste und NICHT Object.keys( DEFAULT_VISIBLE ).
+	 * Die beiden Mengen fielen bisher nur zufaellig zusammen: DEFAULT_VISIBLE
+	 * sagt "welche Tabelle hat einen Spaltendialog", diese Liste sagt "welche
+	 * Tabelle haengt an OData und muss neu gelesen werden". Mit dem
+	 * Arbeitsvorrat fallen sie auseinander - er hat sieben feste Spalten und
+	 * keine Personalisierung, muss aber erneuert werden.
+	 *
+	 * ⚠ Ihn in DEFAULT_VISIBLE einzutragen waere der naheliegende, falsche
+	 * Fix: das schaltete fuer ihn den Spaltendialog frei und liesse restore( )
+	 * ueber seine festen Spalten laufen.
+	 *
+	 * ℹ Nicht enthalten sind die JSON-gebundenen Tabellen: idCascadeTable
+	 * (ueber _applyMsgFilter) und idWaCheckTable (ueber _loadShadowedPicks in
+	 * _loadData). Ein refresh( ) auf einer JSON-Bindung tut nichts - genau
+	 * daran hing der Fehler, den Joerg am 01.09. gemeldet hat.
+	 */
+	private static readonly REFRESH_TABLES = ["idTpaTable"];
+
 	private static readonly DEFAULT_VISIBLE: Record<string, number> = {
-		idMsgTable: 6,
 		idTpaTable: 8
 	};
 
 	/** Detail-Popover und Payload-Dialog werden einmal erzeugt und wiederverwendet. */
 	private _pKeyPopover?: Promise<Popover>;
+
+	/** Hinweis-Popover der Kopfzeile, einmalig erzeugt. */
+	private _pInfoPopover?: Promise<Popover>;
+
+	/** Arbeitsvorrats-Popover, einmalig erzeugt. */
+	private _pReprocPopover?: Promise<Popover>;
 	private _pPayloadDialog?: Promise<Dialog>;
+
+	/**
+	 * Takt des selbsttaetigen Aktualisierens in Millisekunden.
+	 *
+	 * KEINE AENDERUNGSSONDE - und der Grund gehoert hierher, damit sie nicht
+	 * wieder eingebaut wird. Ein erster Entwurf prueft per $count, OB es neue
+	 * Zeilen gibt. Der Einwand trifft: fuer diese Pruefung laeuft ebenfalls
+	 * ein Intervall, die Zahl der Takte ist also identisch. Gespart haette
+	 * man nur die Nutzlast je Takt - und das UI5-V4-Modell buendelt die
+	 * Abfragen ohnehin zu einem $batch.
+	 *
+	 * 30 Sekunden und VOLLER Refresh: Festlegung 31.08.2026. Bewusst kurz,
+	 * damit die Sicht praktisch mitlaeuft.
+	 *
+	 * ⚠ Was das kostet, damit es niemand spaeter sucht: je Takt laufen auch
+	 * _loadShadowedPicks( ) (Vollstaendigkeitspruefung ueber 30 TAGE, mit
+	 * Lookup-Service) und _loadChart( ) (bis zu 5000 Rohzeilen, weil der
+	 * View kein $apply anbietet). Zwei Takte pro Minute. Gedeckelt wird das
+	 * durch drei Dinge: den versteckten Tab, eine offene Detailsicht und die
+	 * Ueberlappungssperre unten.
+	 *
+	 * Wer das guenstiger haben will, setzt NICHT das Intervall hoch, sondern
+	 * O-21 um (Aggregations-View bzw. @Aggregation.applySupported). Dann
+	 * zaehlt der Verlauf serverseitig und der teuerste Posten entfaellt.
+	 */
+	private static readonly AUTO_REFRESH_MS = 30000;
+
+	/** Laufender Takt; undefined heisst: nicht aktiv. */
+	private _iAuto?: number;
+
+	/**
+	 * Sperre gegen sich ueberlappende Takte.
+	 *
+	 * Ein voller Refresh kann laenger dauern als 30 Sekunden - die
+	 * 30-Tage-Pruefung samt Lookups ist nicht schnell. Ohne diese Sperre
+	 * wuerden sich die Laeufe stapeln, und zwar genau dann, wenn das System
+	 * ohnehin langsam ist. setInterval fragt nicht, ob der Vorgaenger fertig
+	 * ist.
+	 */
+	private _bAutoBusy = false;
+
+	/** Angemeldeter visibilitychange-Zuhoerer, fuer onExit. */
+	private _fnVisibility?: () => void;
 
 	/** Voreinstellung des Verlaufs-Zeitfensters in Tagen. */
 	private static readonly CHART_DAYS = 7;
@@ -70,11 +146,14 @@ export default class Main extends BaseController {
 	 * ⚠ Kurze Schluessel, weil sie in der Adresszeile stehen und dort auch
 	 * von Hand gelesen und getippt werden.
 	 */
+	/** Schluessel aus URL_KEYS, die als "1"/"0" statt als Text zu lesen sind. */
+	private static readonly URL_BOOLEANS: string[] = ["/openOnly"];
+
 	private static readonly URL_KEYS = {
 		p: "/selectedProcess",
 		t: "/selectedType",
 		q: "/searchTerm",
-		g: "/grouped",
+		o: "/openOnly",
 		d: "/chartDays"
 	};
 
@@ -92,6 +171,11 @@ export default class Main extends BaseController {
 	public onInit(): void {
 		this.getView()?.setModel(new JSONModel({ days: [] }), "chart");
 
+		// Wortlaut der sprechenden Meldungstexte einmal aufloesen. Muss VOR
+		// dem ersten Rendern passieren, sonst greift der Formatter noch auf
+		// einen leeren Cache und zeigt den Originaltext.
+		MessageText.init(this._bundle());
+
 		// Pfeilfunktion statt Methodenreferenz plus Listener-Kontext: eine
 		// losgeloeste Methode traegt ihr "this" nicht mit, und ESLint weist
 		// mit unbound-method zu Recht darauf hin.
@@ -108,15 +192,146 @@ export default class Main extends BaseController {
 		});
 
 		this._applyChartProperties();
+		// Nach jedem Themenwechsel die Palette neu aus den Theme-Parametern
+		// holen. Ein Handler genuegt - er laeuft auch beim ersten Anwenden.
+		Theming.attachApplied(() => {
+			this._applyChartProperties();
+		});
 		this._applyMsgFilter();
-		this._loadData();
+		void this._loadData();
+
+		// Bei verstecktem Tab wird nicht gesondet. Das ist der wichtigste der
+		// Waechter: ein vergessener Hintergrund-Tab wuerde sonst die ganze
+		// Nacht abfragen. Beim Zurueckkehren gleich ein Takt, damit man nicht
+		// auf das naechste Intervall wartet.
+		this._fnVisibility = () => {
+			if (!document.hidden && this.getUiModel().getProperty("/autoRefresh")) {
+				void this._autoTick();
+			}
+		};
+		document.addEventListener("visibilitychange", this._fnVisibility);
+
+		this._syncAuto();
+	}
+
+	/** Timer und Zuhoerer abraeumen - sonst laufen sie nach dem Wechsel
+	 *  auf #/tasks weiter. */
+	public onExit(): void {
+		this._stopAuto();
+		if (this._fnVisibility) {
+			document.removeEventListener("visibilitychange", this._fnVisibility);
+			this._fnVisibility = undefined;
+		}
+	}
+
+	/**
+	 * Heller / dunkler Modus.
+	 *
+	 * Die Chart-Palette muss NACHGEZOGEN werden: sie kommt aus den
+	 * Theme-Parametern (sapUiNegative/Critical/Positive) und wird in
+	 * _applyChartProperties( ) EINMAL beim Start gelesen. Ohne das
+	 * Nachziehen behielte das Diagramm nach dem Umschalten die Farben des
+	 * alten Themes - auf dunklem Grund gut sichtbar falsch.
+	 *
+	 * Theming.attachApplied feuert, sobald die CSS-Dateien des neuen Themes
+	 * geladen sind; vorher lieferten die Parameter noch die alten Werte.
+	 */
+	public onDarkModeToggle(): void {
+		const bDark = this.getUiModel().getProperty("/darkMode") as boolean;
+		ThemeState.apply(bDark);
+	}
+
+	/** Schalter in der Kopfzeile. */
+	public onAutoRefreshToggle(oEvent: Event): void {
+		const bOn = oEvent.getParameter("state" as never) as unknown as boolean;
+		this.getUiModel().setProperty("/autoRefresh", bOn);
+		AutoRefreshState.write(bOn);
+		this._syncAuto();
+	}
+
+	private _syncAuto(): void {
+		if (this.getUiModel().getProperty("/autoRefresh")) {
+			this._startAuto();
+		} else {
+			this._stopAuto();
+		}
+	}
+
+	private _startAuto(): void {
+		if (this._iAuto !== undefined) {
+			return;
+		}
+		this._iAuto = window.setInterval(() => {
+			void this._autoTick();
+		}, Main.AUTO_REFRESH_MS);
+	}
+
+	private _stopAuto(): void {
+		if (this._iAuto !== undefined) {
+			window.clearInterval(this._iAuto);
+			this._iAuto = undefined;
+		}
+	}
+
+	/**
+	 * Ein Takt des selbsttaetigen Aktualisierens - VOLLER Refresh.
+	 *
+	 * Identisch zum Aktualisieren-Knopf, nur ohne Klick. Uebersprungen wird
+	 * bei verstecktem Tab, bei offener Detailsicht und solange der
+	 * vorherige Takt noch laeuft.
+	 */
+	private async _autoTick(): Promise<void> {
+		if (document.hidden || this._bAutoBusy) {
+			return;
+		}
+		if (await this._isOverlayOpen()) {
+			return;
+		}
+		this._bAutoBusy = true;
+		try {
+			this._applyMsgFilter();
+			Main.REFRESH_TABLES.forEach((sTableId) => {
+				this._table(sTableId)?.getBinding("rows")?.refresh();
+			});
+			await this._loadData();
+		} finally {
+			this._bAutoBusy = false;
+		}
+	}
+
+	/**
+	 * Ist eine Detailsicht offen? Dann wird nicht aktualisiert - sonst wird
+	 * dem Anwender der Inhalt unter den Haenden neu geladen.
+	 *
+	 * Die Promises entstehen erst bei der ersten Benutzung; im Normalfall
+	 * sind beide undefined und die Pruefung kostet nichts.
+	 */
+	private async _isOverlayOpen(): Promise<boolean> {
+		if (this._pKeyPopover) {
+			if ((await this._pKeyPopover).isOpen()) {
+				return true;
+			}
+		}
+		if (this._pPayloadDialog) {
+			if ((await this._pPayloadDialog).isOpen()) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public onRefresh(): void {
-		Object.keys(Main.DEFAULT_VISIBLE).forEach((sTableId) => {
+		// In der Vorgangssicht haengt die Tabelle am JSON-Modell "cascade" -
+		// ein refresh( ) auf dieser Bindung tut nichts. Die Verdichtung muss
+		// neu berechnet werden, und das macht _applyMsgFilter( ).
+		//
+		// ⚠ Das galt auch schon fuer den Aktualisieren-KNOPF: der hat die
+		// Vorgangsliste bisher nicht erneuert, nur Kennzahlen und Verlauf.
+		this._applyMsgFilter();
+		Main.REFRESH_TABLES.forEach((sTableId) => {
 			this._table(sTableId)?.getBinding("rows")?.refresh();
 		});
-		this._loadData();
+		void this._loadData();
 	}
 
 	/**
@@ -138,6 +353,106 @@ export default class Main extends BaseController {
 		const sKey = oEvent.getParameter("key" as never) as unknown as string;
 		this.getUiModel().setProperty("/selectedProcess", sKey);
 		this._applyMsgFilter();
+	}
+
+	/**
+	 * Arbeitsvorrat zu einem Business-Key oeffnen.
+	 *
+	 * Ersetzt den Reiter "Arbeitsvorrat" (bis 02.09.2026). Die Spalte zeigt
+	 * nur die Zusammenfassung; welche Aktion angestossen wird, entscheidet
+	 * der Anwender hier - zu einem Business-Key koennen mehrere Saetze
+	 * gehoeren, und die Logzeile traegt keine Aktion.
+	 */
+	public async onReprocPress(oEvent: Event): Promise<void> {
+		// ESLint irrt, tsc braucht die Assertion - gleiche begruendete
+		// Ausnahme wie bei den uebrigen Zellen-Handlern.
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+		const oSource = oEvent.getSource() as Control;
+		const sKey = String(oSource.getBindingContext("cascade")?.getProperty("BusinessKey") ?? "").trim();
+		if (!sKey) {
+			return;
+		}
+
+		const oModel = this._jsonModel("reproc", { map: {} });
+		const oMap = (oModel.getProperty("/map") ?? {}) as Record<string, ReprocLookup.ReprocEntry[]>;
+		oModel.setProperty("/entries", oMap[sKey] ?? []);
+		oModel.setProperty("/title", this._bundle().getText("reprocPopTitle", [sKey]) ?? sKey);
+
+		if (!this._pReprocPopover) {
+			this._pReprocPopover = Fragment.load({
+				id: this.getView()?.getId(),
+				name: "zui5_zle_aust_mon.view.fragment.ReprocPopover",
+				controller: this
+			}) as Promise<Popover>;
+			void this._pReprocPopover.then((oPopover) => this.getView()?.addDependent(oPopover));
+		}
+		(await this._pReprocPopover).openBy(oSource);
+	}
+
+	public onReprocClose(): void {
+		void this._pReprocPopover?.then((oPopover) => oPopover.close());
+	}
+
+	/**
+	 * Einen Satz des Arbeitsvorrats erneut anstossen.
+	 *
+	 * Ruft die RAP-Aktion Retry auf ZLE_AUST_C_REPROC, und die ruft im
+	 * Backend ZCL_ZLE_AUST_REPROC_DISP=>RUN_ONE. Bewusst NICHT RESEND_TO oder
+	 * CANCEL_LINES direkt: der Dispatcher erledigt Customizing-Ermittlung,
+	 * Versuchszaehler, REGISTER vor und CONFIRM bzw. FAIL nach dem Aufruf.
+	 * Der Report ZLE_AUST_RESEND ueberspringt genau diese Buchfuehrung.
+	 *
+	 * 🔴 Der Kontext wird ueber den SCHLUESSELPFAD gebaut, nicht aus einer
+	 * Listenbindung genommen - die Zeilen stehen in einem JSON-Modell, nicht
+	 * in einer OData-Bindung. Der Pfad traegt beide Schluesselfelder, weil
+	 * ZLE_AUST_REPROC auf ACTION + BUSINESS_KEY schluesselt.
+	 * ⚠ Die Werte werden nicht maskiert: Aktionscodes und Business-Keys sind
+	 * alphanumerisch mit Unterstrich. Kaeme je ein Hochkomma vor, muesste es
+	 * nach OData-Regel verdoppelt werden.
+	 *
+	 * ⚠ Der Aufruf ist ein POST und dauert, weil das Backend synchron mit
+	 * HiLIS spricht - deshalb wird der Knopf fuer die Dauer auf busy gesetzt.
+	 * Ohne das klickt jemand zweimal, und dann laufen zwei HiLIS-Aufrufe (der
+	 * LOCK-Handler im Backend ist bewusst leer, s. REPROC_0_README).
+	 */
+	public async onReprocRetryPress(oEvent: Event): Promise<void> {
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+		const oSource = oEvent.getSource() as Control;
+		const oCtx = oSource.getBindingContext("reproc");
+		const sAction = String(oCtx?.getProperty("Action") ?? "").trim();
+		const sKey = String(oCtx?.getProperty("BusinessKey") ?? "").trim();
+		if (!sAction || !sKey) {
+			return;
+		}
+
+		const oBundle = this._bundle();
+		oSource.setBusy(true);
+		try {
+			const oModel = this.getODataModel("reprocModel");
+			const sNamespace = await this._actionNamespace(oModel);
+			const oEntity = oModel.bindContext(
+				`/Reproc(Action='${sAction}',BusinessKey='${sKey}')`
+			).getBoundContext();
+			await oModel.bindContext(`${sNamespace}.Retry(...)`, oEntity).execute();
+			MessageToast.show(oBundle.getText("retryDone") ?? "");
+		} catch (oError) {
+			// eslint-disable-next-line no-console
+			console.error("[Arbeitsvorrat] Wiederanstoss fehlgeschlagen:", oError);
+			MessageBox.error(oBundle.getText("retryFailed") ?? "", {
+				details: (oError as Error)?.message ?? ""
+			});
+		} finally {
+			oSource.setBusy(false);
+		}
+
+		// Nachziehen, damit man das Ergebnis im offenen Popover sieht: neuer
+		// Status, hochgezaehlter Versuch, neue Meldung. Ist der Satz danach
+		// erledigt, verschwindet er aus dem Nachschlagewerk und die Liste
+		// wird leer - das IST die Bestaetigung.
+		await this._loadReprocMap();
+		const oJson = this._jsonModel("reproc", { map: {} });
+		const oNew = (oJson.getProperty("/map") ?? {}) as Record<string, ReprocLookup.ReprocEntry[]>;
+		oJson.setProperty("/entries", oNew[sKey] ?? []);
 	}
 
 	/**
@@ -175,13 +490,13 @@ export default class Main extends BaseController {
 
 	/** Ein Zahnrad fuer beide Tabellen - je nachdem, welcher Reiter offen ist. */
 	public onOpenMsgColumns(): void {
-		const sProcess = this.getUiModel().getProperty("/selectedProcess") as string;
-		if (sProcess === ProcessAxis.KEY_WACHECK) {
-			// Die Pruefsicht hat sechs feste Spalten - eine Auswahl waere
-			// Ballast, wie schon bei der Vorgangstabelle.
+		// Nur der Auftragspuffer hat noch eine Spaltenauswahl. Vorgangssicht
+		// und WA-Pruefung haben feste, wenige Spalten - eine Auswahl waere
+		// Ballast. Der Knopf ist deshalb auch nur am Auftragsreiter sichtbar.
+		if ((this.getUiModel().getProperty("/selectedProcess") as string) !== ProcessAxis.KEY_ORDERS) {
 			return;
 		}
-		this._openColumns(sProcess === ProcessAxis.KEY_ORDERS ? "idTpaTable" : "idMsgTable");
+		this._openColumns("idTpaTable");
 	}
 
 	/**
@@ -197,15 +512,10 @@ export default class Main extends BaseController {
 		// genuegt, statt ihn in jeden Handler einzeln zu haengen.
 		this._syncUrl();
 
-		if (this.getUiModel().getProperty("/grouped") as boolean) {
-			void this._loadCascades();
-			return;
-		}
-		const oBinding = this._table("idMsgTable")?.getBinding("rows") as ListBinding | undefined;
-		if (!oBinding) {
-			return;
-		}
-		oBinding.filter(this._msgFilters());
+		// Es gibt nur noch die Vorgangssicht (Festlegung Maring, 03.09.2026).
+		// Die flache, serverseitig geblaetterte Meldungstabelle ist entfallen -
+		// ein Ereignis ist eine Zeile, die Einzelschritte stehen dahinter.
+		void this._loadCascades();
 	}
 
 	/**
@@ -233,6 +543,20 @@ export default class Main extends BaseController {
 		if (sType) {
 			aFilters.push(new Filter({
 				path: "LogType", operator: FilterOperator.EQ, value1: sType
+			}));
+		}
+
+		// "Nur offene" - seit dem CDS-Pushdown SERVERSEITIG moeglich.
+		// IsResolved ist ein berechnetes Feld in ZLE_AUST_C_APPL_LOG; dass es
+		// filterbar ist, wurde am 01.09.2026 direkt gegen den Service geprueft
+		// (SADL schliesst berechnete Felder auf Pfadausdruecken nicht immer
+		// vom $filter aus - hier tut es das nicht).
+		//
+		// NE 'X' statt EQ '': faengt auch Zeilen, bei denen das Feld gar nicht
+		// gefuellt ist, statt sich auf den Leerstring zu verlassen.
+		if (this.getUiModel().getProperty("/openOnly") as boolean) {
+			aFilters.push(new Filter({
+				path: "IsResolved", operator: FilterOperator.NE, value1: "X"
 			}));
 		}
 
@@ -269,12 +593,19 @@ export default class Main extends BaseController {
 		return aFilters.length ? [new Filter({ filters: aFilters, and: true })] : [];
 	}
 
-	private _loadData(): void {
+	/**
+	 * allSettled statt all: ein gescheiterter Lader darf die anderen nicht
+	 * abbrechen - jeder protokolliert seinen Fehler selbst.
+	 */
+	private async _loadData(): Promise<void> {
 		this._stampRefresh();
-		void this._loadChart();
-		void this._loadKpis();
-		void this._loadSapPositions();
-		void this._loadShadowedPicks();
+		await Promise.allSettled([
+			this._loadChart(),
+			this._loadKpis(),
+			this._loadSapPositions(),
+			this._loadShadowedPicks(),
+			this._loadReprocMap()
+		]);
 	}
 
 	/**
@@ -378,6 +709,43 @@ export default class Main extends BaseController {
 		return oModel;
 	}
 
+	/**
+	 * Namensraum des Service zur LAUFZEIT ermitteln, statt ihn zu verdrahten.
+	 *
+	 * Eine gebundene OData-V4-Aktion wird ueber ihren voll qualifizierten
+	 * Namen aufgerufen. Der Namensraum eines RAP-Service folgt zwar dem
+	 * Muster com.sap.gateway.srvd.<service>.v0001, aber "folgt dem Muster"
+	 * ist nicht "steht fest" - und ein falscher String faellt erst beim Klick
+	 * auf, nicht beim Bauen.
+	 *
+	 * /$EntityContainer liefert den voll qualifizierten Namen des Containers;
+	 * das letzte Segment abgeschnitten ist der Namensraum. Damit uebersteht
+	 * die Stelle auch eine Umbenennung des Service.
+	 */
+	private async _actionNamespace(oModel: ODataModel): Promise<string> {
+		const sContainer = await oModel.getMetaModel().requestObject("/$EntityContainer") as string;
+		return sContainer.replace(/\.[^.]+$/, "");
+	}
+
+	/**
+	 * Arbeitsvorrat als Nachschlagewerk laden.
+	 *
+	 * Haengt als Bindungsteil an der Spalte "Wiederanstoss" - dieselbe Bauform
+	 * wie sapPos bei den TA-Positionen. Die Vorgangstabelle wird NICHT
+	 * umgebunden: sie haengt an cascade>/rows, und ein zweites Modell als
+	 * Bindungsteil kostet nichts.
+	 *
+	 * Geladen wird nur, was Handlungsbedarf hat - Erledigtes waere Ballast.
+	 */
+	private async _loadReprocMap(): Promise<void> {
+		const oResult = await ReprocLookup.load(this.getODataModel("reprocModel"));
+		const oModel = this._jsonModel("reproc", { map: {} });
+		oModel.setProperty("/map", oResult.map);
+		oModel.setProperty("/total", oResult.total);
+		oModel.setProperty("/truncated", oResult.truncated);
+		oModel.setProperty("/ok", oResult.ok);
+	}
+
 	private async _loadChart(): Promise<void> {
 		try {
 			const oData = await LogAggregator.loadLastDays(
@@ -440,7 +808,7 @@ export default class Main extends BaseController {
 	private _openColumns(sTableId: string): void {
 		const oTable = this._table(sTableId);
 		if (oTable) {
-			TableColumnState.openDialog(oTable, sTableId);
+			TableColumnState.openDialog(oTable, sTableId, this._bundle());
 		}
 	}
 
@@ -449,9 +817,20 @@ export default class Main extends BaseController {
 	 * als Expression Binding in der View: dort waere der Wert nicht reaktiv
 	 * und nicht testbar.
 	 */
+	/**
+	 * ⚠ NUTZT DENSELBEN FORMATTER WIE DIE TABELLENSPALTEN.
+	 *
+	 * Vorher stand hier style: "medium", also die Locale des Browsers - auf
+	 * Englisch "Aug 31, 2026, 3:23:43 PM", waehrend die Zeitstempel in den
+	 * Tabellen dem festen 24-Stunden-Muster folgen. Zwei Schreibweisen
+	 * derselben Uhrzeit auf einem Bildschirm.
+	 *
+	 * Bewusst der GEMEINSAME Formatter und nicht dasselbe Muster zum
+	 * zweiten Mal: sonst driften die beiden beim naechsten Anfassen
+	 * auseinander, und zwar unbemerkt.
+	 */
 	private _stampRefresh(): void {
-		const oFormat = DateFormat.getDateTimeInstance({ style: "medium" });
-		this.getUiModel().setProperty("/lastRefreshText", oFormat.format(new Date()));
+		this.getUiModel().setProperty("/lastRefreshText", formatterTimestamp(new Date()));
 	}
 
 	/**
@@ -483,7 +862,9 @@ export default class Main extends BaseController {
 	public onMessagePayloadPress(oEvent: Event): void {
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 		const oSource = oEvent.getSource() as Control;
-		const oContext = oSource.getBindingContext("mainModel");
+		// Vorgangszeilen liegen im JSON-Modell "cascade" - seit dem Wegfall
+		// der flachen Tabelle ist das die einzige Quelle.
+		const oContext = oSource.getBindingContext("cascade");
 		if (!oContext) {
 			return;
 		}
@@ -494,28 +875,6 @@ export default class Main extends BaseController {
 		);
 	}
 
-	/**
-	 * Alle Meldungen desselben Vorgangs - aus einer EINZELNEN Zeile heraus.
-	 *
-	 * In der Vorgangssicht fuehrt die Schritte-Spalte dorthin; in der
-	 * Einzelmeldungs-Sicht gab es bis dahin keinen Weg zu den
-	 * Geschwisterzeilen. Genau danach war aus dem Fachbereich gefragt worden
-	 * („wo seh ich denn die restlichen Abbruchmeldungen? zur zeile?").
-	 *
-	 * Anders als das Schluessel-Popover zeigt das hier den VORGANG, nicht die
-	 * Vorgeschichte eines Schluessels: also den einen Ablauf mit seinen
-	 * Schritten, in der Reihenfolge, in der sie passiert sind.
-	 */
-	public onCorrPress(oEvent: Event): void {
-		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-		const oSource = oEvent.getSource() as Control;
-		const oContext = oSource.getBindingContext("mainModel");
-		const sCorr = (oContext?.getProperty("CorrUuid") as string) ?? "";
-		if (!sCorr.trim()) {
-			return;
-		}
-		void this._openCorrPopover(oSource, sCorr);
-	}
 
 	private async _openCorrPopover(oSource: Control, sCorr: string): Promise<void> {
 		const oDetail = this._detailModel();
@@ -666,7 +1025,7 @@ export default class Main extends BaseController {
 		/*
 		 * Der Schluessel wird in ALLEN drei Modellen gesucht, weil dieselben
 		 * Handler aus drei Tabellen gerufen werden:
-		 *   idMsgTable      -> mainModel  (OData, Einzelmeldungen)
+		 *   idCascadeTable  -> cascade    (JSON, verdichtete Vorgaenge)
 		 *   idCascadeTable  -> cascade    (JSON, verdichtete Vorgaenge)
 		 *   idTpaTable      -> tpaModel   (OData, Auftragspuffer)
 		 *
@@ -764,26 +1123,35 @@ export default class Main extends BaseController {
 		}
 	}
 
+	/** Alle Schritte eines Vorgangs - im selben Popover wie die Detailsicht. */
 	/**
-	 * Umschalten zwischen Einzelmeldungen und Vorgaengen.
+	 * Alle Meldungen desselben Vorgangs - aus der Datenbank, nicht aus dem
+	 * Speicher.
 	 *
-	 * ⚠ KORREKTUR 27.08.2026: die erste Fassung band EINE Tabelle um, von
-	 * mainModel>/AppLog auf cascade>/rows, mit der Begruendung "gleiche
-	 * Eigenschaftsnamen, also funktionieren alle Spalten weiter". Das war
-	 * falsch - die Zellen binden mit Modellpraefix, und in der
-	 * Vorgangssicht lag der Zeilenkontext auf "cascade". Alle Spalten
-	 * blieben leer ausser "Schritte", der einzigen mit cascade>-Bindung.
+	 * 🔴 NICHT DASSELBE WIE DIE SPALTE "SCHRITTE", und genau deshalb gibt es
+	 * beides. Ich hatte das am 03.09.2026 einmal als Dopplung entfernt - das
+	 * war falsch:
 	 *
-	 * Jetzt haengt jede Tabelle fest an ihrem Modell und wird ueber
-	 * visible umgeschaltet - wie die Auftragstabelle auch.
+	 *   Schritte  zeigt die im Browser GELADENEN und gruppierten Schritte.
+	 *             Gedeckelt bei CascadeGrouper.MAX_ROWS (5000 Meldungen) und
+	 *             bei Sammellaeufen zusaetzlich bei MAX_STEPS (25).
+	 *   hier      fragt OData nach der CorrUuid und zeigt ALLE Meldungen des
+	 *             Vorgangs - auch die, die ausserhalb des geladenen Fensters
+	 *             liegen.
+	 *
+	 * Liegt ein Vorgang teils jenseits der 5000er-Grenze, zeigt die
+	 * Schritte-Ansicht also einen Ausschnitt und diese hier das Ganze.
 	 */
-	public onCascadeToggle(oEvent: Event): void {
-		const bPressed = oEvent.getParameter("pressed" as never) as unknown as boolean;
-		this.getUiModel().setProperty("/grouped", bPressed);
-		this._applyMsgFilter();
+	public onCorrPress(oEvent: Event): void {
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+		const oSource = oEvent.getSource() as Control;
+		const sCorr = String(oSource.getBindingContext("cascade")?.getProperty("CorrUuid") ?? "").trim();
+		if (!sCorr) {
+			return;
+		}
+		void this._openCorrPopover(oSource, sCorr);
 	}
 
-	/** Alle Schritte eines Vorgangs - im selben Popover wie die Detailsicht. */
 	public onCascadePress(oEvent: Event): void {
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 		const oSource = oEvent.getSource() as Control;
@@ -802,12 +1170,19 @@ export default class Main extends BaseController {
 		 * und 25 zeigt, waere die schlechteste Variante.
 		 */
 		const bBulk = oRow.IsBulk === true;
-		oDetail.setProperty("/title", (bBulk
-			? oBundle.getText("cascTitleBulk", [String(oRow.StepCount)])
-			: oBundle.getText("cascTitle", [String(oRow.StepCount)])) ?? "");
+		/*
+		 * ⚠ Der Titel nennt KEINE Zahl mehr. Sie stand vorher hier UND in der
+		 * Panel-Kopfzeile direkt darunter - dieselbe Angabe zweimal
+		 * untereinander. Aufgeteilt: der Titel sagt, WAS man ansieht, die
+		 * Kopfzeile, WIE VIEL. Damit entfaellt auch das Einzahl-Problem im
+		 * Titel ("Vorgang mit 1 Schritten").
+		 */
+		oDetail.setProperty("/title",
+			oBundle.getText(bBulk ? "cascTitleBulk" : "cascTitle") ?? "");
 		oDetail.setProperty("/logHeader", (bBulk
 			? oBundle.getText("popLogPanelBulk", [String(oRow.Steps?.length ?? 0), String(oRow.StepCount)])
-			: oBundle.getText("popLogPanel", [String(oRow.StepCount)])) ?? "");
+			: oBundle.getText(oRow.StepCount === 1 ? "popLogPanel1" : "popLogPanel",
+					[String(oRow.StepCount)])) ?? "");
 		oDetail.setProperty("/busy", false);
 		oDetail.setProperty("/sap", { available: false, hint: "", header: "", fields: [], rowsHeader: "", rows: [] });
 		// Im Kaskaden-Popover IST der Verlauf der Inhalt, nicht die Beigabe.
@@ -833,6 +1208,21 @@ export default class Main extends BaseController {
 	 * Lage wie beim Verlaufs-Chart, deshalb auch dieselbe Obergrenze und
 	 * derselbe Umgang damit - wird sie erreicht, sagt es die Kopfzeile.
 	 */
+	/**
+	 * Schalter "nur offene" der Vorgangssicht.
+	 *
+	 * Laedt die Vorgaenge neu statt nur zu filtern: der Erledigt-Zustand kommt
+	 * aus einer eigenen Abfrage, und beide muessen zueinander passen. Ein
+	 * Filter auf einem veralteten Zustand wuerde Zeilen ausblenden, die
+	 * inzwischen wieder offen sind.
+	 */
+	public onOpenOnlyToggle(): void {
+		// Gilt jetzt in BEIDEN Sichten: flach als serverseitiger Filter,
+		// in der Vorgangssicht als Array-Filter. _applyMsgFilter( ) trifft
+		// beides.
+		this._applyMsgFilter();
+	}
+
 	private async _loadCascades(): Promise<void> {
 		const oCascade = this._cascadeModel();
 		oCascade.setProperty("/busy", true);
@@ -843,13 +1233,25 @@ export default class Main extends BaseController {
 				[new Sorter("CreatedAtStamp", true)],
 				this._msgFilters(),
 				{ $select: "LogUuid,CorrUuid,SeqNr,CreatedAtStamp,LogType,HistoryType,Message,"
-					+ "ItemNumber,TpaNumber,OrderLineNr,BusinessKey,KeyType,Lgnum,HttpStatus,JsonPayload" }
+					+ "ItemNumber,TpaNumber,OrderLineNr,BusinessKey,KeyType,Lgnum,HttpStatus,"
+					+ "JsonPayload,IsResolved" }
 			);
 			const aContexts = await oBinding.requestContexts(0, CascadeGrouper.MAX_ROWS);
 			const aRows = aContexts.map((oCtx) => oCtx.getObject() as CascadeGrouper.LogRow);
 			const oResult = CascadeGrouper.group(aRows, aRows.length >= CascadeGrouper.MAX_ROWS);
 
-			oCascade.setProperty("/rows", oResult.rows);
+			// "Nur offene": erledigte Vorgaenge herausnehmen. Der Zustand steht
+			// "Nur offene": erledigte Vorgaenge herausnehmen. IsResolved kommt
+			// jetzt mit der Zeile aus dem Service - kein zweiter Ladevorgang
+			// und keine Reihenfolgefrage mehr.
+			let aRowsOut = oResult.rows;
+			if (this.getUiModel().getProperty("/openOnly") as boolean) {
+				aRowsOut = aRowsOut.filter(
+					(oRow) => (oRow.IsResolved ?? "").trim().toUpperCase() !== "X"
+				);
+			}
+
+			oCascade.setProperty("/rows", aRowsOut);
 			oCascade.setProperty("/sourceCount", oResult.sourceCount);
 			oCascade.setProperty("/truncated", oResult.truncated);
 			oCascade.setProperty("/summary", this._bundle().getText(
@@ -866,6 +1268,32 @@ export default class Main extends BaseController {
 		} finally {
 			oCascade.setProperty("/busy", false);
 		}
+	}
+
+	/**
+	 * Hinweise zur Bedienung, am Info-Symbol der Kopfzeile.
+	 *
+	 * Traegt die Erklaerung, die vorher als Tooltip am Aktualisierungsschalter
+	 * hing. Ein Tooltip beschriftet ein Steuerelement - er ist der falsche Ort
+	 * fuer drei Saetze, weil man ihn wegklickt statt ihn zu lesen und er beim
+	 * Ueberfahren die Kopfzeile verdeckt.
+	 */
+	public async onInfoPress(oEvent: Event): Promise<void> {
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+		const oSource = oEvent.getSource() as Control;
+		if (!this._pInfoPopover) {
+			this._pInfoPopover = Fragment.load({
+				id: this.getView()?.getId(),
+				name: "zui5_zle_aust_mon.view.fragment.InfoPopover",
+				controller: this
+			}) as Promise<Popover>;
+			void this._pInfoPopover.then((oPopover) => this.getView()?.addDependent(oPopover));
+		}
+		(await this._pInfoPopover).openBy(oSource);
+	}
+
+	public onInfoClose(): void {
+		void this._pInfoPopover?.then((oPopover) => oPopover.close());
 	}
 
 	/** Erzeugt das Detail-Popover einmalig und oeffnet es am geklickten Element. */
@@ -906,7 +1334,14 @@ export default class Main extends BaseController {
 			if (sValue === undefined) {
 				return;
 			}
-			if (sPath === "/grouped") {
+			if (Main.URL_BOOLEANS.includes(sPath)) {
+				/*
+				 * 🔴 Ausdruecklich boolean, nicht der Rohtext. Bis 01.09.2026
+				 * fiel "/openOnly" in den else-Zweig und landete als STRING im
+				 * Modell - "?o=0" haette den Filter damit EINGESCHALTET, weil
+				 * "0" truthy ist. Aufgefallen ist es nie, weil _syncUrl den
+				 * Schluessel gar nicht schrieb.
+				 */
 				oUi.setProperty(sPath, sValue === "1");
 			} else if (sPath === "/chartDays") {
 				/*
@@ -964,8 +1399,14 @@ export default class Main extends BaseController {
 		if (sSearch) {
 			oQuery.q = sSearch;
 		}
-		if (oUi.getProperty("/grouped") as boolean) {
-			oQuery.g = "1";
+		// ⚠ Geschrieben wird die ABWEICHUNG vom Standard, nicht der wahre
+		// Wert. "o" wurde bis 01.09.2026 GAR NICHT geschrieben, obwohl es in
+		// URL_KEYS steht und gelesen wird - ein Zustand, der nur in eine
+		// Richtung floss. Mit dem Standard "nur offene" waere das Ausschalten
+		// sonst nach jedem Neuladen wieder weg.
+		const bOpenOnly = oUi.getProperty("/openOnly") as boolean;
+		if (bOpenOnly !== ViewDefaults.OPEN_ONLY_DEFAULT) {
+			oQuery.o = bOpenOnly ? "1" : "0";
 		}
 		const nDays = Number(oUi.getProperty("/chartDays"));
 		if (nDays && nDays !== Main.CHART_DAYS) {
