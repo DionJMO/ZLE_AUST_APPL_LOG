@@ -95,11 +95,26 @@
 						type="{= ${detail>payload} ? 'Active' : 'Inactive' }"
 						press=".onKeyPopoverLogPress">
 						<firstStatus>
+							<!--
+								NUR SYMBOL UND FARBE, das Wort im Tooltip - wie in der
+								Kaskadentabelle seit 03.09.2026.
+
+								Der nackte Buchstabe stand hier noch, weil beim Umbau
+								nur die Tabelle angefasst wurde. Er ist nicht bloss
+								unerklaert: er klebt im DOM direkt am Nachbarattribut
+								und wird beim Kopieren mit ihm verschmolzen
+								("Prozess: IB_CREATE" + "S" -> "IB_CREATES"). Genau so
+								hat er am 08.09.2026 einen Datenfehler vorgetaeuscht,
+								den es nicht gab.
+
+								⚠ Der Tooltip ist damit der ZUGAENGLICHE NAME der
+								Zelle - ein Symbol ohne Text hat sonst keinen.
+							-->
 							<ObjectStatus
 								id="keyPopoverLogStatus"
-								text="{detail>logType}"
 								state="{path: 'detail>logType', formatter: '.formatter.logTypeState'}"
-								icon="{path: 'detail>logType', formatter: '.formatter.logTypeIcon'}"/>
+								icon="{path: 'detail>logType', formatter: '.formatter.logTypeIcon'}"
+								tooltip="{parts: ['detail>logType', 'i18n>logTypeE', 'i18n>logTypeW', 'i18n>logTypeS'], formatter: '.formatter.logTypeTooltip'}"/>
 						</firstStatus>
 						<attributes>
 							<ObjectAttribute id="keyPopoverLogProcess" text="{detail>process}"/>

@@ -151,17 +151,45 @@ function firstFilled(aSteps: LogRow[], sKey: keyof LogRow): string {
 /**
  * Die Zeile, die den Vorgang repraesentiert.
  *
- * Regel: die SCHWERSTE Zeile; bei Gleichstand die mit der HOECHSTEN SeqNr.
+ * DAS ABZEICHEN BESCHREIBT DAS ERGEBNIS, NICHT DEN SCHLIMMSTEN MOMENT.
  *
- * Die zweite Haelfte ist die eigentliche Entscheidung. Ein Vorgang endet
- * mit seinem Ergebnis - bei gleichem Schweregrad ist die letzte Meldung
- * die aussagekraeftigere. Der HTTP-Fehler aus der Consumer-Schicht kommt
- * zuerst, die fachliche Zusammenfassung des Triggers danach.
+ * Endet der Vorgang mit einem Erfolg, fuehrt der LETZTE Schritt. Sonst
+ * gilt die alte Regel: der schwerste, bei Gleichstand der spaeteste.
  *
- * Verloren geht dabei nichts: alle Zeilen stehen in Steps und sind ueber
- * das Popover einsehbar.
+ * Der Grund ist keine Kosmetik. Die Zeile entscheidet, ob jemand etwas
+ * tun muss - und wenn der Vorgang gut ausgegangen ist, muss niemand
+ * etwas tun. Vorher gewann die schwerste Zeile immer, mit diesem
+ * Ergebnis (echter Fall vom 08.09.2026, TA-Position 48897):
+ *
+ *   1. ME 'ST' -> 'ROL', Menge umgerechnet          S
+ *   2. GET order status failed                      E   <- fuehrte
+ *   3. POST create inbound order OK                 S
+ *
+ * Der Auftrag lag danach in HiLIS, die Zeile zeigte trotzdem rotes E -
+ * und als Text ausgerechnet die einzige Meldung ohne Aussagewert, naemlich
+ * die Existenzpruefung, deren 404 die richtige Antwort war. Gleichzeitig
+ * stand in der Vorgang-Spalte "erledigt". Die Zeile widersprach sich.
+ *
+ * ⚠ Die Regel ist GRUPPENLOKAL und benutzt bewusst NICHT IsResolved.
+ * Jenes Kennzeichen gilt fuer den ganzen Geschaeftsschluessel ueber alle
+ * Vorgaenge hinweg: ein gescheiterter Versuch und sein spaeterer
+ * erfolgreicher Wiederanstoss sind beide "erledigt". Der gescheiterte
+ * Versuch SOLL aber weiter als Fehler erkennbar sein - er ist ja einer
+ * gewesen. Nur wer selbst gut ausgeht, wird gruen.
+ *
+ * ⚠ Fachliche Folge, mit Joerg Tolksdorf zu bestaetigen: ein Vorgang mit
+ * einem echten Fehler, der danach im selben Durchlauf gelingt, erscheint
+ * unter "Fehler" nicht mehr. Konsequent - "Nur offene" macht es heute
+ * schon so -, aber es ist eine Festlegung und keine technische Frage.
+ *
+ * Verloren geht nichts: alle Zeilen stehen in Steps und sind ueber das
+ * Popover einsehbar, die Spalte "Schritte" kuendigt sie an.
  */
 function leadRow(aSteps: LogRow[]): LogRow {
+	const oLast = aSteps[aSteps.length - 1];
+	if (severityRank(oLast?.LogType) === severityRank("S")) {
+		return oLast;
+	}
 	return aSteps.reduce((oBest, oRow) => {
 		const iBest = severityRank(oBest.LogType);
 		const iRow = severityRank(oRow.LogType);
