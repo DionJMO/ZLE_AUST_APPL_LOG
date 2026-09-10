@@ -564,20 +564,31 @@ export function sapUnit(
 }
 
 /**
+ * Reiter, die KEINE Meldungssicht sind.
+ *
+ * Auftragspuffer, Warenausgangs-Pruefung und Stammdatenabgleich zeigen SAP-
+ * bzw. HiLIS-Daten, fuer die E/W/S-Filter, Suche und Vorgangsverdichtung
+ * keinen Sinn ergeben.
+ *
+ * 🔴 EIN NEUER SOLCHER REITER GEHOERT HIER HINEIN - und nirgendwo sonst.
+ * Am 09.09.2026 kam MATCMP dazu und wurde hier vergessen: die Folge war,
+ * dass die Kaskadentabelle im neuen Reiter WEITERLIEF und sich mit dessen
+ * Tabelle ueberlagerte - zwei Kopfzeilen uebereinander, darunter fremde
+ * Zeilen. Genau davor warnte der Kommentar der Funktion schon vorher.
+ */
+// eslint-disable-next-line @sap-ux/fiori-tools/sap-no-global-variable
+const NON_MESSAGE_VIEWS = ["TPA", "WACHECK", "MATCMP"];
+
+/**
  * Ist der gewaehlte Reiter eine MELDUNGSSICHT?
  *
- * ⚠ Zentral, weil die Bedingung an fuenf Stellen haengt: Typfilter, Suchfeld,
- * Vorgangsschalter und beide Meldungstabellen. Als Literalvergleich
- * ("!== 'TPA'") stand sie fuenfmal im XML - ein sechster Reiter haette sechs
- * Stellen gebraucht, und eine vergessene faellt erst im Browser auf.
- *
- * Auftragspuffer und Warenausgangs-Pruefung sind KEINE Meldungssichten: sie
- * zeigen SAP- bzw. HiLIS-Daten, fuer die E/W/S, Suche und Vorgangsverdichtung
- * keinen Sinn ergeben.
+ * ⚠ Zentral, weil die Bedingung an mehreren Stellen haengt: Typfilter,
+ * Suchfeld, Vorgangsschalter, Zusammenfassung und die Meldungstabelle. Als
+ * Literalvergleich stand sie fuenfmal im XML - eine vergessene Stelle faellt
+ * erst im Browser auf.
  */
 export function isMessageView(sProcess?: string | null): boolean {
-	const s = (sProcess ?? "").trim();
-	return s !== "TPA" && s !== "WACHECK";
+	return !NON_MESSAGE_VIEWS.includes((sProcess ?? "").trim());
 }
 
 

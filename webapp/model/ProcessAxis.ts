@@ -72,6 +72,19 @@ export const KEY_ORDERS = "TPA";
  */
 export const KEY_WACHECK = "WACHECK";
 /**
+ * Materialstammabgleich SAP gegen HiLIS - Punkt 38, vierter Fehlerfall
+ * ("Matstammkonfiguration SAP <-> HiLIS abweichend").
+ *
+ * Wie KEY_ORDERS und KEY_WACHECK keine Meldungsachse: der Inhalt kommt
+ * nicht aus dem Anwendungsprotokoll, sondern aus dem Vergleich zweier
+ * Systeme. Typfilter, Suche und Vorgangsverdichtung gelten nicht.
+ *
+ * ⚠ Die Daten sind eine MOMENTAUFNAHME des letzten Laufs von
+ * ZLE_AUST_ITEM_COMPARE, kein Live-Zustand - deshalb steht der Zeitpunkt
+ * ueber der Tabelle und nicht im Kleingedruckten.
+ */
+export const KEY_MATCMP = "MATCMP";
+/**
  * Der Reiter, auf dem die App startet.
  *
  * Steht hier und nicht in Component.ts, weil ihn zwei Stellen brauchen:

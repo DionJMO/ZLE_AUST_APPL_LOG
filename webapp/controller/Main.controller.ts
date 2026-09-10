@@ -602,6 +602,7 @@ export default class Main extends BaseController {
 		await Promise.allSettled([
 			this._loadChart(),
 			this._loadKpis(),
+			this._loadMatCmpRun(),
 			this._loadSapPositions(),
 			this._loadShadowedPicks(),
 			this._loadReprocMap()
@@ -773,6 +774,45 @@ export default class Main extends BaseController {
 				console.error("[KPI] " + oDefinition.key + " fehlgeschlagen:", oError);
 			}
 		}));
+	}
+
+	/**
+	 * Kopf des letzten Materialstammabgleichs (Punkt 38, Fall 4).
+	 *
+	 * 🔴 UEBER EINE LISTEN-BINDUNG, NICHT UEBER MatCompareRun('1').
+	 * Die Einzelentitaet gibt es erst, wenn der Report einmal mit
+	 * "Ergebnis fortschreiben" gelaufen ist. Vorher antwortet der Service
+	 * mit 404 - und weil UI5 alle Startanfragen in EINEN $batch legt, riss
+	 * diese eine 404 am 09.09.2026 die ganze App mit: AppLog, KPIs und
+	 * Verlauf meldeten "previous request failed", die Oberflaeche blieb
+	 * leer.
+	 *
+	 * Eine Listen-Bindung auf die MENGE kennt diesen Zustand nicht: leer
+	 * ist null Zeilen, kein Fehler. Das Ergebnis landet im ui-Modell,
+	 * damit der View gar keine OData-Bindung auf diesen Kopf braucht.
+	 */
+	private async _loadMatCmpRun(): Promise<void> {
+		try {
+			const oBinding = this.getODataModel("mainModel").bindList("/MatCompareRun");
+			const aContexts = await oBinding.requestContexts(0, 1);
+			if (aContexts.length === 0) {
+				return;
+			}
+			const oRun = aContexts[0].getObject() as Record<string, unknown>;
+			this.getUiModel().setProperty("/matCmp", {
+				runAt:      String(oRun.RunAt ?? ""),
+				cntSap:     String(oRun.CntSap ?? "0"),
+				cntHilis:   String(oRun.CntHilis ?? "0"),
+				cntDiff:    String(oRun.CntDiff ?? "0"),
+				cntOnlySap: String(oRun.CntOnlySap ?? "0"),
+				cntOnlyHil: String(oRun.CntOnlyHil ?? "0"),
+				cntOk:      String(oRun.CntOk ?? "0"),
+				broken:     oRun.Broken === "X"
+			});
+		} catch (oError) {
+			// eslint-disable-next-line no-console
+			console.error("[Stammdatenabgleich] Laufkopf fehlgeschlagen:", oError);
+		}
 	}
 
 	/**

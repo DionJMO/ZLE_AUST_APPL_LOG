@@ -470,6 +470,20 @@
 										design="Horizontal"
 										text="{i18n>tabWaCheck}"
 										count="{ui>/waCheckCount}"/>
+									<!--
+										Stammdatenabgleich SAP gegen HiLIS - Punkt 38, vierter
+										Fehlerfall. Wie die WA-Pruefung ein eigener Reiter und kein
+										Panel: der Inhalt kommt nicht aus dem Anwendungsprotokoll,
+										sondern aus dem Vergleich zweier Systeme, und der Typfilter
+										E/W/S gilt fuer ihn nicht.
+									-->
+									<IconTabFilter
+										id="idTabMATCMP"
+										key="MATCMP"
+										icon="sap-icon://compare-2"
+										design="Horizontal"
+										text="{i18n>tabMatCmp}"
+										count="{ui>/matCmp/cntDiff}"/>
 								</items>
 								<content>
 									<OverflowToolbar id="idMsgToolbar" height="3rem">
@@ -880,6 +894,152 @@
 												<Label id="waLblMat" text="{i18n>colMaterials}"/>
 												<t:template>
 													<Text id="waTxtMat" text="{wacheck>Materials}" wrapping="false"/>
+												</t:template>
+											</t:Column>
+										</t:columns>
+									</t:Table>
+
+									<!--
+										STAND DES ABGLEICHS, ueber der Tabelle und nicht im
+										Kleingedruckten: die Zeilen sind eine Momentaufnahme des
+										letzten Laufs von ZLE_AUST_ITEM_COMPARE, kein Live-Zustand.
+										Wer das nicht sieht, haelt einen alten Befund fuer aktuell.
+
+										⚠ RunAt ist Edm.DateTimeOffset und braucht targetType 'any'.
+										Ohne die Angabe formatiert das typisierte Modell den Wert
+										VOR dem Formatter zu einem deutschen String, und der
+										Formatter liest ihn als falsches Datum - derselbe Fehler,
+										der in dieser App schon fuenf Bindungen getroffen hat.
+									-->
+									<HBox
+										id="idMatCmpHeader"
+										visible="{= ${ui>/selectedProcess} === 'MATCMP' }"
+										alignItems="Center"
+										class="sapUiSmallMarginBegin sapUiTinyMarginTopBottom">
+										<ObjectStatus
+											id="matCmpStand"
+											title="{i18n>matCmpStand}"
+											text="{path: 'ui>/matCmp/runAt', formatter: '.formatter.timestamp'}"
+											class="sapUiTinyMarginEnd"/>
+										<ObjectStatus
+											id="matCmpCntSap"
+											title="{i18n>matCmpCntSap}"
+											text="{ui>/matCmp/cntSap}"
+											class="sapUiTinyMarginEnd"/>
+										<ObjectStatus
+											id="matCmpCntHil"
+											title="{i18n>matCmpCntHil}"
+											text="{ui>/matCmp/cntHilis}"
+											class="sapUiTinyMarginEnd"/>
+										<ObjectStatus
+											id="matCmpCntDiff"
+											title="{i18n>matCmpCntDiff}"
+											text="{ui>/matCmp/cntDiff}"
+											state="Warning"
+											class="sapUiTinyMarginEnd"/>
+										<ObjectStatus
+											id="matCmpCntOnlySap"
+											title="{i18n>matCmpCntOnlySap}"
+											text="{ui>/matCmp/cntOnlySap}"
+											class="sapUiTinyMarginEnd"/>
+										<ObjectStatus
+											id="matCmpCntOnlyHil"
+											title="{i18n>matCmpCntOnlyHil}"
+											text="{ui>/matCmp/cntOnlyHil}"
+											state="Error"
+											class="sapUiTinyMarginEnd"/>
+										<ObjectStatus
+											id="matCmpCntOk"
+											title="{i18n>matCmpCntOk}"
+											text="{ui>/matCmp/cntOk}"
+											state="Success"
+											class="sapUiTinyMarginEnd"/>
+										<!--
+											🔴 Bricht der HiLIS-Abruf ab, ist "nur in SAP" WERTLOS -
+											es koennten Artikel fehlen, die es sehr wohl gibt. Die
+											Warnung steht deshalb neben der Zahl und nicht im Log.
+										-->
+										<ObjectStatus
+											id="matCmpBroken"
+											icon="sap-icon://alert"
+											text="{i18n>matCmpBroken}"
+											state="Error"
+											visible="{ui>/matCmp/broken}"/>
+									</HBox>
+
+									<t:Table
+										id="idMatCmpTable"
+										visible="{= ${ui>/selectedProcess} === 'MATCMP' }"
+										rows="{path: 'mainModel>/MatCompare', parameters: {$count: true}, sorter: {path: 'Matnr'}}"
+										selectionMode="None"
+										ariaLabelledBy="msgHeading">
+										<t:rowMode>
+											<rm:Auto maxRowCount="12"/>
+										</t:rowMode>
+										<t:noData>
+											<!--
+												Zwei Leerzustaende, die nicht gleich aussehen duerfen -
+												wie bei der WA-Pruefung. "Abgeglichen, nichts gefunden"
+												ist Entwarnung; "noch nie abgeglichen" ist gar keine
+												Aussage. Unterschieden wird am Laufkopf: ohne Lauf gibt
+												es keinen Zeitpunkt.
+											-->
+											<IllustratedMessage
+												id="matCmpNoData"
+												illustrationType="{= ${ui>/matCmp/runAt} ? 'sapIllus-SuccessHighFive' : 'sapIllus-NoEntries' }"
+												title="{= ${ui>/matCmp/runAt} ? ${i18n>matCmpEmptyTitle} : ${i18n>matCmpNoRunTitle} }"
+												description="{= ${ui>/matCmp/runAt} ? ${i18n>matCmpEmptyText} : ${i18n>matCmpNoRunText} }"/>
+										</t:noData>
+										<t:columns>
+											<t:Column id="idMatCmpStatusCol" width="7rem" sortProperty="Status">
+												<Label id="mcLblStatus" text="{i18n>colMatCmpStatus}"/>
+												<t:template>
+													<ObjectStatus
+														id="mcTxtStatus"
+														text="{mainModel>Status}"
+														state="{path: 'mainModel>StatusCriticality', formatter: '.formatter.criticalityState'}"/>
+												</t:template>
+											</t:Column>
+											<t:Column id="idMatCmpMatCol" width="9rem" sortProperty="Matnr">
+												<Label id="mcLblMat" text="{i18n>colItemNumber}"/>
+												<t:template>
+													<Link id="mcLnkMat" text="{path: 'mainModel>Matnr', formatter: '.formatter.materialNumber'}" wrapping="false" press=".onItemNumberPress" tooltip="{i18n>popTooltipItem}"/>
+												</t:template>
+											</t:Column>
+											<t:Column id="idMatCmpHintCol" minWidth="320">
+												<Label id="mcLblHint" text="{i18n>colMatCmpHint}"/>
+												<t:template>
+													<Text id="mcTxtHint" text="{mainModel>Hinweis}" wrapping="true" maxLines="2" tooltip="{mainModel>Hinweis}"/>
+												</t:template>
+											</t:Column>
+											<t:Column id="idMatCmpSapUnitCol" width="6rem">
+												<Label id="mcLblSapUnit" text="{i18n>colSapUnit}"/>
+												<t:template>
+													<Text id="mcTxtSapUnit" text="{mainModel>SapMunit}" wrapping="false"/>
+												</t:template>
+											</t:Column>
+											<t:Column id="idMatCmpHilUnitCol" width="6rem">
+												<Label id="mcLblHilUnit" text="{i18n>colHilUnit}"/>
+												<t:template>
+													<Text id="mcTxtHilUnit" text="{mainModel>HilMunit}" wrapping="false"/>
+												</t:template>
+											</t:Column>
+											<t:Column id="idMatCmpSapBatchCol" width="7rem">
+												<Label id="mcLblSapBatch" text="{i18n>colSapBatch}"/>
+												<t:template>
+													<Text id="mcTxtSapBatch" text="{mainModel>SapBatch}" wrapping="false"/>
+												</t:template>
+											</t:Column>
+											<t:Column id="idMatCmpHilBatchCol" width="7rem">
+												<Label id="mcLblHilBatch" text="{i18n>colHilBatch}"/>
+												<t:template>
+													<Text id="mcTxtHilBatch" text="{mainModel>HilBatch}" wrapping="false"/>
+												</t:template>
+											</t:Column>
+											<t:Column id="idMatCmpHilClassCol" width="10rem">
+												<Label id="mcLblHilClass" text="{i18n>colHilClass}"/>
+												<t:template>
+													<Text id="mcTxtHilClass" text="{mainModel>HilClass}" wrapping="false"/>
 												</t:template>
 											</t:Column>
 										</t:columns>

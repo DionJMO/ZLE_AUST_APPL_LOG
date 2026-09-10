@@ -95,6 +95,29 @@ export default class Component extends UIComponent {
 				tabITEM: "0",
 				tabNONE: "0",
 				tabALL: "0"
+			},
+			// Kopf des letzten Materialstammabgleichs (Punkt 38, Fall 4).
+			//
+			// 🔴 BEWUSST IM JSON-MODELL UND NICHT PER ODATA-ELEMENTBINDUNG.
+			// Eine Bindung auf MatCompareRun('1') liefert 404, solange der
+			// Report noch nie mit "Ergebnis fortschreiben" gelaufen ist - und
+			// weil alle Startanfragen in EINEM $batch stecken, riss dieser
+			// eine 404 am 09.09.2026 die komplette App mit runter: AppLog,
+			// KPIs und Verlauf meldeten "previous request failed".
+			//
+			// Geladen wird deshalb im Controller ueber eine LISTEN-Bindung
+			// auf die Menge: eine leere Menge liefert null Zeilen, keinen
+			// Fehler. Fehlschlaege bleiben dort im try/catch, wie bei den
+			// KPIs auch.
+			matCmp: {
+				runAt: "",
+				cntSap: "0",
+				cntHilis: "0",
+				cntDiff: "0",
+				cntOnlySap: "0",
+				cntOnlyHil: "0",
+				cntOk: "0",
+				broken: false
 			}
 		}), "ui");
 
