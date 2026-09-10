@@ -891,6 +891,25 @@ export default class Main extends BaseController {
 	}
 
 	/**
+	 * Detailsicht zu einer Materialnummer AUS DEM STAMMDATENABGLEICH.
+	 *
+	 * Eigener Handler, weil die Vergleichszeile anders heisst und weniger
+	 * kann als eine Logzeile:
+	 *   - das Feld ist "Matnr", nicht "ItemNumber"
+	 *   - "Lgnum" und "BusinessKey" gibt es dort NICHT
+	 *
+	 * Am 09.09.2026 hing der Link zunaechst an onItemNumberPress. Ergebnis
+	 * im Log bei jedem Klick:
+	 *   Failed to drill-down into ('5')/ItemNumber, invalid segment
+	 * Der Popover ging trotzdem auf - getProperty liefert undefined statt zu
+	 * werfen -, aber jeder Klick schrieb eine Fehlerzeile in die Konsole.
+	 * Genau die Sorte Rauschen, die spaeter einen echten Fehler zudeckt.
+	 */
+	public onMatCmpMaterialPress(oEvent: Event): void {
+		void this._openKeyPopover(oEvent, "ITEM", "Matnr", "Matnr", false);
+	}
+
+	/**
 	 * JSON-Payload direkt aus der Meldungstabelle.
 	 *
 	 * Bis zum 27.08.2026 fuehrte der einzige Weg dorthin ueber das
@@ -1053,7 +1072,8 @@ export default class Main extends BaseController {
 		oEvent: Event,
 		sKind: KeyDetailLoader.KeyKind,
 		sMainField: string,
-		sTpaField: string
+		sTpaField: string,
+		bMainHasLogFields = true
 	): Promise<void> {
 		// oEvent.getSource( ) liefert laut Typen EventProvider, dort gibt es
 		// weder getBindingContext noch laesst es sich an openBy uebergeben.
@@ -1063,11 +1083,11 @@ export default class Main extends BaseController {
 		const oSource = oEvent.getSource() as Control;
 
 		/*
-		 * Der Schluessel wird in ALLEN drei Modellen gesucht, weil dieselben
-		 * Handler aus drei Tabellen gerufen werden:
-		 *   idCascadeTable  -> cascade    (JSON, verdichtete Vorgaenge)
+		 * Der Schluessel wird in ALLEN Modellen gesucht, weil dieselben
+		 * Handler aus mehreren Tabellen gerufen werden:
 		 *   idCascadeTable  -> cascade    (JSON, verdichtete Vorgaenge)
 		 *   idTpaTable      -> tpaModel   (OData, Auftragspuffer)
+		 *   idMatCmpTable   -> mainModel  (OData, Stammdatenabgleich)
 		 *
 		 * ⚠ Vorher standen hier nur mainModel und tpaModel. Aus der
 		 * Vorgangstabelle fand der Handler damit nichts, sRaw blieb leer und
@@ -1086,7 +1106,7 @@ export default class Main extends BaseController {
 		 * der Entitaet gar nicht gibt.
 		 */
 		const aSources: { model: string; field: string; hasLogFields: boolean }[] = [
-			{ model: "mainModel", field: sMainField, hasLogFields: true },
+			{ model: "mainModel", field: sMainField, hasLogFields: bMainHasLogFields },
 			{ model: "cascade", field: sMainField, hasLogFields: true },
 			{ model: "tpaModel", field: sTpaField, hasLogFields: false }
 		];

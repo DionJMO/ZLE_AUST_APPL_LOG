@@ -1003,7 +1003,7 @@
 											<t:Column id="idMatCmpMatCol" width="9rem" sortProperty="Matnr">
 												<Label id="mcLblMat" text="{i18n>colItemNumber}"/>
 												<t:template>
-													<Link id="mcLnkMat" text="{path: 'mainModel>Matnr', formatter: '.formatter.materialNumber'}" wrapping="false" press=".onItemNumberPress" tooltip="{i18n>popTooltipItem}"/>
+													<Link id="mcLnkMat" text="{path: 'mainModel>Matnr', formatter: '.formatter.materialNumber'}" wrapping="false" press=".onMatCmpMaterialPress" tooltip="{i18n>popTooltipItem}"/>
 												</t:template>
 											</t:Column>
 											<t:Column id="idMatCmpHintCol" minWidth="320">
