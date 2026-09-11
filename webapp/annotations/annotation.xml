@@ -75,103 +75,23 @@
                     </Record>
                 </Annotation>
 
-                <Annotation Term="UI.LineItem" Qualifier="AppLogCard">
-                    <Collection>
-                        <Record Type="UI.DataField">
-                            <PropertyValue Property="Label" String="Zeitstempel"/>
-                            <PropertyValue Property="Value" Path="CreatedAt"/>
-                        </Record>
-                        <Record Type="UI.DataFieldForAnnotation">
-                            <PropertyValue Property="Label" String="Typ"/>
-                            <PropertyValue Property="Target" AnnotationPath="@UI.DataPoint#LogTypeStatus"/>
-                        </Record>
-                        <Record Type="UI.DataField">
-                            <PropertyValue Property="Label" String="Meldung"/>
-                            <PropertyValue Property="Value" Path="Message"/>
-                        </Record>
-                    </Collection>
-                </Annotation>
+                <!--
+                    🔴 HIER STANDEN DIE OVP-KARTEN, ENTFERNT 11.09.2026.
 
-                <Annotation Term="UI.PresentationVariant" Qualifier="AppLogCard">
-                    <Record Type="UI.PresentationVariantType">
-                        <PropertyValue Property="MaxItems" Int="10"/>
-                        <PropertyValue Property="SortOrder">
-                            <Collection>
-                                <Record Type="Common.SortOrderType">
-                                    <PropertyValue Property="Property" PropertyPath="CreatedAt"/>
-                                    <PropertyValue Property="Descending" Bool="true"/>
-                                </Record>
-                            </Collection>
-                        </PropertyValue>
-                        <PropertyValue Property="Visualizations">
-                            <Collection>
-                                <AnnotationPath>@UI.LineItem#AppLogCard</AnnotationPath>
-                            </Collection>
-                        </PropertyValue>
-                    </Record>
-                </Annotation>
+                    Vier Annotationen mit den Qualifiern AppLogCard und
+                    AbbruchCard - LineItem, SelectionVariant und je ein
+                    PresentationVariant. Sie stammten aus der Overview-Page,
+                    die es seit dem Freestyle-Umbau nicht mehr gibt, und
+                    wurden von keiner Stelle der App mehr gelesen (geprueft:
+                    kein Treffer in view/, controller/, model/).
 
-
-                <Annotation Term="UI.LineItem" Qualifier="AbbruchCard">
-                    <Collection>
-                        <Record Type="UI.DataField">
-                            <PropertyValue Property="Label" String="Zeitstempel"/>
-                            <PropertyValue Property="Value" Path="CreatedAt"/>
-                        </Record>
-                        <Record Type="UI.DataField">
-                            <PropertyValue Property="Label" String="Material"/>
-                            <PropertyValue Property="Value" Path="ItemNumber"/>
-                        </Record>
-                        <Record Type="UI.DataField">
-                            <PropertyValue Property="Label" String="HTTP"/>
-                            <PropertyValue Property="Value" Path="HttpStatus"/>
-                        </Record>
-                        <Record Type="UI.DataField">
-                            <PropertyValue Property="Label" String="Abbruchgrund"/>
-                            <PropertyValue Property="Value" Path="Message"/>
-                        </Record>
-                    </Collection>
-                </Annotation>
-
-                <Annotation Term="UI.SelectionVariant" Qualifier="AbbruchCard">
-                    <Record Type="UI.SelectionVariantType">
-                        <PropertyValue Property="SelectOptions">
-                            <Collection>
-                                <Record Type="UI.SelectOptionType">
-                                    <PropertyValue Property="PropertyName" PropertyPath="LogType"/>
-                                    <PropertyValue Property="Ranges">
-                                        <Collection>
-                                            <Record Type="UI.SelectionRangeType">
-                                                <PropertyValue Property="Sign" EnumMember="UI.SelectionRangeSignType/I"/>
-                                                <PropertyValue Property="Option" EnumMember="UI.SelectionRangeOptionType/EQ"/>
-                                                <PropertyValue Property="Low" String="E"/>
-                                            </Record>
-                                        </Collection>
-                                    </PropertyValue>
-                                </Record>
-                            </Collection>
-                        </PropertyValue>
-                    </Record>
-                </Annotation>
-
-                <Annotation Term="UI.PresentationVariant" Qualifier="AbbruchCard">
-                    <Record Type="UI.PresentationVariantType">
-                        <PropertyValue Property="MaxItems" Int="10"/>
-                        <PropertyValue Property="SortOrder">
-                            <Collection>
-                                <Record Type="Common.SortOrderType">
-                                    <PropertyValue Property="Property" PropertyPath="CreatedAt"/>
-                                    <PropertyValue Property="Descending" Bool="true"/>
-                                </Record>
-                            </Collection>
-                        </PropertyValue>
-                        <PropertyValue Property="Visualizations">
-                            <Collection>
-                                <AnnotationPath>@UI.LineItem#AbbruchCard</AnnotationPath>
-                            </Collection>
-                        </PropertyValue>
-                    </Record>
-                </Annotation>
+                    Wirkungslos waren sie, irrefuehrend nicht: die
+                    SelectionVariant#AbbruchCard filterte LogType eq 'E' und
+                    hielt damit im Quelltext genau die Definition von
+                    "Abbruch" fest, die O-25 als FALSCH nachgewiesen hat -
+                    fachliche Abbrueche liegen auf 'W'. Wer die Datei las,
+                    fand die widerlegte Fassung.
+                -->
 
             </Annotations>
         </Schema>
