@@ -8,7 +8,8 @@
 	xmlns:rm="sap.ui.table.rowmodes"
 	xmlns:viz="sap.viz.ui5.controls"
 	xmlns:vizData="sap.viz.ui5.data"
-	xmlns:vizFeeds="sap.viz.ui5.controls.common.feeds">
+	xmlns:vizFeeds="sap.viz.ui5.controls.common.feeds"
+	xmlns:menu="sap.m.table.columnmenu">
 	<f:DynamicPage id="mainPage" headerExpanded="true" showFooter="false">
 
 		<f:title>
@@ -309,11 +310,19 @@
 										<SegmentedButtonItem id="idChartDays30" key="30" text="{i18n>chartDays30}"/>
 									</items>
 								</SegmentedButton>
+								<!--
+									Der Text nennt den SCHNITTZEITPUNKT, der Tooltip die
+									Zahlen dahinter. Bis 11.09.2026 stand hier
+									"Datenmenge gekuerzt" - das sagte weder, wie viel
+									fehlt, noch dass die Balken bei Ueberlauf falsch
+									waren (kein $orderby, s. LogAggregator).
+								-->
 								<ObjectStatus
 									id="idChartTruncatedObjectStatus"
 									state="Warning"
 									icon="sap-icon://alert"
-									text="{i18n>chartTruncated}"
+									text="{ui>/chartCutText}"
+									tooltip="{ui>/chartCutTip}"
 									visible="{ui>/chartTruncated}"/>
 							</OverflowToolbar>
 						</headerToolbar>
@@ -332,11 +341,20 @@
 								ueber genau diese Zeichenketten, und die App hat ohnehin nur
 								ein Sprachbuendel (supportedLocales: [""]).
 							-->
+							<!--
+								selectData ist der Absprung in die Tabelle: ein Klick
+								setzt den Tagesfilter (und bei einem einzelnen Segment
+								auch den Typ). Gegenstueck deselectData wird NICHT
+								gebraucht - der Handler leert die Auswahl selbst, sonst
+								waere der zweite Klick auf dasselbe Segment eine Abwahl
+								und wuerde gar nicht feuern.
+							-->
 							<viz:VizFrame
 								id="idTrendVizFrame"
 								vizType="stacked_column"
 								width="100%"
 								height="100%"
+								selectData=".onChartSelect"
 								uiConfig="{applicationSet:'fiori'}">
 								<viz:dataset>
 									<vizData:FlattenedDataset data="{chart>/days}">
@@ -422,35 +440,40 @@
 										icon="sap-icon://download-from-cloud"
 										design="Horizontal"
 										text="{i18n>tabIB}"
-										count="{path: 'ui>/kpi/tabIB', formatter: '.formatter.tabCount'}"/>
+										count="{path: 'ui>/kpi/tabIB', formatter: '.formatter.tabCount'}"
+										tooltip="{parts: ['ui>/tabCountsAreOps', 'i18n>tabCountTip', 'i18n>tabCountTipMsg'], formatter: '.formatter.tabCountTooltip'}"/>
 									<IconTabFilter
 										id="idTabOB"
 										key="OB"
 										icon="sap-icon://upload-to-cloud"
 										design="Horizontal"
 										text="{i18n>tabOB}"
-										count="{path: 'ui>/kpi/tabOB', formatter: '.formatter.tabCount'}"/>
+										count="{path: 'ui>/kpi/tabOB', formatter: '.formatter.tabCount'}"
+										tooltip="{parts: ['ui>/tabCountsAreOps', 'i18n>tabCountTip', 'i18n>tabCountTipMsg'], formatter: '.formatter.tabCountTooltip'}"/>
 									<IconTabFilter
 										id="idTabITEM"
 										key="ITEM"
 										icon="sap-icon://product"
 										design="Horizontal"
 										text="{i18n>tabITEM}"
-										count="{path: 'ui>/kpi/tabITEM', formatter: '.formatter.tabCount'}"/>
+										count="{path: 'ui>/kpi/tabITEM', formatter: '.formatter.tabCount'}"
+										tooltip="{parts: ['ui>/tabCountsAreOps', 'i18n>tabCountTip', 'i18n>tabCountTipMsg'], formatter: '.formatter.tabCountTooltip'}"/>
 									<IconTabFilter
 										id="idTabNONE"
 										key="NONE"
 										icon="sap-icon://question-mark"
 										design="Horizontal"
 										text="{i18n>tabNONE}"
-										count="{path: 'ui>/kpi/tabNONE', formatter: '.formatter.tabCount'}"/>
+										count="{path: 'ui>/kpi/tabNONE', formatter: '.formatter.tabCount'}"
+										tooltip="{parts: ['ui>/tabCountsAreOps', 'i18n>tabCountTip', 'i18n>tabCountTipMsg'], formatter: '.formatter.tabCountTooltip'}"/>
 									<IconTabFilter
 										id="idTabALL"
 										key="ALL"
 										icon="sap-icon://activity-items"
 										design="Horizontal"
 										text="{i18n>tabALL}"
-										count="{path: 'ui>/kpi/tabALL', formatter: '.formatter.tabCount'}"/>
+										count="{path: 'ui>/kpi/tabALL', formatter: '.formatter.tabCount'}"
+										tooltip="{parts: ['ui>/tabCountsAreOps', 'i18n>tabCountTip', 'i18n>tabCountTipMsg'], formatter: '.formatter.tabCountTooltip'}"/>
 									<IconTabFilter
 										id="idTabTPA"
 										key="TPA"
@@ -487,15 +510,34 @@
 								</items>
 								<content>
 									<OverflowToolbar id="idMsgToolbar" height="3rem">
+										<!--
+											DREI KNOEPFE STATT VIER (Festlegung Tolksdorf,
+											11.09.2026): "Fehler" buendelt E und W. Wer
+											nachsieht, wo es klemmt, will beides - und wer
+											vorher nur E waehlte, uebersah die Mehrheit der
+											Abbrueche, weil fuenf von sechs Abbruchstellen
+											im Backend W loggen (O-25).
+
+											⚠ Die ZEILEN bleiben unterscheidbar: die
+											Typ-Spalte zeigt weiter je Typ ein eigenes
+											Symbol und eine eigene Farbe. Gebuendelt ist
+											die Auswahl, nicht die Anzeige.
+
+											ℹ selectedKey ueber einen Formatter, damit der
+											Knopf auch bei einer Verfeinerung auf E oder W
+											(Spaltentrichter, alter Link ?t=E) gedrueckt
+											bleibt. Die Bindung wird dadurch einseitig -
+											das stoert nicht, weil onTypeFilterChange den
+											Wert ohnehin selbst schreibt.
+										-->
 										<SegmentedButton
 											id="idTypeFilter"
-											selectedKey="{ui>/selectedType}"
+											selectedKey="{path: 'ui>/selectedType', formatter: '.formatter.typeGroupKey'}"
 											selectionChange=".onTypeFilterChange"
 											visible="{path: 'ui>/selectedProcess', formatter: '.formatter.isMessageView'}">
 											<items>
 												<SegmentedButtonItem id="idTypeAll" key="" text="{i18n>typeAll}"/>
-												<SegmentedButtonItem id="idTypeE" key="E" text="{i18n>typeE}"/>
-												<SegmentedButtonItem id="idTypeW" key="W" text="{i18n>typeW}"/>
+												<SegmentedButtonItem id="idTypeEW" key="EW" text="{i18n>typeProblem}" tooltip="{i18n>typeProblemTooltip}"/>
 												<SegmentedButtonItem id="idTypeS" key="S" text="{i18n>typeS}"/>
 											</items>
 										</SegmentedButton>
@@ -524,7 +566,40 @@
 										<Text
 											id="idCascadeSummary"
 											text="{cascade>/summary}"
+											tooltip="{cascade>/summaryTip}"
 											visible="{path: 'ui>/selectedProcess', formatter: '.formatter.isMessageView'}"
+											class="sapUiSmallMarginBegin"/>
+										<!--
+											Obergrenze der Vorgangssicht. Eigener Hinweis statt
+											eines Zusatzes in der Zusammenfassung: "wie viel" und
+											"wie verlaesslich" sind zwei Aussagen. Der Text nennt
+											den Schnittzeitpunkt, der Tooltip die Zahlen.
+										-->
+										<ObjectStatus
+											id="idCascadeTruncatedObjectStatus"
+											state="Warning"
+											icon="sap-icon://alert"
+											text="{cascade>/cutText}"
+											tooltip="{cascade>/cutTip}"
+											visible="{parts: ['ui>/selectedProcess', 'cascade>/truncated'], formatter: '.formatter.cascadeCutVisible'}"
+											class="sapUiSmallMarginBegin"/>
+										<!--
+											🔴 DER ARBEITSVORRAT IST NICHT LESBAR - und das
+											muss DASTEHEN. Bis 11.09.2026 landete dieser
+											Fehler ausschliesslich in der Browserkonsole; in
+											der Oberflaeche sah ein ausgefallener Service
+											genauso aus wie "nichts zu tun", und kein Klick
+											auf die Vorgangsspalte tat mehr etwas. Das ist
+											die wahrscheinlichste Ursache der Rueckmeldung
+											"Vorgang neu anstoßen ist kaputt".
+										-->
+										<ObjectStatus
+											id="idReprocUnavailableObjectStatus"
+											state="Error"
+											icon="sap-icon://alert"
+											text="{i18n>reprocBarUnavailable}"
+											tooltip="{reproc>/error}"
+											visible="{= ${reproc>/ok} === false }"
 											class="sapUiSmallMarginBegin"/>
 										<ObjectStatus
 											id="idWaCheckTruncatedObjectStatus"
@@ -543,6 +618,55 @@
 											type="Transparent"
 											press=".onOpenMsgColumns"/>
 									</OverflowToolbar>
+
+									<!--
+										DER GESETZTE FILTERZUSTAND, SICHTBAR.
+
+										🔴 Eigene Leiste und NICHT in idMsgToolbar: die ist mit
+										sieben Elementen voll, die Marken rutschten in den
+										Overflow - und ein Filterzustand, den man erst
+										aufklappen muss, erfuellt den Wunsch nicht.
+
+										Toolbar statt OverflowToolbar aus demselben Grund: ein
+										Overflow ist hier genau das, was nicht passieren soll.
+
+										⚠ Sichtbar nur, wenn wirklich etwas gefiltert ist.
+										rm:Auto rechnet die Zeilenzahl der Tabelle aus der
+										Containerhoehe - eine dauerhaft stehende Leiste kostete
+										also dauerhaft eine Tabellenzeile.
+
+										ℹ Keine Marke fuer Prozess (das ist der Reiter) und fuer
+										"Nur offene" (das ist die Stellung des Schalters) -
+										beides waere dieselbe Angabe zweimal.
+									-->
+									<Toolbar
+										id="idMsgFilterBar"
+										height="2.25rem"
+										style="Clear"
+										visible="{= ${ui>/filterChips}.length > 0 }">
+										<Label id="idMsgFilterBarLabel" text="{i18n>chipBarLabel}" class="sapUiTinyMarginBegin"/>
+										<!--
+											⚠ Der Tokenizer ist sonst das Innenleben eines
+											MultiInput; freistehend ist er zulaessig, sein
+											zugaenglicher Name waere dann aber nur "Token".
+											Deshalb ariaLabelledBy auf die Beschriftung.
+										-->
+										<Tokenizer
+											id="idMsgFilterTokens"
+											width="auto"
+											renderMode="Loose"
+											ariaLabelledBy="idMsgFilterBarLabel"
+											tokens="{ui>/filterChips}"
+											tokenDelete=".onFilterChipDelete">
+											<Token id="idMsgFilterToken" key="{ui>id}" text="{ui>text}"/>
+										</Tokenizer>
+										<ToolbarSpacer id="idMsgFilterSpacer"/>
+										<Button
+											id="idMsgFilterReset"
+											text="{i18n>chipReset}"
+											type="Transparent"
+											press=".onFilterReset"/>
+									</Toolbar>
 
 									<!--
 										EIGENE TABELLE FUER DIE VORGANGSSICHT, und das ist kein
@@ -594,12 +718,131 @@
 											<rm:Auto maxRowCount="14" rowContentHeight="44"/>
 										</t:rowMode>
 										<t:noData>
+											<!--
+												DREI LEERZUSTAENDE, NICHT ZWEI. Bis 11.09.2026
+												unterschied die Sicht nur "gesucht" von "leer" -
+												mit Tagesfilter und Spaltentrichter stuende sonst
+												"Keine Vorgänge vorhanden" da, obwohl bloss ein
+												Filter zu eng ist. Das ist eine falsche Auskunft,
+												und zwar eine beruhigende.
+											-->
 											<IllustratedMessage
 												id="idCascadeNoData"
-												illustrationType="{= ${ui>/searchTerm} ? 'sapIllus-NoSearchResults' : 'sapIllus-NoEntries' }"
-												title="{= ${ui>/searchTerm} ? ${i18n>noDataSearchTitle} : ${i18n>noDataMsgTitle} }"
-												description="{= ${ui>/searchTerm} ? ${i18n>noDataSearchText} : ${i18n>noDataMsgText} }"/>
+												illustrationType="{= ${ui>/searchTerm} ? 'sapIllus-NoSearchResults' : (${ui>/filterChips}.length > 0 ? 'sapIllus-NoFilterResults' : 'sapIllus-NoEntries') }"
+												title="{= ${ui>/searchTerm} ? ${i18n>noDataSearchTitle} : (${ui>/filterChips}.length > 0 ? ${i18n>noDataFilterTitle} : ${i18n>noDataMsgTitle}) }"
+												description="{= ${ui>/searchTerm} ? ${i18n>noDataSearchText} : (${ui>/filterChips}.length > 0 ? ${i18n>noDataFilterText} : ${i18n>noDataMsgText}) }"/>
 										</t:noData>
+
+										<!--
+											SPALTENTRICHTER - "wie in Excel".
+
+											🔴 SIE FILTERN SERVERSEITIG, NICHT IM SPEICHER.
+											Die Tabelle bindet cascade>/rows, also ein
+											JSON-Modell; der EINGEBAUTE Spaltenfilter wuerde
+											damit das Array im Speicher filtern - und das ist
+											"die neuesten 5000 Meldungen, verdichtet". Ein
+											Trichter auf ein Material jenseits dieser Grenze
+											faende NICHTS und saehe aus wie "gibt es nicht".
+											Eine falsche Antwort ohne Fehlermeldung ist das
+											Schlimmste, was ein Filter tun kann.
+
+											Deshalb sind die Menues eine BEDIENFORM ueber der
+											bestehenden Filterkette: sie schreiben in dieselben
+											ui-Eigenschaften wie die Kopfleiste und rufen
+											_applyMsgFilter( ). Damit bleiben Tabelle,
+											Zusammenfassung, Reiterzahlen und Marken zwangs-
+											laeufig konsistent - es gibt weiterhin genau eine
+											Filterkette.
+
+											⚠ KEIN filterProperty an den Spalten: sonst legt der
+											Adapter zusaetzlich seinen eigenen Freitextfilter
+											ins Menue, und es staenden zwei Eingaben fuer
+											dieselbe Sache darin.
+
+											ℹ Inline und nicht als Fragment: die Menues werden
+											nirgends sonst gebraucht, und ein Fragment waere
+											eine Indirektion ohne Wiederverwendung.
+										-->
+										<t:dependents>
+											<menu:Menu id="idCascTypeMenu">
+												<menu:quickActions>
+													<menu:QuickAction id="idCascTypeQuick" label="{i18n>colLogType}">
+														<menu:content>
+															<!--
+																Auswahl statt Freitext: "E" zu tippen
+																sagt niemandem etwas. Hier stehen die
+																EINZELTYPEN - der Knopf oben buendelt
+																E und W, der Trichter verfeinert.
+															-->
+															<SegmentedButton
+																id="idCascTypeMenuButtons"
+																selectedKey="{ui>/selectedType}"
+																selectionChange=".onTypeFilterChange">
+																<items>
+																	<SegmentedButtonItem id="idCascTypeMenuAll" key="" text="{i18n>typeAll}"/>
+																	<SegmentedButtonItem id="idCascTypeMenuE" key="E" text="{i18n>typeE}"/>
+																	<SegmentedButtonItem id="idCascTypeMenuW" key="W" text="{i18n>typeW}"/>
+																	<SegmentedButtonItem id="idCascTypeMenuS" key="S" text="{i18n>typeS}"/>
+																</items>
+															</SegmentedButton>
+														</menu:content>
+													</menu:QuickAction>
+												</menu:quickActions>
+											</menu:Menu>
+
+											<menu:Menu id="idCascItemMenu">
+												<menu:quickActions>
+													<menu:QuickAction id="idCascItemQuick" label="{i18n>colItemNumber}">
+														<menu:content>
+															<!--
+																Contains, nicht EQ: die Materialnummer
+																steht in zwei Schreibweisen in der
+																Datenbank ("4028" und
+																"000000000000004028"), angezeigt wird
+																die kurze. Ein EQ auf den angezeigten
+																Wert fuende die Haelfte nicht.
+															-->
+															<SearchField
+																id="idCascItemFilter"
+																width="14rem"
+																value="{ui>/filterItem}"
+																placeholder="{i18n>colItemNumber}"
+																search=".onColumnFilterApply"/>
+														</menu:content>
+													</menu:QuickAction>
+												</menu:quickActions>
+											</menu:Menu>
+
+											<menu:Menu id="idCascTpaMenu">
+												<menu:quickActions>
+													<menu:QuickAction id="idCascTpaQuick" label="{i18n>colTpaNumber}">
+														<menu:content>
+															<SearchField
+																id="idCascTpaFilter"
+																width="14rem"
+																value="{ui>/filterTpa}"
+																placeholder="{i18n>colTpaNumber}"
+																search=".onColumnFilterApply"/>
+														</menu:content>
+													</menu:QuickAction>
+												</menu:quickActions>
+											</menu:Menu>
+
+											<menu:Menu id="idCascMessageMenu">
+												<menu:quickActions>
+													<menu:QuickAction id="idCascMessageQuick" label="{i18n>colMessage}">
+														<menu:content>
+															<SearchField
+																id="idCascMessageFilter"
+																width="18rem"
+																value="{ui>/filterMessage}"
+																placeholder="{i18n>colMessage}"
+																search=".onColumnFilterApply"/>
+														</menu:content>
+													</menu:QuickAction>
+												</menu:quickActions>
+											</menu:Menu>
+										</t:dependents>
 										<t:columns>
 											<t:Column id="idCascStampColumn" width="11.5rem" sortProperty="CreatedAtStamp">
 												<Label id="cscLblStamp" text="{i18n>colCreatedAt}"/>
@@ -642,7 +885,9 @@
 												hat wenig Nutzen; bei "Typ" nicht, Fehler
 												zusammenzusortieren ist sinnvoll.
 											-->
-											<t:Column id="idCascTypeColumn" width="3rem" hAlign="Center" sortProperty="LogType">
+											<t:Column id="idCascTypeColumn" width="4.5rem" hAlign="Center" sortProperty="LogType"
+												headerMenu="idCascTypeMenu"
+												filtered="{= !!${ui>/selectedType} }">
 												<Label id="cscLblType" text="{i18n>colLogType}"/>
 												<t:template>
 													<!--
@@ -720,39 +965,58 @@
 														waere das Fragezeichen-Symbol unerklaert - vorher
 														stand der Gedankenstrich daneben.
 													-->
+													<!--
+														🔴 active="true", NICHT MEHR BEDINGT.
+
+														Bis 11.09.2026 hing die Klickbarkeit an hasReproc - die
+														Zelle war also nur dann anklickbar, wenn zu diesem
+														Vorgang ein OFFENER Arbeitsvorrats-Satz vorlag. Sie sah
+														aber in beiden Faellen gleich aus, und ein Fehlschlag
+														beim Laden des Arbeitsvorrats legte still ALLE Zellen
+														lahm. Das ist die Rueckmeldung "Vorgang neu anstossen
+														ist kaputt": man klickt, und nichts passiert.
+
+														Jetzt antwortet das Popover immer - mit den Saetzen,
+														oder mit dem Grund, warum es keine gibt.
+													-->
 													<ObjectStatus
 														id="cscTxtResolved"
-														state="{parts: ['cascade>IsResolved', 'cascade>BusinessKey'], formatter: '.formatter.resolvedState'}"
-														icon="{parts: ['cascade>IsResolved', 'cascade>BusinessKey'], formatter: '.formatter.resolvedIcon'}"
-														active="{parts: ['cascade>BusinessKey', 'reproc>/map'], formatter: '.formatter.hasReproc'}"
+														state="{parts: ['cascade>IsResolved', 'cascade>BusinessKey', 'reproc>/mapDone'], formatter: '.formatter.resolvedState'}"
+														icon="{parts: ['cascade>IsResolved', 'cascade>BusinessKey', 'reproc>/mapDone'], formatter: '.formatter.resolvedIcon'}"
+														active="true"
 														press=".onReprocPress"
-														tooltip="{parts: ['cascade>IsResolved', 'cascade>BusinessKey', 'i18n>resolvedYes', 'i18n>resolvedNo', 'i18n>resolvedUnknown', 'reproc>/map', 'i18n>reprocNone'], formatter: '.formatter.resolvedTooltip'}"/>
+														tooltip="{parts: ['cascade>IsResolved', 'cascade>BusinessKey', 'i18n>resolvedYes', 'i18n>resolvedNo', 'i18n>resolvedUnknown', 'reproc>/map', 'reproc>/mapDone', 'i18n>resolvedByReproc'], formatter: '.formatter.resolvedTooltip'}"/>
 												</t:template>
 											</t:Column>
 											<!--
 												EIGENE SPALTE FUER DIE SYMBOLE (Festlegung Maring,
 												04.09.2026) - vorher sassen sie in der Meldungszelle.
 
-												Header "Details", weil BEIDE Symbole eine Detailsicht
-												oeffnen: die Bueroklammer den JSON-Payload dieser
-												Meldung, die Uhr alle Meldungen des Vorgangs.
-												"Verlauf" oder "JSON" traefen je nur eines, ein leerer
-												Header waere fuer Screenreader nichts.
+												Header "Details", weil das Symbol eine Detailsicht
+												oeffnet: die Bueroklammer den JSON-Payload dieser
+												Meldung. "JSON" waere zu technisch, ein leerer Header
+												fuer Screenreader nichts.
+
+												🔴 DIE UHR IST AM 11.09.2026 ENTFALLEN. Sie oeffnete
+												dasselbe Popover mit derselben Liste wie die Spalte
+												"Schritte" - der Unterschied (dort ein Ausschnitt,
+												hier das Ganze) stand nur im Quelltext. Aufgeloest
+												nicht durch Erklaeren, sondern durch Weglassen: die
+												Spalte "Schritte" nimmt jetzt selbst den
+												vollstaendigen Weg (s. onCascadePress).
 
 												ℹ Der shrinkFactor, der in der Meldungszelle noetig
 												war, entfaellt hier: die Spalte hat eine feste Breite
 												und keinen langen Text als Nachbarn, der sie
 												zusammendruecken koennte.
 											-->
-											<t:Column id="idCascDetailColumn" width="4.5rem" hAlign="Center">
+											<t:Column id="idCascDetailColumn" width="3rem" hAlign="Center">
 												<Label id="cscLblDetail" text="{i18n>colDetails}"/>
 												<t:template>
 													<!--
-														JE SYMBOL EIN FESTER PLATZ. Ein gemeinsamer Kasten
-														mit justifyContent verschoebe sie je nach
-														Sichtbarkeit - eine Uhr ohne Bueroklammer landete
-														woanders als eine mit. So sitzt die Bueroklammer
-														immer links, die Uhr immer rechts.
+														Fester Platz fuer das Symbol, auch wenn es das
+														einzige ist: ohne Kasten saesse eine Zeile ohne
+														Payload anders als eine mit.
 													-->
 													<HBox id="cscBoxIcons" alignItems="Center" renderType="Bare">
 														<HBox id="cscSlotPayload" width="1.75rem" alignItems="Center" justifyContent="Center" renderType="Bare">
@@ -766,21 +1030,12 @@
 																visible="{= !!${cascade>JsonPayload} }"
 																press=".onMessagePayloadPress"/>
 														</HBox>
-														<HBox id="cscSlotCorr" width="1.75rem" alignItems="Center" justifyContent="Center" renderType="Bare">
-															<core:Icon
-																id="cscIcnCorr"
-																src="sap-icon://history"
-																color="Marker"
-																decorative="false"
-																alt="{i18n>popTooltipCorr}"
-																tooltip="{i18n>popTooltipCorr}"
-																visible="{path: 'cascade>CorrUuid', formatter: '.formatter.hasCorrelation'}"
-																press=".onCorrPress"/>
-														</HBox>
 													</HBox>
 												</t:template>
 											</t:Column>
-											<t:Column id="idCascMessageColumn" minWidth="320">
+											<t:Column id="idCascMessageColumn" minWidth="320"
+												headerMenu="idCascMessageMenu"
+												filtered="{= !!${ui>/filterMessage} }">
 												<Label id="cscLblMessage" text="{i18n>colMessage}"/>
 												<t:template>
 													<!--
@@ -810,13 +1065,17 @@
 												sie ist die einzige Spalte ohne feste Breite und
 												nimmt allen Rest auf.
 											-->
-											<t:Column id="idCascItemColumn" width="9rem" sortProperty="ItemNumber">
+											<t:Column id="idCascItemColumn" width="9rem" sortProperty="ItemNumber"
+												headerMenu="idCascItemMenu"
+												filtered="{= !!${ui>/filterItem} }">
 												<Label id="cscLblItem" text="{i18n>colItemNumber}"/>
 												<t:template>
 													<Link id="cscLnkItem" text="{path: 'cascade>ItemNumber', formatter: '.formatter.materialNumber'}" wrapping="false" press=".onItemNumberPress" tooltip="{i18n>popTooltipItem}"/>
 												</t:template>
 											</t:Column>
-											<t:Column id="idCascTpaColumn" width="11rem" sortProperty="TpaNumber">
+											<t:Column id="idCascTpaColumn" width="11rem" sortProperty="TpaNumber"
+												headerMenu="idCascTpaMenu"
+												filtered="{= !!${ui>/filterTpa} }">
 												<Label id="cscLblTpa" text="{i18n>colTpaNumber}"/>
 												<t:template>
 													<Link id="cscLnkTpa" text="{path: 'cascade>TpaNumber', formatter: '.formatter.dashIfEmpty'}" wrapping="false" press=".onTpaNumberPress" tooltip="{i18n>popTooltipTpa}"/>

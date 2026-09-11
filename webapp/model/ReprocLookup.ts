@@ -20,16 +20,36 @@ import ODataModel from "sap/ui/model/odata/v4/ODataModel";
  * entscheidet der Anwender im Popover - geraten wird hier nichts. Das ist
  * dieselbe Regel wie in O-25: zuordnen ja, falsch zuordnen nie.
  *
- * ⚠ Geladen wird nur, was Handlungsbedarf hat (Status <> 'D' und <> 'C').
- * Erledigtes im Nachschlagewerk waere Ballast: die Spalte soll zeigen, wo
- * etwas zu tun ist.
+ * 🔴 SEIT 11.09.2026 WERDEN AUCH ERLEDIGTE SAETZE GELADEN.
+ *
+ * Vorher stand hier ein Filter "Status ne 'D' and Status ne 'C'" mit der
+ * Begruendung, Erledigtes sei Ballast. Fuer die Frage "wo ist etwas zu tun"
+ * stimmte das - nur macht derselbe Filter die zweite Frage UNBEANTWORTBAR:
+ * „mit der Reproc-Tabelle abgleichen, dass Fehler behoben sind". Ein Fehler,
+ * den das Reprocessing im Hintergrund geradegezogen hat, war in der App per
+ * Konstruktion unsichtbar.
+ *
+ * Deshalb jetzt ZWEI Karten aus EINER Abfrage:
+ *   map       offen / laufend / gescheitert -> traegt den Wiederanstoss
+ *   mapDone   erledigt (D) und manuell erledigt (C) -> traegt das
+ *             Erledigt-Kennzeichen am Vorgang
+ *
+ * Sie bleiben getrennt, weil sie verschiedene Dinge bedeuten: aus map folgt
+ * eine Handlung, aus mapDone eine Auskunft.
  */
 
 // eslint-disable-next-line @sap-ux/fiori-tools/sap-no-global-variable
-const MAX_ROWS = 2000;
+const MAX_ROWS = 5000;
 
+/**
+ * Status, die als ERLEDIGT gelten.
+ *
+ * 'D' setzt der Dispatcher nach einem erfolgreichen Wiederanstoss, 'C' ein
+ * Mensch, der den Fall von Hand geklaert hat. Fuer den Abgleich sind beide
+ * dasselbe: der Fehler steht nicht mehr an.
+ */
 // eslint-disable-next-line @sap-ux/fiori-tools/sap-no-global-variable
-const OPEN_FILTER = "Status ne 'D' and Status ne 'C'";
+const DONE_STATUS = ["D", "C"];
 
 export interface ReprocEntry {
 	Action: string;
@@ -44,12 +64,28 @@ export interface ReprocEntry {
 }
 
 export interface ReprocResult {
-	/** Business-Key -> alle offenen Saetze dazu. */
+	/** Business-Key -> alle OFFENEN Saetze dazu. Traegt den Wiederanstoss. */
 	map: Record<string, ReprocEntry[]>;
+	/**
+	 * Business-Key -> die ERLEDIGTEN Saetze dazu (Status D oder C).
+	 * Traegt das Erledigt-Kennzeichen am Vorgang - der Abgleich zwischen Log
+	 * und Arbeitsvorrat.
+	 */
+	mapDone: Record<string, ReprocEntry[]>;
 	/** Wurde die Leseobergrenze erreicht? */
 	truncated: boolean;
-	/** Hat die Abfrage ueberhaupt stattgefunden? */
+	/**
+	 * Hat die Abfrage ueberhaupt stattgefunden?
+	 *
+	 * 🔴 Die Unterscheidung "geprueft, nichts offen" gegen "nicht geprueft"
+	 * ist der Kern von Punkt 4: schlaegt das Laden fehl, ist die Karte leer,
+	 * und OHNE dieses Kennzeichen sieht das in der Oberflaeche genauso aus
+	 * wie ein Vorgang ohne Arbeitsvorrats-Satz - man klickt, und nichts
+	 * passiert.
+	 */
 	ok: boolean;
+	/** Grund des Fehlschlags, fuer den Hinweis in der Oberflaeche. */
+	error: string;
 	/** Anzahl offener Saetze insgesamt. */
 	total: number;
 }
@@ -76,24 +112,32 @@ function num(v: unknown): number {
 }
 
 /**
- * Laedt die offenen Arbeitsvorrats-Saetze und gruppiert sie nach
- * Business-Key.
+ * Laedt den Arbeitsvorrat und gruppiert ihn nach Business-Key - offene und
+ * erledigte Saetze getrennt.
  *
  * ⚠ `ok` unterscheidet "geprueft, nichts offen" von "nicht geprueft". Ohne
  * das zeigte eine leere Spalte Entwarnung, wo gar keine Aussage vorliegt -
- * derselbe Fehler, der bei der WA-Pruefung schon einmal drinsteckte.
+ * derselbe Fehler, der bei der WA-Pruefung schon einmal drinsteckte, und die
+ * Haelfte von Punkt 4 ("Knopf reagiert nicht").
  */
 export async function load(oModel: ODataModel | undefined): Promise<ReprocResult> {
-	const oResult: ReprocResult = { map: {}, truncated: false, ok: false, total: 0 };
+	const oResult: ReprocResult = {
+		map: {}, mapDone: {}, truncated: false, ok: false, error: "", total: 0
+	};
 	if (!oModel) {
 		// eslint-disable-next-line no-console
 		console.error("[Arbeitsvorrat] Modell reprocModel nicht vorhanden");
+		oResult.error = "Modell reprocModel nicht vorhanden";
 		return oResult;
 	}
 
 	try {
+		/*
+		 * OHNE Statusfilter - erledigte Saetze sind hier das Ziel, nicht
+		 * Ballast (s. Kopfkommentar). Sortiert nach dem letzten Versuch,
+		 * damit bei erreichter Obergrenze das Juengste drin ist.
+		 */
 		const oBinding = oModel.bindList("/Reproc", undefined, [], [], {
-			$filter: OPEN_FILTER,
 			$orderby: "LastTryAt desc"
 		});
 		const aContexts = await oBinding.requestContexts(0, MAX_ROWS);
@@ -104,6 +148,7 @@ export async function load(oModel: ODataModel | undefined): Promise<ReprocResult
 			if (!sKey) {
 				return;
 			}
+			const sStatus = text(o.Status).trim().toUpperCase();
 			const oEntry: ReprocEntry = {
 				Action: text(o.Action).trim(),
 				ActionText: text(o.ActionText).trim(),
@@ -115,6 +160,10 @@ export async function load(oModel: ODataModel | undefined): Promise<ReprocResult
 				LastTryAt: text(o.LastTryAt),
 				LastMsg: text(o.LastMsg).trim()
 			};
+			if (DONE_STATUS.includes(sStatus)) {
+				(oResult.mapDone[sKey] ??= []).push(oEntry);
+				return;
+			}
 			(oResult.map[sKey] ??= []).push(oEntry);
 			oResult.total += 1;
 		});
@@ -124,6 +173,13 @@ export async function load(oModel: ODataModel | undefined): Promise<ReprocResult
 	} catch (oError) {
 		// eslint-disable-next-line no-console
 		console.error("[Arbeitsvorrat] Laden fehlgeschlagen:", oError);
+		/*
+		 * Der Grund wandert mit nach draussen. Bis 11.09.2026 blieb er in der
+		 * Browserkonsole, und die Oberflaeche zeigte denselben Zustand wie
+		 * "nichts offen" - ein Ausfall des Service sah aus wie Ruhe. Genau
+		 * das ist die wahrscheinlichste Ursache von Punkt 4.
+		 */
+		oResult.error = (oError as Error)?.message ?? "";
 	}
 
 	return oResult;

@@ -1,6 +1,6 @@
 import ODataModel from "sap/ui/model/odata/v4/ODataModel";
 import ResourceBundle from "sap/base/i18n/ResourceBundle";
-import { normalizeMaterial, timestamp, dashIfEmpty } from "./formatter";
+import { normalizeMaterial, timestamp, dashIfEmpty, historyTypeText, historyTypeSide } from "./formatter";
 
 /**
  * Laedt die Detailsicht zu EINER TPA- oder Materialnummer.
@@ -37,9 +37,16 @@ export type KeyKind = "TPA" | "ITEM";
 
 export interface LogEntry {
 	stamp: string;
+	/** Laufende Nummer im Vorgang, fertig formatiert ("1 / 7"). */
+	no: string;
 	logType: string;
 	message: string;
+	/** Sprechender Prozesstext. */
 	process: string;
+	/** Der rohe HISTORY_TYPE - als Tooltip, damit er nicht verlorengeht. */
+	processRaw: string;
+	/** Systemseite: SAP -> HiLIS, HiLIS -> SAP, oder nur SAP. */
+	side: string;
 	http: string;
 	line: string;
 	payload: string;
@@ -212,17 +219,61 @@ async function fetchByCorr(oModel: ODataModel, sCorrUuid: string): Promise<Recor
 	return [];
 }
 
+/**
+ * Systemseite als fertiger Text.
+ *
+ * Der Schluessel kommt aus dem Formatter, der Wortlaut aus i18n - dieselbe
+ * Aufteilung wie in MessageText und ProcessAxis. Ein unbekannter oder
+ * fehlender HISTORY_TYPE liefert LEER, und die Zeile zeigt dann gar keine
+ * Seite: geraten wird nicht.
+ */
+export function sideText(sHistoryType: string, oBundle: ResourceBundle): string {
+	const sKey = historyTypeSide(sHistoryType);
+	if (!sKey) {
+		return "";
+	}
+	return oBundle.getText(`popSide${sKey}`) ?? "";
+}
+
 /** Eine Logzeile in einen Popover-Eintrag - fuer beide Ladewege dieselbe. */
 function toEntry(oBundle: ResourceBundle): (oRow: Record<string, unknown>) => LogEntry {
-	return (oRow) => ({
-		stamp: timestamp(text(oRow.CreatedAtStamp)),
-		logType: text(oRow.LogType),
-		message: text(oRow.Message),
-		process: oBundle.getText("popAttrProcess", [dashIfEmpty(text(oRow.HistoryType))]) ?? "",
-		http: oRow.HttpStatus ? (oBundle.getText("popAttrHttp", [text(oRow.HttpStatus)]) ?? "") : "",
-		line: oRow.OrderLineNr ? (oBundle.getText("popAttrLine", [text(oRow.OrderLineNr)]) ?? "") : "",
-		payload: prettyJson(text(oRow.JsonPayload))
-	});
+	return (oRow) => {
+		const sHist = text(oRow.HistoryType);
+		return {
+			stamp: timestamp(text(oRow.CreatedAtStamp)),
+			// Wird nachtraeglich gesetzt, wenn die Menge vollstaendig ist -
+			// eine Nummer "3 / ?" waere keine.
+			no: "",
+			logType: text(oRow.LogType),
+			message: text(oRow.Message),
+			process: oBundle.getText("popAttrProcess", [
+				sHist ? historyTypeText(sHist) : dashIfEmpty(sHist)
+			]) ?? "",
+			processRaw: sHist,
+			side: sideText(sHist, oBundle),
+			http: oRow.HttpStatus ? (oBundle.getText("popAttrHttp", [text(oRow.HttpStatus)]) ?? "") : "",
+			line: oRow.OrderLineNr ? (oBundle.getText("popAttrLine", [text(oRow.OrderLineNr)]) ?? "") : "",
+			payload: prettyJson(text(oRow.JsonPayload))
+		};
+	};
+}
+
+/**
+ * Numeriert eine FERTIGE, chronologisch aufsteigende Liste durch.
+ *
+ * 🔴 Erst nach dem Sortieren aufrufen. Die Nummer ist eine Aussage ueber die
+ * Reihenfolge - auf einer unsortierten Liste waere sie eine Behauptung.
+ *
+ * Exportiert, weil der Controller die Schritte aus dem Speicher genauso
+ * nummeriert: dieselbe Zaehlung an allen Einstiegen, sonst sagt dieselbe
+ * Meldung je nach Klick eine andere Nummer.
+ */
+export function numberEntries(aLog: LogEntry[]): LogEntry[] {
+	const nTotal = aLog.length;
+	return aLog.map((oEntry, iIndex) => ({
+		...oEntry,
+		no: `${String(iIndex + 1)} / ${String(nTotal)}`
+	}));
 }
 
 /**
@@ -243,7 +294,7 @@ export async function loadCorrDetail(
 	oBundle: ResourceBundle
 ): Promise<KeyDetail> {
 	const aRows = await fetchByCorr(oMainModel, (sCorrUuid ?? "").trim());
-	const aLog = aRows.map(toEntry(oBundle));
+	const aLog = numberEntries(aRows.map(toEntry(oBundle)));
 	return {
 		// Ohne Zahl: die steht in der Panel-Kopfzeile direkt darunter.
 		title: oBundle.getText("popTitleCorr") ?? "",
@@ -294,7 +345,20 @@ export async function loadKeyDetail(
 		MAX_LOG
 	);
 
-	const aLog: LogEntry[] = aLogRows.map(toEntry(oBundle));
+	/*
+	 * 🔴 ABSTEIGEND ABRUFEN, AUFSTEIGEND ANZEIGEN - und das ist kein Umweg.
+	 *
+	 * Angezeigt wird ueberall chronologisch (aelteste zuerst), seit 11.09.2026
+	 * auch hier: vorher sortierte dieselbe Detailsicht je nach Einstieg
+	 * gegenlaeufig, und die Frage "was kam zuerst" bekam zwei verschiedene
+	 * Antworten.
+	 *
+	 * Abgerufen wird trotzdem absteigend, weil die Abfrage bei MAX_LOG
+	 * gedeckelt ist: so behaelt der Deckel die NEUESTEN Zeilen. Wer hier
+	 * aufsteigend abriefe, zeigte bei einem langen Vorgang die aeltesten 100
+	 * und verschwiege ausgerechnet das, was zuletzt passiert ist.
+	 */
+	const aLog: LogEntry[] = numberEntries(aLogRows.slice().reverse().map(toEntry(oBundle)));
 
 	return {
 		title: oBundle.getText(bItem ? "popTitleItem" : "popTitleTpa", [sDisplay]) ?? sDisplay,

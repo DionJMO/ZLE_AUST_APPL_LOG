@@ -28,9 +28,38 @@
  * Ergebnis umgebunden wird.
  */
 
-/** Obergrenze wie beim Chart - der View kennt kein @Aggregation.applySupported. */
+/**
+ * Zielgroesse der Sicht - in VORGAENGEN, nicht in Meldungen.
+ *
+ * 🔴 DIE GRENZE STAND BIS 11.09.2026 IN DER FALSCHEN EINHEIT. Geladen wurden
+ * 5000 MELDUNGEN, und was dabei an Vorgaengen herauskam, war Zufall: bei
+ * dichter Verdichtung 3000, bei lauter Einzelmeldungen 5000. Die Oberflaeche
+ * spricht seit derselben Runde konsequent von Vorgaengen - dann darf die
+ * einzige harte Grenze der Sicht nicht die andere Einheit benutzen.
+ *
+ * Geladen wird jetzt in Bloecken, bis so viele Vorgaenge beisammen sind.
+ */
 // eslint-disable-next-line @sap-ux/fiori-tools/sap-no-global-variable
-export const MAX_ROWS = 5000;
+export const MAX_OPS = 5000;
+
+/** Blockgroesse je Abfrage. */
+// eslint-disable-next-line @sap-ux/fiori-tools/sap-no-global-variable
+export const CHUNK_ROWS = 5000;
+
+/**
+ * Harte Obergrenze in MELDUNGEN - der Schutz hinter dem Vorgangsziel.
+ *
+ * 🔴 OHNE DIE WAERE DAS ZIEL UNBESCHRAENKT. Ein Vorgang kann beliebig viele
+ * Meldungen haben: der Materialstamm-Sammellauf traegt mehrere tausend unter
+ * EINER Korrelations-ID (ZLE_AUST_ITEM_EXPORT ruft reset_correlation( ) nicht,
+ * s. MAX_STEPS). Bestuende der Bestand ueberwiegend aus solchen Gruppen,
+ * muesste man Hunderttausende Zeilen laden, um 5000 Vorgaenge zu erreichen.
+ *
+ * Greift diese Grenze, ist das ein eigener Befund und wird auch so benannt -
+ * nicht als "Sicht gekappt" wie der Normalfall.
+ */
+// eslint-disable-next-line @sap-ux/fiori-tools/sap-no-global-variable
+export const MAX_ROWS = 20000;
 
 /**
  * Ab wann eine Gruppe kein Vorgang mehr ist, sondern ein SAMMELLAUF.
@@ -102,7 +131,11 @@ export interface CascadeResult {
 	rows: CascadeRow[];
 	/** Zeilen gesamt vor der Verdichtung. */
 	sourceCount: number;
-	/** true, wenn MAX_ROWS erreicht wurde - dann ist die Sicht unvollstaendig. */
+	/**
+	 * true, wenn es mehr Meldungen gibt als geladen wurden - dann ist die
+	 * Sicht unvollstaendig. Ermittelt seit 11.09.2026 ueber $count, nicht
+	 * mehr ueber "genau die Obergrenze gelesen, also wohl gekappt".
+	 */
 	truncated: boolean;
 }
 
@@ -203,15 +236,29 @@ function leadRow(aSteps: LogRow[]): LogRow {
 	}, aSteps[0]);
 }
 
+/**
+ * Der Schluessel, unter dem eine Zeile zu einem Vorgang gehoert.
+ *
+ * 🔴 Eine INITIALE Korrelations-ID bedeutet nicht "gehoert zusammen", sondern
+ * "hat keine Klammer" - jede solche Zeile ist ein eigener Vorgang. Wuerde man
+ * sie zusammenfassen, kollabierte der gesamte Altbestand zu EINER Zeile.
+ *
+ * Exportiert, weil der Ladeblock in Main._loadCascades( ) beim Blaettern
+ * mitzaehlen muss, wie viele Vorgaenge schon beisammen sind. Er benutzt
+ * dieselbe Funktion statt die Regel nachzubauen - sonst liefen die beiden
+ * Zaehlungen beim naechsten Anfassen auseinander.
+ */
+export function operationKey(oRow: LogRow, iIndex: number): string {
+	return isInitialUuid(oRow.CorrUuid)
+		? `single:${oRow.LogUuid ?? iIndex}`
+		: `corr:${oRow.CorrUuid}`;
+}
+
 export function group(aRows: LogRow[], bTruncated = false): CascadeResult {
 	const mGroups = new Map<string, LogRow[]>();
 
 	aRows.forEach((oRow, iIndex) => {
-		// Initiale Korrelations-ID -> eigene Gruppe, sonst kollabiert der
-		// gesamte Altbestand zu einer einzigen Zeile.
-		const sKey = isInitialUuid(oRow.CorrUuid)
-			? `single:${oRow.LogUuid ?? iIndex}`
-			: `corr:${oRow.CorrUuid}`;
+		const sKey = operationKey(oRow, iIndex);
 		const aGroup = mGroups.get(sKey);
 		if (aGroup) {
 			aGroup.push(oRow);

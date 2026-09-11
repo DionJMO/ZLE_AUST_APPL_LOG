@@ -21,10 +21,31 @@
 		horizontalScrolling="false"
 		class="sapUiContentPadding">
 
+		<!--
+			🔴 DER HINWEIS IST DER EIGENTLICHE FIX AN PUNKT 4.
+
+			Drei fachlich verschiedene Lagen sahen bis 11.09.2026 gleich aus,
+			naemlich nach nichts: Arbeitsvorrat nicht lesbar, Meldung ohne
+			Vorgangsschluessel, oder schlicht nichts zu tun. Der Hinweis
+			benennt sie - erst damit ist ein Klick, der keine Liste bringt,
+			trotzdem eine Antwort.
+
+			⚠ Warnfarbe, nicht Information: die haeufigste Ursache ist ein
+			nicht erreichbarer Service, und das ist eine Stoerung.
+		-->
+		<MessageStrip
+			id="reprocPopHint"
+			text="{reproc>/hint}"
+			type="Warning"
+			showIcon="true"
+			class="sapUiTinyMarginBottom"
+			visible="{= !!${reproc>/hint} }"/>
+
 		<List
 			id="reprocPopList"
 			items="{path: 'reproc>/entries', templateShareable: false}"
-			noDataText="{i18n>reprocPopNone}">
+			noDataText="{i18n>reprocPopNone}"
+			visible="{= ${reproc>/entries}.length > 0 }">
 
 			<CustomListItem id="reprocPopItem">
 				<l:HorizontalLayout id="reprocPopRow" class="sapUiSmallMargin">
@@ -68,6 +89,52 @@
 				</l:HorizontalLayout>
 			</CustomListItem>
 
+		</List>
+
+		<!--
+			ERLEDIGTE SAETZE - der Abgleich "Fehler behoben?".
+
+			Getrennt von den offenen und ohne Wiederanstoss-Knopf: hier ist
+			nichts mehr zu tun, hier steht nur, DASS und WANN es erledigt
+			wurde. Bis 11.09.2026 wurden diese Saetze gar nicht geladen, der
+			Abgleich war damit unmoeglich.
+		-->
+		<Title
+			id="reprocPopDoneTitle"
+			level="H5"
+			text="{i18n>reprocPopDone}"
+			class="sapUiSmallMarginTop"
+			visible="{= ${reproc>/done}.length > 0 }"/>
+		<List
+			id="reprocPopDoneList"
+			items="{path: 'reproc>/done', templateShareable: false}"
+			showSeparators="Inner"
+			visible="{= ${reproc>/done}.length > 0 }">
+			<CustomListItem id="reprocPopDoneItem">
+				<VBox id="reprocPopDoneBox" class="sapUiSmallMargin" width="27rem">
+					<Title
+						id="reprocPopDoneAction"
+						level="H5"
+						text="{parts: ['reproc>ActionText', 'reproc>Action'], formatter: '.formatter.reprocAction'}"
+						tooltip="{reproc>Action}"/>
+					<ObjectStatus
+						id="reprocPopDoneStatus"
+						class="sapUiTinyMarginTop"
+						text="{parts: ['reproc>Status', 'reproc>TryCount', 'reproc>MaxCount'], formatter: '.formatter.reprocStatusTries'}"
+						state="Success"
+						icon="sap-icon://sys-enter-2"/>
+					<Text
+						id="reprocPopDoneWhen"
+						class="sapUiTinyMarginTop"
+						text="{parts: ['i18n>reprocPopLastTry', 'reproc>LastTryAt'], formatter: '.formatter.labelledTimestamp'}"/>
+					<Text
+						id="reprocPopDoneMsg"
+						class="sapUiTinyMarginTop"
+						wrapping="true"
+						text="{path: 'reproc>LastMsg', formatter: '.formatter.messageDisplay'}"
+						tooltip="{reproc>LastMsg}"/>
+				</VBox>
+			</CustomListItem>
 		</List>
 
 		<endButton>

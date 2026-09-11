@@ -60,6 +60,30 @@ export default class Component extends UIComponent {
 			// Reiterzustand der Meldungssicht. selectedType leer = alle Typen.
 			selectedProcess: ProcessAxis.KEY_DEFAULT,
 			selectedType: "",
+			/*
+			 * Tagesfilter der Vorgangssicht, ISO-Datum oder leer.
+			 *
+			 * Gesetzt wird er durch einen Klick im Verlauf oder ueber die
+			 * Adresse (?dt=2026-09-11). Der Wert ist damit von Hand tippbar -
+			 * _msgFilters( ) prueft ihn deshalb gegen ein Muster, bevor er in
+			 * einen $filter geht.
+			 */
+			selectedDay: "",
+			/*
+			 * Werte der Spaltentrichter. Sie liegen im ui-Modell und nicht in
+			 * der Tabellenbindung, weil sie SERVERSEITIG wirken - der
+			 * eingebaute Spaltenfilter wuerde nur die geladenen 5000 Zeilen
+			 * durchsuchen und bei einem Treffer dahinter faelschlich
+			 * "nichts gefunden" melden.
+			 */
+			filterItem: "",
+			filterTpa: "",
+			filterMessage: "",
+			// Sichtbare Fassung des Filterzustands, gebaut in
+			// Main._syncFilterChips( ). Leeres Array statt undefined, damit
+			// die Sichtbarkeitsbindung der Leiste beim ersten Rendern schon
+			// eine Laenge hat.
+			filterChips: [],
 			// Beide auch hier, damit sie nie undefined sind - sie stehen in
 			// der URL und werden von dort zurueckgeschrieben.
 			searchTerm: "",

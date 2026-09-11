@@ -1,6 +1,6 @@
 import ODataModel from "sap/ui/model/odata/v4/ODataModel";
 import ResourceBundle from "sap/base/i18n/ResourceBundle";
-import { normalizeMaterial, quantityOrDash } from "./formatter";
+import { normalizeMaterial, quantityOrDash, dateText, dateTimeText } from "./formatter";
 
 /**
  * Phase 2 des Detail-Popovers: die SAP-Felder, die im Log nicht stehen.
@@ -353,7 +353,61 @@ function tanumFrom(sValue: string): string {
  *
  * Alle Zeilen tragen dieselben Kopfdaten - die erste genuegt.
  */
-function headerFields(oRow: Record<string, unknown> | undefined, oBundle: ResourceBundle): SapField[] {
+/**
+ * Wann wurde der TA quittiert - mit Uhrzeit.
+ *
+ * 🔴 DIE UHRZEIT GIBT ES AM KOPF NICHT. `ZLE_AUST_I_TAPOS` fuehrt aus LTAK
+ * nur `qdatu` (OrderConfirmationDate); ein Quittier-ZEIT-Feld ist dort nicht
+ * enthalten. Auf POSITIONSEBENE liegen dagegen beide Felder im Service
+ * (LTAP-QDATU/QZEIT als ConfirmationDate/ConfirmationTime) - und wurden bis
+ * 11.09.2026 nirgends angezeigt.
+ *
+ * Ein TA ist quittiert, wenn seine letzte Position quittiert ist. Die
+ * Uhrzeit ist damit die SPAETESTE Positionsquittierung - das ist keine
+ * Schaetzung, sondern dieselbe Definition, die LTAK-KQUIT setzt.
+ *
+ * ⚠ Das Datum bleibt IMMER das des Kopfes. Weicht das abgeleitete Datum ab
+ * (Positionen ueber Mitternacht, archivierte Positionen), wird die Uhrzeit
+ * weggelassen statt das Kopfdatum zu ueberschreiben: eine fehlende Uhrzeit
+ * ist harmlos, ein erfundenes Quittierdatum nicht.
+ *
+ * ✅ AM SYSTEM GEPRUEFT (11.09.2026): das Feld QZEIT gibt es in LTAP, LTAP2
+ * und LTAP_VB - in LTAK NICHT. Die Ableitung ist damit kein Behelf, bis
+ * jemand ein Feld nachzieht, sondern der einzige Weg: eine TA-Quittierzeit
+ * existiert in SAP nur als Zeit ihrer letzten Position.
+ */
+function orderConfirmedAt(
+	oHeaderRow: Record<string, unknown>,
+	aAllRows: Record<string, unknown>[]
+): string {
+	const sHeaderDate = text(oHeaderRow.OrderConfirmationDate).trim();
+	if (!sHeaderDate) {
+		return "";
+	}
+
+	let sLatest = "";
+	aAllRows.forEach((oItem) => {
+		if (!isFlagged(oItem.ItemIsConfirmed)) {
+			return;
+		}
+		// ISO-Datum plus hh:mm:ss sortiert als Zeichenkette richtig.
+		const sStamp = `${text(oItem.ConfirmationDate).trim()} ${text(oItem.ConfirmationTime).trim()}`;
+		if (sStamp.trim() && sStamp > sLatest) {
+			sLatest = sStamp;
+		}
+	});
+
+	const [sDay, sTime] = sLatest.split(" ");
+	return sDay === sHeaderDate
+		? dateTimeText(sHeaderDate, sTime)
+		: dateText(sHeaderDate);
+}
+
+function headerFields(
+	oRow: Record<string, unknown> | undefined,
+	oBundle: ResourceBundle,
+	aAllRows: Record<string, unknown>[] = []
+): SapField[] {
 	if (!oRow) {
 		return [];
 	}
@@ -364,15 +418,14 @@ function headerFields(oRow: Record<string, unknown> | undefined, oBundle: Resour
 	pushIf(aFields, field(oBundle, "sapHdrMovement",
 		sWm && sMm ? `${sWm} / ${sMm}` : (sWm || sMm)));
 
-	const sDate = text(oRow.CreationDate).trim();
-	const sTime = text(oRow.CreationTime).trim();
-	pushIf(aFields, field(oBundle, "sapHdrCreated", [sDate, sTime].filter((x) => x).join(" ")));
+	pushIf(aFields, field(oBundle, "sapHdrCreated",
+		dateTimeText(text(oRow.CreationDate), text(oRow.CreationTime))));
 	pushIf(aFields, field(oBundle, "sapHdrCreatedBy", text(oRow.CreatedByUser)));
 
 	const bConf = isFlagged(oRow.OrderIsConfirmed);
 	pushIf(aFields, field(oBundle, "sapHdrConfirmed",
 		oBundle.getText(bConf ? "sapHdrConfirmedYes" : "sapHdrConfirmedNo",
-			bConf ? [text(oRow.OrderConfirmationDate).trim() || "?"] : undefined) ?? "",
+			bConf ? [orderConfirmedAt(oRow, aAllRows) || "?"] : undefined) ?? "",
 		bConf ? "Success" : "Warning"));
 
 	pushIf(aFields, field(oBundle, "sapHdrItems", text(oRow.NumberOfItems)));
@@ -396,7 +449,7 @@ function headerFields(oRow: Record<string, unknown> | undefined, oBundle: Resour
 	 * auch wenn es fuer sich genommen unscheinbar ist.
 	 */
 	pushIf(aFields, field(oBundle, "sapHdrPrintInd", text(oRow.PrintIndicator)));
-	pushIf(aFields, field(oBundle, "sapHdrDeliveryDate", text(oRow.DeliveryDate)));
+	pushIf(aFields, field(oBundle, "sapHdrDeliveryDate", dateText(text(oRow.DeliveryDate))));
 
 	return aFields;
 }
@@ -450,8 +503,17 @@ async function loadTransferOrder(
 		];
 
 		const aAttrs: SapField[] = [];
-		pushIf(aAttrs, field(oBundle, "sapLblGr", text(oRow.GoodsReceiptDate)));
-		pushIf(aAttrs, field(oBundle, "sapLblBbd", text(oRow.ShelfLifeExpirationDate)));
+		/*
+		 * Der Quittierzeitpunkt steht seit 11.09.2026 hier. Die Felder lagen
+		 * schon immer im Service (LTAP-QDATU/QZEIT), wurden aber nirgends
+		 * angezeigt - die Zeile sagte nur "quittiert von X", nicht wann. Er
+		 * steht VOR den Stammdaten der Position, weil er zum Status gehoert.
+		 */
+		pushIf(aAttrs, field(oBundle, "sapLblConfirmedAt", bConfirmed
+			? dateTimeText(text(oRow.ConfirmationDate), text(oRow.ConfirmationTime))
+			: ""));
+		pushIf(aAttrs, field(oBundle, "sapLblGr", dateText(text(oRow.GoodsReceiptDate))));
+		pushIf(aAttrs, field(oBundle, "sapLblBbd", dateText(text(oRow.ShelfLifeExpirationDate))));
 		pushIf(aAttrs, field(oBundle, "sapLblBatch", text(oRow.Batch)));
 		pushIf(aAttrs, field(oBundle, "sapLblSpecial", text(oRow.SpecialStockNumber)));
 		pushIf(aAttrs, field(oBundle, "sapLblDelivery", text(oRow.DeliveryDocument)));
@@ -489,7 +551,10 @@ async function loadTransferOrder(
 		};
 	}
 
-	return { header: headerFields(aRows[0], oBundle), rows: aItems };
+	// Alle Zeilen mitgeben: die Kopfdaten stehen zwar in jeder, die
+	// QuittierZEIT des TA laesst sich aber nur ueber alle Positionen
+	// bestimmen (s. orderConfirmedAt).
+	return { header: headerFields(aRows[0], oBundle, aRows), rows: aItems };
 }
 
 /**

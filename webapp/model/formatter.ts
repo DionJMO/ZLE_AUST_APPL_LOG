@@ -1,5 +1,5 @@
-import { isInitialUuid } from "./CascadeGrouper";
 import { positionFrom } from "./BusinessKey";
+import * as LogTypeAxis from "./LogTypeAxis";
 import DateFormat from "sap/ui/core/format/DateFormat";
 import NumberFormat from "sap/ui/core/format/NumberFormat";
 import * as MessageText from "./MessageText";
@@ -195,6 +195,24 @@ export function quantityOrDash(vValue?: string | number | null): string {
 }
 
 /**
+ * Anzahlen mit Tausendertrennung.
+ *
+ * Betrifft die Saetze ueber Obergrenzen ("von 18.442 Meldungen sind 5.000
+ * geladen"). Vierstellige Zahlen ohne Trennung sind in einem Fliesstext
+ * schwer zu ueberfliegen, und genau dort steht die Zahl.
+ *
+ * Wie bei quantityOrDash entsteht die Instanz im Aufruf, nicht auf
+ * Modulebene - sap-no-global-variable.
+ */
+export function countText(vValue?: number | string | null): string {
+	const nValue = typeof vValue === "number" ? vValue : Number(vValue);
+	if (!Number.isFinite(nValue)) {
+		return "";
+	}
+	return NumberFormat.getIntegerInstance({ groupingEnabled: true }).format(nValue);
+}
+
+/**
  * Abbildung der CDS-Kritikalitaet auf Fiori-Semantik (1 negativ,
  * 2 kritisch, 3 positiv, 0 neutral). Gegen String-Werte abgesichert,
  * weil Edm.Byte je nach Bindung als "1" ankommen kann.
@@ -251,6 +269,66 @@ export function timestamp(vValue?: string | Date | null): string {
 		return String(vValue);
 	}
 	return oTimestampFormat.format(oDate);
+}
+
+/**
+ * Ein SAP-Datum (Edm.Date, "2026-09-11") in deutscher Schreibweise.
+ *
+ * 🔴 REINE ZEICHENARBEIT, BEWUSST OHNE Date-OBJEKT. Edm.Date und
+ * Edm.TimeOfDay tragen KEINE Zeitzone; ein new Date("2026-09-11") liest den
+ * Wert als UTC-Mitternacht und zeigt ihn in westlichen Zeitzonen als
+ * Vortag. Genau dieser Fehler steckte im Dashboard schon einmal
+ * (targetType-Falle bei Edm.DateTimeOffset) - hier gar nicht erst
+ * aufmachen.
+ *
+ * Passt der Wert nicht ins Muster, bleibt er unveraendert: eine unbekannte
+ * Schreibweise anzuzeigen ist besser, als sie zu verstuemmeln.
+ */
+export function dateText(sDate?: string | null): string {
+	const sRaw = (sDate ?? "").trim();
+	const aMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(sRaw);
+	return aMatch ? `${aMatch[3]}.${aMatch[2]}.${aMatch[1]}` : sRaw;
+}
+
+/**
+ * Datum und Uhrzeit aus zwei getrennten SAP-Feldern (DATS + TIMS).
+ *
+ * Gebraucht fuer den TA-Kopf und die Quittierung der Positionen: LTAK und
+ * LTAP fuehren Datum und Zeit als zwei Felder, und die App zeigte bisher nur
+ * das Datum bzw. beide unformatiert nebeneinander.
+ *
+ * Fehlt die Zeit, bleibt es beim Datum - nicht "11.09.2026, " mit offenem
+ * Komma. Fehlt das Datum, ist eine Uhrzeit allein wertlos und faellt weg.
+ */
+export function dateTimeText(sDate?: string | null, sTime?: string | null): string {
+	const sDay = dateText(sDate);
+	if (!sDay) {
+		return "";
+	}
+	const sClock = (sTime ?? "").trim();
+	// Nur "hh:mm:ss" bzw. "hh:mm" anhaengen. Die Initialzeit 00:00:00 steht
+	// in SAP fuer "nicht gesetzt" und wuerde eine Genauigkeit vortaeuschen.
+	if (!/^\d{2}:\d{2}(:\d{2})?$/.test(sClock) || sClock.startsWith("00:00:00")) {
+		return sDay;
+	}
+	return `${sDay}, ${sClock}`;
+}
+
+/**
+ * Kopfzeile eines Schritts in der Detailsicht: Nummer und Zeitpunkt.
+ *
+ * Die Nummer steht VOR dem Zeitstempel, weil die Frage lautet „welche kam
+ * zuerst" - dafuer will man die Ordnungszahl finden, ohne den Zeitstempel zu
+ * lesen. Fehlt die Nummer (aeltere Aufrufer), bleibt es beim Zeitstempel
+ * allein, statt dass ein Trennzeichen ins Leere zeigt.
+ */
+export function stepIntro(sNo?: string | null, sStamp?: string | null): string {
+	const sNumber = (sNo ?? "").trim();
+	const sTime = (sStamp ?? "").trim();
+	if (!sNumber) {
+		return sTime;
+	}
+	return sTime ? `${sNumber} · ${sTime}` : sNumber;
 }
 
 /**
@@ -351,17 +429,13 @@ export function keyTypeText(sKeyType?: string | null): string {
 	}
 }
 
-/**
- * Gehoert die Zeile zu einem echten Vorgang?
- *
- * Altbestand traegt eine INITIALE Korrelations-ID - dort fuehrte der Sprung
- * ins Leere. Die Erkennung kommt aus CascadeGrouper und wird bewusst nicht
- * nachgebaut: sie muss mit der Gruppierung uebereinstimmen, sonst zeigte die
- * eine Stelle einen Vorgang an, den die andere nicht kennt.
+/*
+ * ℹ hasCorrelation( ) ist am 11.09.2026 entfallen. Sie steuerte die
+ * Sichtbarkeit des Uhrsymbols, und das Symbol gibt es nicht mehr (die Spalte
+ * "Schritte" nimmt jetzt selbst den vollstaendigen Weg). Die Pruefung selbst
+ * lebt weiter - onCascadePress( ) ruft CascadeGrouper.isInitialUuid( )
+ * direkt, also dieselbe Quelle wie die Gruppierung.
  */
-export function hasCorrelation(sCorrUuid?: string | null): boolean {
-	return !isInitialUuid(sCorrUuid);
-}
 
 /**
  * Klartext zum Status eines Arbeitsvorrats-Satzes.
@@ -469,13 +543,15 @@ export function reprocLabel(
 	return a.length === 1 ? reprocStatusText(a[0].Status) : `${a.length} Aktionen`;
 }
 
-/** Gibt es zu diesem Schluessel ueberhaupt etwas anzustossen? */
-export function hasReproc(
-	sBusinessKey?: string | null,
-	oMap?: Record<string, unknown[]> | null
-): boolean {
-	return reprocEntries(sBusinessKey, oMap).length > 0;
-}
+/*
+ * ℹ hasReproc( ) ist am 11.09.2026 entfallen.
+ *
+ * Sie steuerte die Klickbarkeit der Vorgangsspalte - und war damit die
+ * Ursache der Rueckmeldung "Vorgang neu anstoßen ist kaputt": ohne offenen
+ * Satz war die Zelle tot, sah aber aus wie jede andere, und ein Fehlschlag
+ * beim Laden des Arbeitsvorrats legte still ALLE Zellen lahm. Die Zelle ist
+ * jetzt immer anklickbar, und das Popover sagt, was los ist.
+ */
 
 /**
  * Tooltip der Spalte: alle Saetze zum Schluessel, einer je Zeile.
@@ -591,6 +667,47 @@ export function isMessageView(sProcess?: string | null): boolean {
 	return !NON_MESSAGE_VIEWS.includes((sProcess ?? "").trim());
 }
 
+/**
+ * Der Typschluessel, unter dem der Segmentknopf gedrueckt erscheint.
+ *
+ * E und W fallen beide auf das Buendel "EW" zurueck - sonst saehe die Leiste
+ * nach einer Verfeinerung ueber den Spaltentrichter (oder bei einem alten
+ * Link ?t=E) so aus, als waere gar kein Typfilter gesetzt.
+ *
+ * Die Zuordnung selbst steht in LogTypeAxis; hier ist nur die Bruecke zur
+ * XML-Bindung.
+ */
+export function typeGroupKey(sType?: string | null): string {
+	return LogTypeAxis.groupKey(sType);
+}
+
+/**
+ * Tooltip der Reiterzahl - sagt, WAS dort gezaehlt wurde.
+ *
+ * Die Zahl ist normalerweise eine Vorgangszahl (serverseitig ueber
+ * $apply=groupby). Weist der Service $apply zurueck, faellt der Zaehler auf
+ * Meldungen zurueck - dann steht am Reiter eine groessere Zahl als in der
+ * Tabelle, und das muss DASTEHEN statt stillschweigend zu passieren.
+ */
+export function tabCountTooltip(
+	bAreOps?: boolean | null,
+	sOps?: string | null,
+	sMessages?: string | null
+): string {
+	return (bAreOps === false ? (sMessages ?? "") : (sOps ?? "")).trim();
+}
+
+/**
+ * Sichtbarkeit des Obergrenzen-Hinweises der Vorgangssicht.
+ *
+ * Zwei Bedingungen, und die erste geht ueber isMessageView statt ueber drei
+ * Literalvergleiche im XML - sonst stuende die Reiterliste ein viertes Mal
+ * da und wuerde beim naechsten neuen Reiter genauso vergessen wie MATCMP.
+ */
+export function cascadeCutVisible(sProcess?: string | null, bTruncated?: boolean | null): boolean {
+	return isMessageView(sProcess) && bTruncated === true;
+}
+
 
 /*
  * Klartext fuer HISTORY_TYPE.
@@ -604,6 +721,26 @@ export function isMessageView(sProcess?: string | null): boolean {
  * ⚠ Die PICK-*-Bedeutungen sind aus ZCL_ZLE_AUST_MOD_OU_TPA abgeleitet
  * (Punkt 10: Auftragstyp, WA-Buchung, TPA-Druck), nicht aus einer
  * Wertebeschreibung - es gibt keine.
+ *
+ * 🔴 DIESE TABELLE WAR BIS 11.09.2026 TOT UND VERALTET. historyTypeText( )
+ * wurde von keiner einzigen Stelle aufgerufen (geprueft: im ganzen Projekt
+ * nur Selbstbezuege in Kommentaren) - die Oberflaeche zeigte den Rohwert.
+ * Beim Beleben fiel auf, dass NEUN Werte fehlten, die das Backend heute
+ * erzeugt, waehrend drei Eintraege auf die vor der Umbenennung gueltigen
+ * PICK-*-Werte zeigten.
+ *
+ * ✅ GEGEN DAS SYSTEM GEPRUEFT (11.09.2026, ZCL_ZLE_AUST_TO_UTIL Zeilen
+ * 26-51): das Backend kennt heute GENAU 18 Werte, und alle 18 stehen hier.
+ * Ein Volltextlauf ueber die 64 Paketobjekte nach "hist_type =" ergab 29
+ * Zuweisungen, allesamt ueber die co_hist_*-Konstanten - KEIN einziger
+ * Inline-Wert. Die Liste ist damit vollstaendig, nicht bloss ergaenzt.
+ *
+ * ⚠ DIE UEBRIGEN EINTRAEGE BLEIBEN TROTZDEM STEHEN, und zwar aus einem
+ * Grund, der nichts mit Vorsicht zu tun hat: das Anwendungsprotokoll ist
+ * eine HISTORIE. Saetze, die vor der Umbenennung geschrieben wurden, tragen
+ * weiterhin PICK-ORDCAT, IB_ADDLN, ITEM_UPDATE und so fort. Wer die Texte
+ * loescht, macht genau die alten Zeilen unlesbar, zu deren Deutung diese
+ * Tabelle da ist.
  */
 /* eslint-disable @sap-ux/fiori-tools/sap-no-global-variable */
 const HIST_TEXT: Record<string, string> = {
@@ -617,19 +754,61 @@ const HIST_TEXT: Record<string, string> = {
 	IB_ADDLN:   "Einlagerung Zeile ergänzen",
 	IB_UPDATE:  "Einlagerung ändern",
 	IB_CANCLN:  "Einlagerung Zeile stornieren",
+	// Rueckmeldung von HiLIS auf eine Einlagerung (Provider-Seite).
+	IB_CONFIRM_IN: "Einlagerung: Rückmeldung von HiLIS",
 	OB_CREATE:  "Auslagerung anlegen",
 	OB_CANCEL:  "Auslagerung stornieren",
 	OB_CONFIRM: "Auslagerung quittieren",
+	OB_GET:     "Auslagerung lesen",
+	OB_STAT:    "Auslagerung Status",
+	OB_UPDATE:  "Auslagerung ändern",
+	OB_CONFIRM_IN: "Auslagerung: Rückmeldung von HiLIS",
+	/*
+	 * Die drei Folgeschritte NACH der Quittierung. Sie hiessen bis zur
+	 * Umbenennung PICK-ORDCAT / PICK-WA-BUCHUNG / PICK-TPA-DRUCK - die alten
+	 * Namen stehen unten noch, weil aeltere Logsaetze sie tragen.
+	 */
+	OB_ORDCAT:     "Auslagerung: Auftragstyp ermitteln",
+	OB_WA_BUCHUNG: "Auslagerung: Warenausgang buchen",
+	OB_TPA_DRUCK:  "Auslagerung: TPA drucken",
 	ITEM_GET:    "Material lesen",
 	ITEM_LIST:   "Materialliste",
 	ITEM_CREATE: "Material anlegen",
 	ITEM_UPDATE: "Material ändern",
 	ITEM_DELETE: "Material löschen",
 	ITEM_IMG:    "Materialbild",
+	ITEM_SYNC:   "Materialstamm abgleichen",
 	"PICK-ORDCAT":     "Pick: Auftragstyp",
 	"PICK-WA-BUCHUNG": "Pick: Warenausgangsbuchung",
 	"PICK-TPA-DRUCK":  "Pick: TPA-Druck",
 	STOCKCORRECTION:   "Bestandskorrektur"
+};
+
+/**
+ * Systemseite je HISTORY_TYPE - die zweite Haelfte der Rueckmeldung
+ * („prozess sprechend auf welcher system seite hilis oder sap ist").
+ *
+ * Drei Werte, nicht zwei:
+ *   OUT  SAP ruft HiLIS (anlegen, aendern, stornieren, lesen)
+ *   IN   HiLIS ruft SAP zurueck (Provider-Seite, *_CONFIRM_IN)
+ *   SAP  laeuft ganz in SAP ab - die Folgeschritte nach der Quittierung
+ *        beruehren HiLIS gar nicht, und sie als "SAP -> HiLIS" zu
+ *        beschriften waere falsch, nicht nur ungenau.
+ *
+ * Hier stehen nur die AUSNAHMEN. Alles Uebrige ist OUT, weil die App
+ * ueberwiegend Aufrufe an HiLIS protokolliert - eine vollstaendige Liste
+ * muesste bei jedem neuen Wert nachgezogen werden und waere beim ersten
+ * Vergessen still falsch.
+ */
+const HIST_SIDE: Record<string, "IN" | "SAP"> = {
+	IB_CONFIRM_IN: "IN",
+	OB_CONFIRM_IN: "IN",
+	OB_ORDCAT:     "SAP",
+	OB_WA_BUCHUNG: "SAP",
+	OB_TPA_DRUCK:  "SAP",
+	"PICK-ORDCAT":     "SAP",
+	"PICK-WA-BUCHUNG": "SAP",
+	"PICK-TPA-DRUCK":  "SAP"
 };
 /* eslint-enable @sap-ux/fiori-tools/sap-no-global-variable */
 
@@ -645,9 +824,24 @@ const HIST_TEXT: Record<string, string> = {
 export function historyTypeText(sHistoryType?: string | null): string {
 	const sRaw = (sHistoryType ?? "").trim();
 	if (!sRaw) {
-		return "–";
+		return DASH;
 	}
 	return HIST_TEXT[sRaw.toUpperCase()] ?? sRaw;
+}
+
+/**
+ * Systemseite als Schluessel: "OUT" | "IN" | "SAP" | "" (unbekannt).
+ *
+ * Leer bleibt es nur bei leerem HISTORY_TYPE - und das ist nach O-27 der
+ * haeufigste Fall, solange die WM-Trigger das Feld nicht fuellen. Dann steht
+ * die Zeile ohne Seitenangabe da, und das ist richtig: geraten wird nicht.
+ */
+export function historyTypeSide(sHistoryType?: string | null): string {
+	const sRaw = (sHistoryType ?? "").trim().toUpperCase();
+	if (!sRaw) {
+		return "";
+	}
+	return HIST_SIDE[sRaw] ?? "OUT";
 }
 
 /**
@@ -729,11 +923,36 @@ export function messageDisplay(sMessage?: string | null): string {
  * Die Luecke ist bekannt und wird ueber die Kennzahl "Ohne Business-Key"
  * gemessen (Michaels P17) - sie soll sichtbar bleiben, nicht verschwinden.
  */
-function resolvedKind(sIsResolved?: string | null, sBusinessKey?: string | null): string {
+function resolvedKind(
+	sIsResolved?: string | null,
+	sBusinessKey?: string | null,
+	oMapDone?: Record<string, unknown[]> | null
+): string {
 	if ((sBusinessKey ?? "").trim() === "") {
 		return "unknown";
 	}
-	return (sIsResolved ?? "").trim().toUpperCase() === "X" ? "resolved" : "open";
+	if ((sIsResolved ?? "").trim().toUpperCase() === "X") {
+		return "resolved";
+	}
+	/*
+	 * 🔴 DER ABGLEICH MIT DEM ARBEITSVORRAT, und er kommt NACH IsResolved.
+	 *
+	 * Zwei Quellen sagen etwas ueber denselben Vorgang:
+	 *   IsResolved  "die juengste MELDUNG zu diesem Schluessel ist ein
+	 *               Erfolg" (ZLE_AUST_I_LOG_STATE)
+	 *   mapDone     "der Arbeitsvorrat hat den Satz abgeschlossen"
+	 *               (ZLE_AUST_REPROC, Status D oder C)
+	 *
+	 * Das Log hat Vorrang, weil es die feinere Aussage ist - es sagt, dass
+	 * zuletzt tatsaechlich etwas gelungen ist. Der neue Zustand greift genau
+	 * in der Luecke: Log sagt noch "offen", der Arbeitsvorrat sagt
+	 * "erledigt". Das ist der Fall, den die App bis 11.09.2026 gar nicht
+	 * zeigen KONNTE, weil erledigte Saetze nie geladen wurden.
+	 */
+	if (reprocEntries(sBusinessKey, oMapDone).length > 0) {
+		return "doneByReproc";
+	}
+	return "open";
 }
 
 /**
@@ -757,31 +976,67 @@ export function resolvedTooltip(
 	sOpen?: string | null,
 	sUnknown?: string | null,
 	oMap?: Record<string, { Action?: string; ActionText?: string; Status?: string }[]> | null,
-	sNone?: string | null
+	oMapDone?: Record<string, { Action?: string; ActionText?: string; Status?: string }[]> | null,
+	sDoneByReproc?: string | null
 ): string {
-	const sKind = resolvedKind(sIsResolved, sBusinessKey);
+	const sKind = resolvedKind(sIsResolved, sBusinessKey, oMapDone);
 	let sHead = sUnknown ?? "";
 	if (sKind === "resolved") {
 		sHead = sResolved ?? "";
+	} else if (sKind === "doneByReproc") {
+		sHead = sDoneByReproc ?? "";
 	} else if (sKind === "open") {
 		sHead = sOpen ?? "";
 	}
-	const sBody = reprocTooltip(sBusinessKey, oMap, sNone);
+	/*
+	 * Bei "ueber den Arbeitsvorrat erledigt" nennt die zweite Zeile die
+	 * ERLEDIGTEN Saetze - das ist der Beleg fuer die Aussage der ersten.
+	 * Sonst die offenen, also das, was noch zu tun ist.
+	 *
+	 * ⚠ Der frueher hier uebergebene Ersatztext ("Kein Eintrag im
+	 * Arbeitsvorrat") ist entfallen. Er fuellte den Tooltip, wenn es nichts
+	 * zu zeigen gab - noetig war das, solange ein Klick auf die Zelle in
+	 * diesem Fall WORTLOS nichts tat. Seit die Zelle immer antwortet, steht
+	 * die Auskunft im Popover, und der Tooltip bleibt bei der einen Zeile,
+	 * die er sicher sagen kann.
+	 */
+	const sBody = sKind === "doneByReproc"
+		? reprocTooltip(sBusinessKey, oMapDone, "")
+		: reprocTooltip(sBusinessKey, oMap, "");
 	return [sHead.trim(), sBody.trim()].filter((x) => x !== "").join("\n");
 }
 
-export function resolvedState(sIsResolved?: string | null, sBusinessKey?: string | null): string {
-	const sKind = resolvedKind(sIsResolved, sBusinessKey);
-	if (sKind === "resolved") {
+export function resolvedState(
+	sIsResolved?: string | null,
+	sBusinessKey?: string | null,
+	oMapDone?: Record<string, unknown[]> | null
+): string {
+	const sKind = resolvedKind(sIsResolved, sBusinessKey, oMapDone);
+	if (sKind === "resolved" || sKind === "doneByReproc") {
 		return "Success";
 	}
 	return sKind === "open" ? "Warning" : "None";
 }
 
-export function resolvedIcon(sIsResolved?: string | null, sBusinessKey?: string | null): string {
-	const sKind = resolvedKind(sIsResolved, sBusinessKey);
+export function resolvedIcon(
+	sIsResolved?: string | null,
+	sBusinessKey?: string | null,
+	oMapDone?: Record<string, unknown[]> | null
+): string {
+	const sKind = resolvedKind(sIsResolved, sBusinessKey, oMapDone);
 	if (sKind === "resolved") {
 		return "sap-icon://sys-enter-2";
+	}
+	/*
+	 * Eigenes Symbol, nicht derselbe Haken: "im Log als Erfolg beendet" und
+	 * "vom Arbeitsvorrat abgeschlossen" sind zwei verschiedene Auskuenfte,
+	 * und wer sie gleich darstellt, verliert genau die Unterscheidung, um
+	 * derentwillen der Abgleich gebaut wurde. Das Kreispfeil-Symbol ist
+	 * dasselbe wie am Wiederanstoss-Knopf - es sagt "hier hat ein
+	 * Wiederanstoss gewirkt".
+	 */
+	if (sKind === "doneByReproc") {
+		return "sap-icon://restart";
 	}
 	return sKind === "open" ? "sap-icon://pending" : "sap-icon://question-mark";
 }

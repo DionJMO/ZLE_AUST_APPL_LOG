@@ -15,6 +15,8 @@ import * as KpiLoader from "../model/KpiLoader";
 import * as ChartColors from "../model/ChartColors";
 import * as MessageText from "../model/MessageText";
 import * as ProcessAxis from "../model/ProcessAxis";
+import * as LogTypeAxis from "../model/LogTypeAxis";
+import * as FilterChips from "../model/FilterChips";
 import * as KeyDetailLoader from "../model/KeyDetailLoader";
 import * as CascadeGrouper from "../model/CascadeGrouper";
 import * as ViewDefaults from "../model/ViewDefaults";
@@ -154,7 +156,10 @@ export default class Main extends BaseController {
 		t: "/selectedType",
 		q: "/searchTerm",
 		o: "/openOnly",
-		d: "/chartDays"
+		d: "/chartDays",
+		// "dt" und nicht "d": das ist mit dem Zeitfenster des Verlaufs
+		// belegt. Zwei Zeichen brechen das Kurzschluessel-Prinzip nicht.
+		dt: "/selectedDay"
 	};
 
 	/**
@@ -352,7 +357,8 @@ export default class Main extends BaseController {
 	public onProcessTabSelect(oEvent: Event): void {
 		const sKey = oEvent.getParameter("key" as never) as unknown as string;
 		this.getUiModel().setProperty("/selectedProcess", sKey);
-		this._applyMsgFilter();
+		// Prozess/Suche/"Nur offene" gelten auch fuer den Verlauf.
+		this._applyMsgFilter(true);
 	}
 
 	/**
@@ -369,14 +375,30 @@ export default class Main extends BaseController {
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 		const oSource = oEvent.getSource() as Control;
 		const sKey = String(oSource.getBindingContext("cascade")?.getProperty("BusinessKey") ?? "").trim();
-		if (!sKey) {
-			return;
-		}
 
+		/*
+		 * 🔴 KEIN FRUEHER AUSSTIEG MEHR. Bis 11.09.2026 kehrte die Methode bei
+		 * leerem Schluessel wortlos um - zusammen mit der bedingten
+		 * Klickbarkeit war das die Rueckmeldung "Funktion ist kaputt": in drei
+		 * verschiedenen Lagen (kein Schluessel, kein Satz, Arbeitsvorrat nicht
+		 * lesbar) passierte dasselbe, naemlich nichts.
+		 *
+		 * Jetzt oeffnet sich das Popover immer und sagt, welche der drei Lagen
+		 * vorliegt.
+		 */
+		const oBundle = this._bundle();
 		const oModel = this._jsonModel("reproc", { map: {} });
 		const oMap = (oModel.getProperty("/map") ?? {}) as Record<string, ReprocLookup.ReprocEntry[]>;
-		oModel.setProperty("/entries", oMap[sKey] ?? []);
-		oModel.setProperty("/title", this._bundle().getText("reprocPopTitle", [sKey]) ?? sKey);
+		const oDone = (oModel.getProperty("/mapDone") ?? {}) as Record<string, ReprocLookup.ReprocEntry[]>;
+		const aEntries = sKey ? (oMap[sKey] ?? []) : [];
+		const aDone = sKey ? (oDone[sKey] ?? []) : [];
+
+		oModel.setProperty("/entries", aEntries);
+		oModel.setProperty("/done", aDone);
+		oModel.setProperty("/title", sKey
+			? (oBundle.getText("reprocPopTitle", [sKey]) ?? sKey)
+			: (oBundle.getText("reprocPopTitleNoKey") ?? ""));
+		oModel.setProperty("/hint", this._reprocHint(sKey, aEntries.length + aDone.length, oModel));
 
 		if (!this._pReprocPopover) {
 			this._pReprocPopover = Fragment.load({
@@ -387,6 +409,34 @@ export default class Main extends BaseController {
 			void this._pReprocPopover.then((oPopover) => this.getView()?.addDependent(oPopover));
 		}
 		(await this._pReprocPopover).openBy(oSource);
+	}
+
+	/**
+	 * Warum steht in diesem Popover (fast) nichts?
+	 *
+	 * Drei Lagen, und sie sind fachlich verschieden - deshalb drei Saetze und
+	 * nicht einer. Genau diese Unterscheidung fehlte, als "es passiert
+	 * nichts" gemeldet wurde:
+	 *
+	 *   nicht lesbar    der Arbeitsvorrats-Service hat nicht geantwortet.
+	 *                   Das ist ein STOERUNGSFALL und muss als solcher
+	 *                   dastehen - er sah bisher aus wie Ruhe.
+	 *   kein Schluessel die Meldung traegt keinen BUSINESS_KEY (Michaels
+	 *                   P17). Ohne ihn gibt es keinen Vorgang, an dem ein
+	 *                   Wiederanstoss haengen koennte.
+	 *   kein Satz       alles in Ordnung, es steht nur nichts an. Ein Satz
+	 *                   entsteht erst, wenn ein Trigger ihn registriert.
+	 */
+	private _reprocHint(sKey: string, nEntries: number, oModel: JSONModel): string {
+		const oBundle = this._bundle();
+		if (oModel.getProperty("/ok") !== true) {
+			const sError = ((oModel.getProperty("/error") as string) ?? "").trim();
+			return (oBundle.getText("reprocUnavailable", [sError]) ?? "").trim();
+		}
+		if (!sKey) {
+			return oBundle.getText("reprocNoKey") ?? "";
+		}
+		return nEntries === 0 ? (oBundle.getText("reprocPopNoneHint") ?? "") : "";
 	}
 
 	public onReprocClose(): void {
@@ -452,7 +502,14 @@ export default class Main extends BaseController {
 		await this._loadReprocMap();
 		const oJson = this._jsonModel("reproc", { map: {} });
 		const oNew = (oJson.getProperty("/map") ?? {}) as Record<string, ReprocLookup.ReprocEntry[]>;
-		oJson.setProperty("/entries", oNew[sKey] ?? []);
+		const oNewDone = (oJson.getProperty("/mapDone") ?? {}) as Record<string, ReprocLookup.ReprocEntry[]>;
+		const aEntries = oNew[sKey] ?? [];
+		const aDone = oNewDone[sKey] ?? [];
+		oJson.setProperty("/entries", aEntries);
+		// Der erledigte Satz erscheint jetzt unten statt spurlos zu
+		// verschwinden - DAS ist die Bestaetigung, dass es gewirkt hat.
+		oJson.setProperty("/done", aDone);
+		oJson.setProperty("/hint", this._reprocHint(sKey, aEntries.length + aDone.length, oJson));
 	}
 
 	/**
@@ -479,7 +536,8 @@ export default class Main extends BaseController {
 	public onMsgSearch(oEvent: Event): void {
 		const sQuery = (oEvent.getParameter("query" as never) as unknown as string) ?? "";
 		this.getUiModel().setProperty("/searchTerm", sQuery.trim());
-		this._applyMsgFilter();
+		// Prozess/Suche/"Nur offene" gelten auch fuer den Verlauf.
+		this._applyMsgFilter(true);
 	}
 
 	public onTypeFilterChange(oEvent: Event): void {
@@ -507,7 +565,17 @@ export default class Main extends BaseController {
 	 * Rohsicht fuer die Fehlersuche. Wer die Reiterzahlen addiert, kommt
 	 * deshalb nicht auf diese Zahl.
 	 */
-	private _applyMsgFilter(): void {
+	/**
+	 * @param bReloadChart Auch den Verlauf neu laden.
+	 *
+	 * ⚠ NICHT IMMER, und das ist Absicht. Der Verlauf folgt Prozess, Suche
+	 * und "Nur offene" - nur die drei Handler, die daran etwas aendern,
+	 * setzen das Kennzeichen. Ein Typ- oder Tagesklick aendert den Verlauf
+	 * nicht (beides sind seine eigenen Achsen), und der 30-Sekunden-Takt
+	 * laedt ihn ohnehin ueber _loadData( ) - dort noch einmal hiesse zwei
+	 * Abfragen ueber bis zu 5000 Zeilen je Takt.
+	 */
+	private _applyMsgFilter(bReloadChart = false): void {
 		// Alle vier Zustaende laufen hier zusammen - ein Anschlusspunkt
 		// genuegt, statt ihn in jeden Handler einzeln zu haengen.
 		this._syncUrl();
@@ -516,19 +584,85 @@ export default class Main extends BaseController {
 		// Die flache, serverseitig geblaetterte Meldungstabelle ist entfallen -
 		// ein Ereignis ist eine Zeile, die Einzelschritte stehen dahinter.
 		void this._loadCascades();
+		// Die Reiterzahlen gehoeren zum selben Zustand wie die Tabelle: wer
+		// sie hier ausliesse, haette wieder zwei Wahrheiten nebeneinander.
+		void this._loadTabCounts();
+		// Und die sichtbare Fassung desselben Zustands.
+		this._syncFilterChips();
+
+		if (bReloadChart) {
+			void this._loadChart();
+		}
+	}
+
+	/** Den gesetzten Filterzustand als Marken ins ui-Modell schreiben. */
+	private _syncFilterChips(): void {
+		const oUi = this.getUiModel();
+		oUi.setProperty("/filterChips", FilterChips.build(oUi, this._bundle()));
+	}
+
+	/**
+	 * Eine Filtermarke entfernen.
+	 *
+	 * Der Schluessel kommt aus dem geloeschten Token - deshalb traegt jede
+	 * Marke einen stabilen Bezeichner und nicht ihren Text: der Text ist
+	 * uebersetzbar, der Bezeichner nicht.
+	 */
+	public onFilterChipDelete(oEvent: Event): void {
+		const aTokens = (oEvent.getParameter("tokens" as never) ?? []) as { getKey(): string }[];
+		const oUi = this.getUiModel();
+		let bChanged = false;
+		aTokens.forEach((oToken) => {
+			bChanged = FilterChips.clear(oUi, oToken.getKey()) || bChanged;
+		});
+		if (bChanged) {
+			this._applyMsgFilter();
+		}
+	}
+
+	/**
+	 * Ein Spaltentrichter wurde angewandt.
+	 *
+	 * Der Wert steht durch die Zwei-Wege-Bindung schon im ui-Modell - hier
+	 * wird nur noch nachgeladen. Bewusst am search-Ereignis und NICHT an
+	 * liveChange: jeder Tastendruck waere sonst eine Serverabfrage, dieselbe
+	 * Regel wie bei der Freitextsuche.
+	 */
+	public onColumnFilterApply(): void {
+		this._applyMsgFilter();
+	}
+
+	/** Alle Filtermarken auf einmal entfernen. */
+	public onFilterReset(): void {
+		FilterChips.clearAll(this.getUiModel());
+		this._applyMsgFilter();
 	}
 
 	/**
 	 * Prozess- und Typfilter als Filterliste.
 	 *
-	 * Ausgelagert, weil sie zweimal gebraucht wird: fuer die OData-Bindung
-	 * der Tabelle und fuer den Ladevorgang der Vorgangs-Verdichtung. Zwei
-	 * Kopien wuerden auseinanderlaufen, und dann zeigte die gruppierte
-	 * Sicht etwas anderes als die einzelne.
+	 * Ausgelagert, weil sie mehrfach gebraucht wird: fuer den Ladevorgang der
+	 * Vorgangs-Verdichtung und - seit 11.09.2026 - fuer die Reiterzaehler.
+	 * Zwei Kopien wuerden auseinanderlaufen, und dann zeigte der Reiter eine
+	 * andere Menge als die Tabelle darunter. Genau das war der Zustand
+	 * davor.
+	 *
+	 * @param sProcessOverride Prozess, fuer den gefiltert werden soll -
+	 *        sonst der gewaehlte Reiter. Nur die Zaehler brauchen das: sie
+	 *        fragen dieselbe Kette fuer JEDEN Reiter ab, unter denselben
+	 *        Nebenbedingungen (Typ, Suche, "Nur offene", Tag).
+	 * @param bOmitTypeAndDay Typ- und Tagesfilter weglassen. Genau EIN
+	 *        Aufrufer braucht das: der Verlauf. Der Typ ist dort die eigene
+	 *        Achse (die Stapel E/W/S), und der Tag ist das, was man im
+	 *        Diagramm auswaehlt - beides anzuwenden hiesse, das Diagramm auf
+	 *        das zusammenzuziehen, was man gerade daraus ausgewaehlt hat.
 	 */
-	private _msgFilters(): Filter[] {
-		const sProcess = this.getUiModel().getProperty("/selectedProcess") as string;
-		const sType = this.getUiModel().getProperty("/selectedType") as string;
+	private _msgFilters(sProcessOverride?: string, bOmitTypeAndDay = false): Filter[] {
+		const sProcess = sProcessOverride
+			?? (this.getUiModel().getProperty("/selectedProcess") as string);
+		const sType = bOmitTypeAndDay
+			? ""
+			: (this.getUiModel().getProperty("/selectedType") as string);
 		const aFilters: Filter[] = [];
 
 		if (sProcess === ProcessAxis.KEY_UNASSIGNED) {
@@ -540,11 +674,59 @@ export default class Main extends BaseController {
 			}
 		}
 
-		if (sType) {
+		// Ueber LogTypeAxis, nicht als nacktes EQ: der Knopf "Fehler" buendelt
+		// seit 11.09.2026 E und W, und die Zuordnung gehoert an EINE Stelle.
+		const oType = LogTypeAxis.filter(sType);
+		if (oType) {
+			aFilters.push(oType);
+		}
+
+		/*
+		 * Tagesfilter - der Absprung aus dem Verlaufsdiagramm.
+		 *
+		 * 🔴 UEBER CreatedAt (Edm.Date) MIT EQ, NICHT UEBER CreatedAtStamp MIT
+		 * BT. Der Chart bucketiert in LogAggregator ueber genau dieses Feld,
+		 * und CreatedAt ist im CDS-View per tstmp_to_dats aus dem UTC-
+		 * Zeitstempel abgeleitet. Lokale Tagesgrenzen auf dem Zeitstempel
+		 * laegen bis zu zwei Stunden daneben - der Balken saegte 40 und die
+		 * Tabelle zeigte 38 Zeilen, ohne dass jemand herausfaende warum.
+		 *
+		 * ⚠ DIE MUSTERPRUEFUNG IST KEIN ZIERRAT. Der Wert kommt aus der
+		 * Adresszeile und ist von Hand tippbar. Ein ungeprueftes "?dt=heute"
+		 * ginge unveraendert in den $filter, der Service antwortete mit 400 -
+		 * und weil UI5 V4 alle Startanfragen in EINEN $batch legt, risse das
+		 * dieselbe Kaskade wie die 404 vom 09.09.2026, bei der die ganze
+		 * Oberflaeche leer blieb.
+		 */
+		const sDay = bOmitTypeAndDay
+			? ""
+			: ((this.getUiModel().getProperty("/selectedDay") as string) ?? "");
+		if (/^\d{4}-\d{2}-\d{2}$/.test(sDay)) {
 			aFilters.push(new Filter({
-				path: "LogType", operator: FilterOperator.EQ, value1: sType
+				path: "CreatedAt", operator: FilterOperator.EQ, value1: sDay
 			}));
 		}
+
+		/*
+		 * Spaltentrichter - dieselbe Kette, nur ein anderes Bedienelement.
+		 *
+		 * Durchweg Contains, nie EQ: TPA-Nummer und Material stehen in der
+		 * Datenbank in anderer Schreibweise als in der Anzeige (fuehrende
+		 * Nullen), und die Meldung will man ohnehin nach Teiltext durchsuchen.
+		 * Dieselbe Begruendung wie bei der Freitextsuche darunter.
+		 */
+		([
+			["ItemNumber", "/filterItem"],
+			["TpaNumber", "/filterTpa"],
+			["Message", "/filterMessage"]
+		] as [string, string][]).forEach(([sField, sPath]) => {
+			const sValue = ((this.getUiModel().getProperty(sPath) as string) ?? "").trim();
+			if (sValue) {
+				aFilters.push(new Filter({
+					path: sField, operator: FilterOperator.Contains, value1: sValue
+				}));
+			}
+		});
 
 		// "Nur offene" - seit dem CDS-Pushdown SERVERSEITIG moeglich.
 		// IsResolved ist ein berechnetes Feld in ZLE_AUST_C_APPL_LOG; dass es
@@ -742,19 +924,58 @@ export default class Main extends BaseController {
 		const oResult = await ReprocLookup.load(this.getODataModel("reprocModel"));
 		const oModel = this._jsonModel("reproc", { map: {} });
 		oModel.setProperty("/map", oResult.map);
+		// Die erledigten Saetze - der Abgleich "Fehler behoben?" am Vorgang.
+		oModel.setProperty("/mapDone", oResult.mapDone);
 		oModel.setProperty("/total", oResult.total);
 		oModel.setProperty("/truncated", oResult.truncated);
 		oModel.setProperty("/ok", oResult.ok);
+		oModel.setProperty("/error", oResult.error);
+		// Die erledigten Saetze entscheiden mit, was "Nur offene" ausblendet -
+		// die Tabelle muss deshalb nachziehen, sobald sie da sind.
+		this._applyOpenOnly();
 	}
 
+	/**
+	 * Verlauf laden und die Obergrenze ehrlich beschriften.
+	 *
+	 * Der Warnhinweis nennt seit 11.09.2026 drei Dinge statt "Datenmenge
+	 * gekuerzt": wie viele Meldungen es im Zeitraum gibt, wie viele davon
+	 * ausgewertet wurden, und AB WANN der Verlauf gilt. Erst das macht ihn
+	 * benutzbar - vorher blieb offen, ob die Balken um ein Prozent oder um
+	 * die Haelfte danebenliegen.
+	 *
+	 * ⚠ Der Zeitstempel ist ueberhaupt erst seit der Sortierung in
+	 * LogAggregator eine haltbare Aussage. Ohne sie gab es keinen Schnitt,
+	 * sondern eine beliebige Teilmenge.
+	 */
 	private async _loadChart(): Promise<void> {
 		try {
 			const oData = await LogAggregator.loadLastDays(
 				this.getODataModel("mainModel"),
-				Number(this.getUiModel().getProperty("/chartDays")) || Main.CHART_DAYS
+				Number(this.getUiModel().getProperty("/chartDays")) || Main.CHART_DAYS,
+				// Der Verlauf folgt seit 11.09.2026 der gewaehlten Sicht:
+				// Prozess, Suche, "Nur offene". Vorher zaehlte er ueber ALLE
+				// Reiter, waehrend die Tabelle nur einen zeigte - wer auf
+				// einen Balken mit 40 klickte, bekam sechs Zeilen.
+				this._msgFilters(undefined, true)
 			);
 			(this.getView()?.getModel("chart") as JSONModel).setData(oData);
 			this.getUiModel().setProperty("/chartTruncated", oData.truncated);
+
+			const oUi = this.getUiModel();
+			if (oData.truncated) {
+				const oBundle = this._bundle();
+				const sCut = this.formatter.timestamp(oData.cutAt);
+				oUi.setProperty("/chartCutText", oBundle.getText("chartCut", [sCut]) ?? "");
+				oUi.setProperty("/chartCutTip", oBundle.getText("chartCutTip", [
+					this.formatter.countText(oData.total),
+					this.formatter.countText(oData.loaded),
+					sCut
+				]) ?? "");
+			} else {
+				oUi.setProperty("/chartCutText", "");
+				oUi.setProperty("/chartCutTip", "");
+			}
 		} catch (oError) {
 			// eslint-disable-next-line no-console
 			console.error("[Verlauf] Aggregation fehlgeschlagen:", oError);
@@ -777,6 +998,76 @@ export default class Main extends BaseController {
 	}
 
 	/**
+	 * Die Zahlen neben den Reitersymbolen.
+	 *
+	 * 🔴 SIE FOLGEN SEIT 11.09.2026 DEM FILTER. Vorher zaehlten sie ueber
+	 * einen rohen OData-String je Prozess und kannten weder Typfilter noch
+	 * Suche noch "Nur offene" - nach jeder Eingrenzung standen am Reiter und
+	 * in der Tabelle verschiedene Mengen, und der Reiter hatte immer die
+	 * groessere. Gefragt war genau das: "dynamische Nummern neben den
+	 * Reiter-Icons dann auch anpassen".
+	 *
+	 * Gebaut wird jede Zahl aus DERSELBEN Kette wie die Tabelle, nur mit
+	 * ausgetauschtem Prozess. Damit kann sie gar nicht mehr abweichen.
+	 *
+	 * ⚠ Alle Abfragen laufen ueber dasselbe Modell und werden in derselben
+	 * Microtask abgesetzt - das V4-Modell buendelt sie in EINEN $batch. Es
+	 * ist also ein Roundtrip je Filterwechsel, nicht fuenf.
+	 *
+	 * ⚠ Gezaehlt werden MELDUNGEN, angezeigt werden VORGAENGE. Die
+	 * Zusammenfassungszeile nennt beide Zahlen nebeneinander und stellt den
+	 * Bezug her; am Reiter steht nur die eine, deshalb sagt sein Tooltip,
+	 * welche es ist.
+	 */
+	private async _loadTabCounts(): Promise<void> {
+		// Die Reiter, die eine Meldungsmenge zaehlen. TPA, WACHECK und MATCMP
+		// sind keine - sie haben eigene Quellen und keine Zahl am Reiter.
+		const aKeys = [
+			...ProcessAxis.processes.map((oProcess) => oProcess.key),
+			ProcessAxis.KEY_UNASSIGNED,
+			ProcessAxis.KEY_ALL
+		];
+
+		await Promise.all(aKeys.map(async (sKey) => {
+			try {
+				const aFilters = this._msgFilters(sKey);
+				/*
+				 * VORGAENGE, nicht Meldungen (Festlegung Tolksdorf,
+				 * 11.09.2026). Die Tabelle zeigt Vorgaenge - stand am Reiter
+				 * eine Meldungszahl, war die groessere Zahl die sichtbare und
+				 * die kleinere die wahre.
+				 *
+				 * -1 heisst "der Service kann kein $apply". Dann bleibt es bei
+				 * der Meldungszahl, und der Tooltip sagt es; eine 0
+				 * hinzuschreiben waere eine Behauptung.
+				 */
+				const nOps = await KpiLoader.loadOperationCount(
+					this.getODataModel("mainModel"), "/AppLog", aFilters);
+				const nCount = nOps >= 0
+					? nOps
+					: await KpiLoader.loadCount(
+						this.getODataModel("mainModel"),
+						{ path: "/AppLog", select: "LogUuid" },
+						aFilters);
+				this.getUiModel().setProperty("/kpi/tab" + sKey, String(nCount));
+			} catch (oError) {
+				// eslint-disable-next-line no-console
+				console.error("[Reiterzaehler] " + sKey + " fehlgeschlagen:", oError);
+			}
+		}));
+		// Steuert die Beschriftung: zaehlen die Reiter Vorgaenge oder Meldungen?
+		this.getUiModel().setProperty("/tabCountsAreOps", KpiLoader.isApplySupported());
+		/*
+		 * Die Zusammenfassung nennt bei gekappter Sicht die Gesamtzahl mit -
+		 * und die steht erst jetzt fest. _loadCascades und _loadTabCounts
+		 * laufen parallel, die Reihenfolge ist also nicht zugesichert.
+		 * Neuberechnen kostet nichts: es ist reine Rechnerei auf schon
+		 * geladenen Daten.
+		 */
+		this._applyOpenOnly();
+	}
+
+	/**
 	 * Kopf des letzten Materialstammabgleichs (Punkt 38, Fall 4).
 	 *
 	 * 🔴 UEBER EINE LISTEN-BINDUNG, NICHT UEBER MatCompareRun('1').
@@ -791,6 +1082,24 @@ export default class Main extends BaseController {
 	 * ist null Zeilen, kein Fehler. Das Ergebnis landet im ui-Modell,
 	 * damit der View gar keine OData-Bindung auf diesen Kopf braucht.
 	 */
+	/**
+	 * Ein Wert aus einer OData-Zeile als Text - aber nur, wenn er ein
+	 * Skalar ist.
+	 *
+	 * Alles andere (Objekt, Feld, null) faellt auf den Rueckfallwert zurueck.
+	 * Ein String( ) auf ein Objekt ergaebe "[object Object]", und das saehe in
+	 * der Kopfzeile wie eine Angabe aus, wo keine ist.
+	 */
+	private static _scalarText(vValue: unknown, sFallback = ""): string {
+		if (typeof vValue === "string") {
+			return vValue;
+		}
+		if (typeof vValue === "number" || typeof vValue === "boolean") {
+			return String(vValue);
+		}
+		return sFallback;
+	}
+
 	private async _loadMatCmpRun(): Promise<void> {
 		try {
 			const oBinding = this.getODataModel("mainModel").bindList("/MatCompareRun");
@@ -799,14 +1108,21 @@ export default class Main extends BaseController {
 				return;
 			}
 			const oRun = aContexts[0].getObject() as Record<string, unknown>;
+			/*
+			 * Ueber scalarText( ) statt String( ): die Felder kommen als
+			 * unknown aus getObject( ), und ein String( ) auf ein Objekt
+			 * ergaebe "[object Object]" - ein Platzhalter, der wie ein Wert
+			 * aussieht. Dieselbe Regel wie in model/TaPositions.ts und
+			 * model/ReprocLookup.ts.
+			 */
 			this.getUiModel().setProperty("/matCmp", {
-				runAt:      String(oRun.RunAt ?? ""),
-				cntSap:     String(oRun.CntSap ?? "0"),
-				cntHilis:   String(oRun.CntHilis ?? "0"),
-				cntDiff:    String(oRun.CntDiff ?? "0"),
-				cntOnlySap: String(oRun.CntOnlySap ?? "0"),
-				cntOnlyHil: String(oRun.CntOnlyHil ?? "0"),
-				cntOk:      String(oRun.CntOk ?? "0"),
+				runAt:      Main._scalarText(oRun.RunAt),
+				cntSap:     Main._scalarText(oRun.CntSap, "0"),
+				cntHilis:   Main._scalarText(oRun.CntHilis, "0"),
+				cntDiff:    Main._scalarText(oRun.CntDiff, "0"),
+				cntOnlySap: Main._scalarText(oRun.CntOnlySap, "0"),
+				cntOnlyHil: Main._scalarText(oRun.CntOnlyHil, "0"),
+				cntOk:      Main._scalarText(oRun.CntOk, "0"),
 				broken:     oRun.Broken === "X"
 			});
 		} catch (oError) {
@@ -836,9 +1152,168 @@ export default class Main extends BaseController {
 				legendGroup: { layout: { position: "bottom", alignment: "center" } },
 				title: { visible: false },
 				valueAxis: { title: { visible: false } },
-				categoryAxis: { title: { visible: false } }
+				categoryAxis: { title: { visible: false } },
+				/*
+				 * AUSWAHL - die Voraussetzung fuer den Absprung in die
+				 * Tabelle.
+				 *
+				 * ⚠ single, nicht die Voreinstellung multiple: sonst SAMMELT
+				 * jeder Klick eine weitere Markierung ein, und der Anwender
+				 * baut sich unbemerkt eine Mehrfachauswahl zusammen, aus der
+				 * ein Tagesfilter nicht abzuleiten ist.
+				 *
+				 * axisLabelSelection macht zusaetzlich die Beschriftung der
+				 * Kategorieachse anklickbar - damit laesst sich der GANZE Tag
+				 * waehlen statt nur ein Segment. Kennt die installierte
+				 * Fassung die Eigenschaft nicht, wird sie ignoriert; der
+				 * Segmentklick bleibt der Weg, und der Typ-Chip laesst sich
+				 * in der Filterleiste einzeln wegnehmen.
+				 */
+				interaction: {
+					selectability: {
+						mode: "single",
+						axisLabelSelection: true
+					}
+				}
 			});
 		});
+	}
+
+	/**
+	 * Klick auf einen Balken: Tag (und ggf. Typ) in den Tabellenfilter.
+	 *
+	 * 🔴 DIE NUTZLAST WIRD NICHT GERATEN, SONDERN GEGEN DAS DATASET
+	 * AUFGELOEST. VizFrame liefert die Auswahl je nach Fassung als Liste von
+	 * {val, ctx} oder als Objekt, dessen Schluessel die NAMEN von Dimension
+	 * und Measure sind. Die Namen kommen aber aus dem Sprachbuendel
+	 * ({i18n>chartSeriesE} = "Fehler") - ein Vergleich dagegen waere ein
+	 * Vergleich gegen eine Uebersetzung und braeche in der englischen
+	 * Oberflaeche. Deshalb wird zur Laufzeit aus dem Dataset eine
+	 * Umkehrtabelle Name -> identity gebaut; identity ist genau dafuer da
+	 * (s. Kommentar am FlattenedDataset).
+	 *
+	 * ⚠ Der Dimensionswert ist das ETIKETT ("11.09."), nicht das ISO-Datum -
+	 * die DimensionDefinition bindet value="{chart>label}". Das Datum kommt
+	 * deshalb ueber eine Zuordnung aus chart>/days.
+	 *
+	 * ⚠ Am Ende wird die Auswahl geleert. Ohne das bliebe das Segment
+	 * markiert, und ein ZWEITER Klick darauf waere eine Abwahl - er feuert
+	 * dann gar nicht, und fuer den Anwender "tut der Chart nichts mehr".
+	 */
+	public onChartSelect(oEvent: Event): void {
+		const oVizFrame = this.byId("idTrendVizFrame") as VizFrame | undefined;
+		if (!oVizFrame) {
+			return;
+		}
+
+		const mIdentities = Main._vizIdentities(oVizFrame);
+		const aPoints = (oEvent.getParameter("data" as never) ?? []) as unknown[];
+
+		const aLabels: string[] = [];
+		const aTypes: string[] = [];
+		aPoints.forEach((vPoint) => {
+			Main._readVizPoint(vPoint, mIdentities, aLabels, aTypes);
+		});
+
+		const sDay = Main._dayForLabel(this.getView()?.getModel("chart") as JSONModel | undefined,
+			aLabels[0] ?? "");
+		if (!sDay) {
+			// Ohne Tag gibt es nichts zu filtern - und die Markierung muss
+			// trotzdem weg, sonst blockiert sie den naechsten Klick.
+			Main._clearVizSelection(oVizFrame);
+			return;
+		}
+
+		const oUi = this.getUiModel();
+		oUi.setProperty("/selectedDay", sDay);
+		/*
+		 * Nur bei EINDEUTIGEM Typ auch den Typfilter setzen. Traf der Klick
+		 * die Achsenbeschriftung, kommen alle drei Reihen des Tages - dann
+		 * ist "der ganze Tag" gemeint, und ein Typ waere hinzuerfunden. Der
+		 * bestehende Typfilter bleibt in diesem Fall, wie er ist.
+		 */
+		if (aTypes.length === 1) {
+			oUi.setProperty("/selectedType", aTypes[0]);
+		}
+
+		Main._clearVizSelection(oVizFrame);
+		this._applyMsgFilter();
+	}
+
+	/** Anzeigename -> identity, aus dem Dataset des Charts. */
+	private static _vizIdentities(oVizFrame: VizFrame): Map<string, string> {
+		const mMap = new Map<string, string>();
+		const oDataset = oVizFrame.getDataset() as unknown as {
+			getDimensions?: () => { getName(): string; getIdentity(): string }[];
+			getMeasures?: () => { getName(): string; getIdentity(): string }[];
+		} | undefined;
+		[...(oDataset?.getDimensions?.() ?? []), ...(oDataset?.getMeasures?.() ?? [])]
+			.forEach((oDefinition) => {
+				mMap.set(oDefinition.getName(), oDefinition.getIdentity());
+			});
+		return mMap;
+	}
+
+	/**
+	 * Einen Auswahlpunkt auswerten - beide bekannten Nutzlastformen.
+	 *
+	 * Was hier NICHT passiert: raten. Ein Schluessel, der sich ueber die
+	 * Umkehrtabelle keiner identity zuordnen laesst, wird uebergangen.
+	 */
+	private static _readVizPoint(
+		vPoint: unknown,
+		mIdentities: Map<string, string>,
+		aLabels: string[],
+		aTypes: string[]
+	): void {
+		const oPoint = (vPoint ?? {}) as { data?: unknown };
+		const vData = oPoint.data;
+		if (!vData || typeof vData !== "object") {
+			return;
+		}
+
+		const fnTake = (sKeyOrIdentity: string, vValue: unknown): void => {
+			const sIdentity = mIdentities.get(sKeyOrIdentity) ?? sKeyOrIdentity;
+			if (sIdentity === "day") {
+				// _scalarText statt String( ): die Nutzlast ist fremdes
+				// Format, und "[object Object]" waere ein Etikett, das nie
+				// einen Eimer trifft - aber eben auch kein erkennbarer Fehler.
+				const sLabel = Main._scalarText(vValue).trim();
+				if (sLabel) {
+					aLabels.push(sLabel);
+				}
+			} else if (["E", "W", "S"].includes(sIdentity) && !aTypes.includes(sIdentity)) {
+				aTypes.push(sIdentity);
+			}
+		};
+
+		if (Array.isArray(vData)) {
+			// Form 1: [{val, ctx: {type, path: {dn/mi}}}]
+			(vData as { val?: unknown; name?: unknown }[]).forEach((oItem) => {
+				fnTake(Main._scalarText(oItem.name), oItem.val);
+			});
+			return;
+		}
+		// Form 2: {"<Anzeigename>": <Wert>, ...}
+		Object.entries(vData as Record<string, unknown>).forEach(([sKey, vValue]) => {
+			fnTake(sKey, vValue);
+		});
+	}
+
+	/** Etikett ("11.09.") -> ISO-Tag, aus den Eimern des Charts. */
+	private static _dayForLabel(oChart: JSONModel | undefined, sLabel: string): string {
+		if (!oChart || !sLabel) {
+			return "";
+		}
+		const aDays = (oChart.getProperty("/days") ?? []) as { day?: string; label?: string }[];
+		return aDays.find((oBucket) => oBucket.label === sLabel)?.day ?? "";
+	}
+
+	private static _clearVizSelection(oVizFrame: VizFrame): void {
+		const oSelectable = oVizFrame as unknown as {
+			vizSelection?: (aPoints: unknown[], oOptions: { clearSelection: boolean }) => void;
+		};
+		oSelectable.vizSelection?.([], { clearSelection: true });
 	}
 
 	private _table(sTableId: string): Table | undefined {
@@ -1183,35 +1658,43 @@ export default class Main extends BaseController {
 		}
 	}
 
-	/** Alle Schritte eines Vorgangs - im selben Popover wie die Detailsicht. */
-	/**
-	 * Alle Meldungen desselben Vorgangs - aus der Datenbank, nicht aus dem
-	 * Speicher.
+	/*
+	 * ℹ onCorrPress( ) ist am 11.09.2026 entfallen, zusammen mit dem
+	 * Uhrsymbol in der Spalte "Details". Der Weg selbst lebt weiter und ist
+	 * jetzt der EINZIGE: onCascadePress( ) ruft _openCorrPopover( ) direkt.
 	 *
-	 * 🔴 NICHT DASSELBE WIE DIE SPALTE "SCHRITTE", und genau deshalb gibt es
-	 * beides. Ich hatte das am 03.09.2026 einmal als Dopplung entfernt - das
-	 * war falsch:
-	 *
-	 *   Schritte  zeigt die im Browser GELADENEN und gruppierten Schritte.
-	 *             Gedeckelt bei CascadeGrouper.MAX_ROWS (5000 Meldungen) und
-	 *             bei Sammellaeufen zusaetzlich bei MAX_STEPS (25).
-	 *   hier      fragt OData nach der CorrUuid und zeigt ALLE Meldungen des
-	 *             Vorgangs - auch die, die ausserhalb des geladenen Fensters
-	 *             liegen.
-	 *
-	 * Liegt ein Vorgang teils jenseits der 5000er-Grenze, zeigt die
-	 * Schritte-Ansicht also einen Ausschnitt und diese hier das Ganze.
+	 * Die Unterscheidung, die der Handler traegt, bleibt richtig und steht
+	 * dort dokumentiert - sie war nur nie eine Unterscheidung, die man
+	 * BEDIENEN kann:
+	 *   aus dem Speicher  die geladenen, gruppierten Schritte. Gedeckelt bei
+	 *                     MAX_OPS (5000 Vorgaenge) und bei Sammellaeufen
+	 *                     zusaetzlich bei MAX_STEPS.
+	 *   ueber CorrUuid    alle Meldungen des Vorgangs, auch die ausserhalb
+	 *                     des geladenen Fensters.
+	 * Deshalb nimmt der verbleibende Einstieg immer den zweiten Weg und faellt
+	 * nur ohne Korrelations-ID auf den ersten zurueck.
 	 */
-	public onCorrPress(oEvent: Event): void {
-		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-		const oSource = oEvent.getSource() as Control;
-		const sCorr = String(oSource.getBindingContext("cascade")?.getProperty("CorrUuid") ?? "").trim();
-		if (!sCorr) {
-			return;
-		}
-		void this._openCorrPopover(oSource, sCorr);
-	}
 
+	/**
+	 * Die Schritte eines Vorgangs - EIN Einstieg, seit 11.09.2026.
+	 *
+	 * 🔴 BIS DAHIN GAB ES ZWEI, UND SIE SAHEN GLEICH AUS. Die Spalte
+	 * "Schritte" zeigte die im Browser gruppierten Zeilen, das Uhrsymbol
+	 * daneben fragte OData nach der CorrUuid - dasselbe Popover, dieselbe
+	 * Liste, derselbe Titel. Der Unterschied (hier ein Ausschnitt, dort das
+	 * Ganze) stand nur im Quelltext, und aus der Bedienung heraus war es eine
+	 * Dopplung. Sie war deshalb am 03.09. schon einmal entfernt und danach
+	 * wieder eingebaut worden.
+	 *
+	 * Aufgeloest wird das nicht durch Erklaeren, sondern durch Weglassen: der
+	 * verbleibende Einstieg nimmt IMMER den vollstaendigen Weg. Die Zeilen aus
+	 * dem Speicher sind nur noch die Rueckfallebene fuer Vorgaenge OHNE
+	 * Korrelations-ID.
+	 *
+	 * ⚠ isInitialUuid, nicht bloss "nicht leer". Eine initiale CorrUuid ist
+	 * kein Vorgang, sondern ihr Fehlen; ein Filter darauf zoege den gesamten
+	 * Altbestand in ein Popover.
+	 */
 	public onCascadePress(oEvent: Event): void {
 		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
 		const oSource = oEvent.getSource() as Control;
@@ -1220,6 +1703,13 @@ export default class Main extends BaseController {
 		if (!oRow) {
 			return;
 		}
+
+		const sCorr = String(oRow.CorrUuid ?? "").trim();
+		if (sCorr && !CascadeGrouper.isInitialUuid(sCorr)) {
+			void this._openCorrPopover(oSource, sCorr);
+			return;
+		}
+
 		const oBundle = this._bundle();
 		const oDetail = this._detailModel();
 
@@ -1247,15 +1737,32 @@ export default class Main extends BaseController {
 		oDetail.setProperty("/sap", { available: false, hint: "", header: "", fields: [], rowsHeader: "", rows: [] });
 		// Im Kaskaden-Popover IST der Verlauf der Inhalt, nicht die Beigabe.
 		oDetail.setProperty("/logVisible", true);
-		oDetail.setProperty("/log", (oRow.Steps ?? []).map((oStep) => ({
-			stamp:   this.formatter.timestamp(oStep.CreatedAtStamp),
-			logType: oStep.LogType ?? "",
-			message: oStep.Message ?? "",
-			process: oBundle.getText("popAttrProcess", [this.formatter.dashIfEmpty(oStep.HistoryType)]) ?? "",
-			http:    oStep.HttpStatus ? (oBundle.getText("popAttrHttp", [String(oStep.HttpStatus)]) ?? "") : "",
-			line:    oStep.OrderLineNr ? (oBundle.getText("popAttrLine", [oStep.OrderLineNr]) ?? "") : "",
-			payload: oStep.JsonPayload ?? ""
-		})));
+		/*
+		 * Dieselbe Aufbereitung wie im Ladeweg ueber OData - sprechender
+		 * Prozess, Systemseite, durchnummeriert. Die Schritte liegen hier
+		 * bereits aufsteigend nach SeqNr vor (CascadeGrouper.group), die
+		 * Nummer stimmt also mit dem ueberein, was der vollstaendige Weg
+		 * zeigen wuerde.
+		 */
+		oDetail.setProperty("/log", KeyDetailLoader.numberEntries(
+			(oRow.Steps ?? []).map((oStep) => {
+				const sHist = oStep.HistoryType ?? "";
+				return {
+					stamp:   this.formatter.timestamp(oStep.CreatedAtStamp),
+					no:      "",
+					logType: oStep.LogType ?? "",
+					message: oStep.Message ?? "",
+					process: oBundle.getText("popAttrProcess", [
+						sHist ? this.formatter.historyTypeText(sHist) : this.formatter.dashIfEmpty(sHist)
+					]) ?? "",
+					processRaw: sHist,
+					side:    KeyDetailLoader.sideText(sHist, oBundle),
+					http:    oStep.HttpStatus ? (oBundle.getText("popAttrHttp", [String(oStep.HttpStatus)]) ?? "") : "",
+					line:    oStep.OrderLineNr ? (oBundle.getText("popAttrLine", [oStep.OrderLineNr]) ?? "") : "",
+					payload: oStep.JsonPayload ?? ""
+				};
+			})
+		));
 
 		void this._openPopover(oSource);
 	}
@@ -1280,7 +1787,8 @@ export default class Main extends BaseController {
 		// Gilt jetzt in BEIDEN Sichten: flach als serverseitiger Filter,
 		// in der Vorgangssicht als Array-Filter. _applyMsgFilter( ) trifft
 		// beides.
-		this._applyMsgFilter();
+		// Prozess/Suche/"Nur offene" gelten auch fuer den Verlauf.
+		this._applyMsgFilter(true);
 	}
 
 	private async _loadCascades(): Promise<void> {
@@ -1294,40 +1802,241 @@ export default class Main extends BaseController {
 				this._msgFilters(),
 				{ $select: "LogUuid,CorrUuid,SeqNr,CreatedAtStamp,LogType,HistoryType,Message,"
 					+ "ItemNumber,TpaNumber,OrderLineNr,BusinessKey,KeyType,Lgnum,HttpStatus,"
-					+ "JsonPayload,IsResolved" }
+					+ "JsonPayload,IsResolved",
+					// $count kostet keine zweite Abfrage, macht aber aus der
+					// Heuristik "genau MAX_ROWS gelesen, also wohl gekappt" eine
+					// Tatsache - und liefert die Zahl, die der Anwender wissen
+					// will: wie viele es insgesamt sind.
+					$count: true }
 			);
-			const aContexts = await oBinding.requestContexts(0, CascadeGrouper.MAX_ROWS);
-			const aRows = aContexts.map((oCtx) => oCtx.getObject() as CascadeGrouper.LogRow);
-			const oResult = CascadeGrouper.group(aRows, aRows.length >= CascadeGrouper.MAX_ROWS);
-
-			// "Nur offene": erledigte Vorgaenge herausnehmen. Der Zustand steht
-			// "Nur offene": erledigte Vorgaenge herausnehmen. IsResolved kommt
-			// jetzt mit der Zeile aus dem Service - kein zweiter Ladevorgang
-			// und keine Reihenfolgefrage mehr.
-			let aRowsOut = oResult.rows;
-			if (this.getUiModel().getProperty("/openOnly") as boolean) {
-				aRowsOut = aRowsOut.filter(
-					(oRow) => (oRow.IsResolved ?? "").trim().toUpperCase() !== "X"
-				);
+			/*
+			 * 🔴 GELADEN WIRD BIS ZU EINER ZAHL VON VORGAENGEN, NICHT VON
+			 * MELDUNGEN.
+			 *
+			 * Bis 11.09.2026 holte die Sicht 5000 MELDUNGEN, und wie viele
+			 * Vorgaenge dabei herauskamen, war Zufall - 4.521 an diesem Tag,
+			 * bei anderer Datenlage 3000 oder 5000. Die Oberflaeche spricht
+			 * aber konsequent von Vorgaengen; dann darf ihre einzige harte
+			 * Grenze nicht in der anderen Einheit stehen.
+			 *
+			 * Gezaehlt wird ueber CascadeGrouper.operationKey( ) - dieselbe
+			 * Funktion, die auch gruppiert. Eine zweite Zaehlregel hier waere
+			 * genau die Doppelung, die beim naechsten Anfassen auseinander
+			 * laeuft.
+			 *
+			 * ⚠ Zwei Abbruchgruende, und sie bedeuten Verschiedenes:
+			 *   MAX_OPS   das Ziel ist erreicht - Normalfall
+			 *   MAX_ROWS  die Meldungen gehen aus, bevor genug Vorgaenge
+			 *             beisammen sind. Passiert bei sehr grossen Gruppen
+			 *             (Sammellauf) und ist ein eigener Befund.
+			 */
+			const aRows: CascadeGrouper.LogRow[] = [];
+			const oSeen = new Set<string>();
+			let bRowLimit = false;
+			for (;;) {
+				const aChunk = await oBinding.requestContexts(
+					aRows.length, CascadeGrouper.CHUNK_ROWS);
+				if (aChunk.length === 0) {
+					break;
+				}
+				aChunk.forEach((oCtx) => {
+					const oRow = oCtx.getObject() as CascadeGrouper.LogRow;
+					oSeen.add(CascadeGrouper.operationKey(oRow, aRows.length));
+					aRows.push(oRow);
+				});
+				if (oSeen.size >= CascadeGrouper.MAX_OPS) {
+					break;
+				}
+				if (aRows.length >= CascadeGrouper.MAX_ROWS) {
+					bRowLimit = true;
+					break;
+				}
+				// Kuerzer als angefordert heisst: der Bestand ist erschoepft.
+				if (aChunk.length < CascadeGrouper.CHUNK_ROWS) {
+					break;
+				}
 			}
 
-			oCascade.setProperty("/rows", aRowsOut);
+			const nTotal = oBinding.getCount() ?? aRows.length;
+			const bTruncated = nTotal > aRows.length;
+			const oResult = CascadeGrouper.group(aRows, bTruncated);
+			oCascade.setProperty("/rowLimit", bRowLimit);
+
+			/*
+			 * Die UNGEFILTERTE Menge wird aufbewahrt, die sichtbare daraus
+			 * berechnet. Grund: "Nur offene" haengt seit dem Abgleich mit dem
+			 * Arbeitsvorrat an ZWEI Quellen, und die zweite (mapDone) wird
+			 * parallel geladen. Ohne die Trennung waere die erste Anzeige
+			 * nach dem Start bis zum naechsten Takt falsch - 30 Sekunden
+			 * lang.
+			 */
+			oCascade.setProperty("/allRows", oResult.rows);
 			oCascade.setProperty("/sourceCount", oResult.sourceCount);
-			oCascade.setProperty("/truncated", oResult.truncated);
-			oCascade.setProperty("/summary", this._bundle().getText(
-				oResult.truncated ? "cascSummaryCut" : "cascSummary",
-				// Meldungen zuerst: diese Zahl entspricht dem, was der
-				// Reiter ohne Gruppierung anzeigt - so ist der Bezug
-				// erkennbar, statt dass zwei Zahlen unverbunden nebeneinander
-				// stehen.
-				[String(oResult.sourceCount), String(oResult.rows.length)]
-			) ?? "");
+			oCascade.setProperty("/truncated", bTruncated);
+			this._applyOpenOnly();
+			this._checkTabCount(oResult.rows.length, bTruncated);
+
+			/*
+			 * Die Obergrenze bekommt einen eigenen Hinweis statt eines Anhangs
+			 * an die Zusammenfassung: "wie viel" und "wie verlaesslich" sind
+			 * zwei Aussagen, und die zweite braucht mehr Platz als eine
+			 * Klammer. Der Text nennt den Schnittzeitpunkt, der Tooltip die
+			 * Zahlen und den Weg heraus.
+			 *
+			 * Der Schnitt ist wohldefiniert, weil absteigend nach
+			 * CreatedAtStamp sortiert wird: der zuletzt gelesene Satz ist der
+			 * aelteste, alles davor fehlt.
+			 */
+			const sCut = bTruncated
+				? this.formatter.timestamp(aRows[aRows.length - 1]?.CreatedAtStamp)
+				: "";
+			oCascade.setProperty("/cutText",
+				bTruncated ? (this._bundle().getText("cascCut", [sCut]) ?? "") : "");
+			/*
+			 * Zwei Erklaerungen, weil zwei verschiedene Dinge passiert sind.
+			 * Der Normalfall ist "genug Vorgaenge beisammen"; die Variante
+			 * ist "die Meldungen wurden knapp, bevor es so weit war" - und
+			 * das ist ein Befund ueber die Daten, kein Deckel der Sicht.
+			 */
+			oCascade.setProperty("/cutTip",
+				bTruncated ? (this._bundle().getText(
+					bRowLimit ? "cascCutTipRows" : "cascCutTip", [
+						this.formatter.countText(nTotal),
+						this.formatter.countText(aRows.length),
+						sCut
+					]) ?? "") : "");
 		} catch {
+			oCascade.setProperty("/allRows", []);
 			oCascade.setProperty("/rows", []);
+			oCascade.setProperty("/truncated", false);
 			oCascade.setProperty("/summary", this._bundle().getText("popLoadFailed") ?? "");
 		} finally {
 			oCascade.setProperty("/busy", false);
 		}
+	}
+
+	/**
+	 * Stimmt die serverseitig gezaehlte Vorgangszahl mit der im Browser?
+	 *
+	 * 🔴 EINE PRUEFUNG, DIE ES SONST NICHT GAEBE. Die Reiterzahlen kommen aus
+	 * $apply=groupby((CorrUuid)) - das laesst sich von aussen nicht
+	 * nachrechnen. Fuer den OFFENEN Reiter aber schon: dort liegen dieselben
+	 * Zeilen im Browser, unter derselben Filterkette, und CascadeGrouper hat
+	 * sie gerade gruppiert. Beide Zahlen muessen uebereinstimmen.
+	 *
+	 * Tun sie es nicht, ist der wahrscheinlichste Grund bekannt: Zeilen mit
+	 * INITIALER CorrUuid fallen serverseitig in EINE Gruppe, waehrend der
+	 * Browser jede davon als eigenen Vorgang fuehrt (Altbestand von vor
+	 * Michaels Logging-Umbau). Dann zaehlt der Reiter zu niedrig.
+	 *
+	 * ⚠ Bei erreichter Obergrenze wird NICHT verglichen - der Browser hat
+	 * dann weniger Zeilen gesehen als der Server gezaehlt hat, und eine
+	 * Abweichung waere erwartbar statt aussagekraeftig.
+	 */
+	private _checkTabCount(nBrowserOps: number, bTruncated: boolean): void {
+		if (bTruncated || !KpiLoader.isApplySupported()) {
+			return;
+		}
+		const sProcess = this.getUiModel().getProperty("/selectedProcess") as string;
+		const sShown = this.getUiModel().getProperty("/kpi/tab" + sProcess) as string;
+		const nShown = Number(sShown);
+		if (!sShown || !Number.isFinite(nShown) || nShown === nBrowserOps) {
+			return;
+		}
+		// eslint-disable-next-line no-console
+		console.warn(`[Reiterzaehler] ${sProcess}: Server zaehlt ${String(nShown)} `
+			+ `Vorgaenge, der Browser ${String(nBrowserOps)}. Wahrscheinlich Zeilen `
+			+ "mit initialer CorrUuid, die serverseitig zu einer Gruppe verschmelzen.");
+	}
+
+	/**
+	 * Aus der geladenen Menge die sichtbare machen - Schalter "Nur offene".
+	 *
+	 * 🔴 ZWEI QUELLEN FUER "ERLEDIGT", und beide muessen greifen:
+	 *   IsResolved         die juengste Meldung zum Schluessel ist ein Erfolg
+	 *   reproc>/mapDone    der Arbeitsvorrat hat den Satz abgeschlossen
+	 *
+	 * Ohne die zweite waere der Abgleich halbfertig: der Vorgang traege das
+	 * Erledigt-Kennzeichen und stuende trotzdem in einer Liste, die
+	 * "nur offene" heisst.
+	 *
+	 * Wird auch nach dem Laden des Arbeitsvorrats gerufen, weil der parallel
+	 * kommt - sonst zeigte die erste Anzeige nach dem Start eine Menge, die
+	 * schon beim naechsten Takt eine andere waere.
+	 */
+	private _applyOpenOnly(): void {
+		const oCascade = this._cascadeModel();
+		const aAll = (oCascade.getProperty("/allRows") ?? []) as CascadeGrouper.CascadeRow[];
+		const oDone = (this._jsonModel("reproc", { map: {} }).getProperty("/mapDone")
+			?? {}) as Record<string, unknown[]>;
+
+		let aRowsOut = aAll;
+		if (this.getUiModel().getProperty("/openOnly") as boolean) {
+			aRowsOut = aAll.filter((oRow) => {
+				if ((oRow.IsResolved ?? "").trim().toUpperCase() === "X") {
+					return false;
+				}
+				const sKey = (oRow.BusinessKey ?? "").trim();
+				return !(sKey && (oDone[sKey]?.length ?? 0) > 0);
+			});
+		}
+
+		oCascade.setProperty("/rows", aRowsOut);
+
+		/*
+		 * 🔴 aRowsOut.length, NICHT die ungefilterte Zahl.
+		 *
+		 * Bis 11.09.2026 nannte die Zusammenfassung die Zahl VOR dem Filter
+		 * "Nur offene", waehrend die Tabelle die gefilterte Menge zeigte.
+		 * Weil der Schalter standardmaessig an ist, stimmten die beiden
+		 * Zahlen praktisch nie ueberein - und die sichtbare war die falsche.
+		 */
+		/*
+		 * NUR DIE VORGAENGE (Festlegung Tolksdorf, 11.09.2026). Vorher stand
+		 * hier "425 Meldungen -> 364 Vorgaenge" - beide Zahlen nebeneinander,
+		 * und der Anwender musste sich aussuchen, welche gilt. Es gilt die
+		 * zweite: sie beschreibt, was in der Tabelle steht.
+		 *
+		 * Die Meldungszahl ist nicht verloren, sie steht im Tooltip. Dort ist
+		 * sie das, was sie ist - eine Hintergrundinformation ueber die
+		 * Verdichtung, keine konkurrierende Hauptzahl.
+		 */
+		const nSource = (oCascade.getProperty("/sourceCount") ?? 0) as number;
+
+		/*
+		 * BEI GEKAPPTER SICHT NENNT DIE ZEILE BEIDE ZAHLEN.
+		 *
+		 * Reiter und Zusammenfassung zaehlen verschiedene Mengen: der Reiter
+		 * den GANZEN Bestand, die Tabelle nur die neuesten Meldungen. Beide
+		 * Zahlen sind damit richtig - aber nebeneinander ohne Bezug laden sie
+		 * zu der Frage ein, die am 11.09.2026 auch prompt kam ("warum ist da
+		 * eine Diskrepanz?"). "4.521 von 6.923 Vorgaengen" beantwortet sie,
+		 * bevor sie entsteht.
+		 *
+		 * ⚠ Nur wenn der Reiter wirklich VORGAENGE zaehlt. Ist der Zaehler
+		 * auf Meldungen zurueckgefallen, waere "von 7.402 Vorgaengen" schlicht
+		 * gelogen - dann bleibt es bei der einen Zahl.
+		 */
+		const sTotal = this.getUiModel().getProperty(
+			"/kpi/tab" + (this.getUiModel().getProperty("/selectedProcess") as string)) as string;
+		const nTotal = Number(sTotal);
+		const bShowBoth = (oCascade.getProperty("/truncated") as boolean) === true
+			&& KpiLoader.isApplySupported()
+			&& Number.isFinite(nTotal) && nTotal > aRowsOut.length;
+
+		oCascade.setProperty("/summary", (bShowBoth
+			? this._bundle().getText("cascSummaryOf", [
+				this.formatter.countText(aRowsOut.length),
+				this.formatter.countText(nTotal)
+			])
+			: this._bundle().getText("cascSummary", [
+				this.formatter.countText(aRowsOut.length)
+			])) ?? "");
+		oCascade.setProperty("/summaryTip", this._bundle().getText(
+			"cascSummaryTip", [
+				this.formatter.countText(nSource),
+				this.formatter.countText(aRowsOut.length)
+			]) ?? "");
 	}
 
 	/**
@@ -1414,6 +2123,17 @@ export default class Main extends BaseController {
 				 * Gelesen wird ohnehin ueberall mit Number( ).
 				 */
 				oUi.setProperty(sPath, String(Number(sValue) || Main.CHART_DAYS));
+			} else if (sPath === "/selectedDay") {
+				/*
+				 * Zweite Pruefung, absichtlich doppelt zur der in
+				 * _msgFilters( ): hier faellt ein unbrauchbarer Wert gar nicht
+				 * erst ins Modell und kann dort auch nicht in einen Chip oder
+				 * in die zurueckgeschriebene Adresse geraten. Die Pruefung im
+				 * Filter bleibt trotzdem stehen - sie ist die, die den
+				 * $batch schuetzt, und sie darf nicht davon abhaengen, dass
+				 * jeder Schreiber sich vorher benimmt.
+				 */
+				oUi.setProperty(sPath, /^\d{4}-\d{2}-\d{2}$/.test(sValue) ? sValue : "");
 			} else {
 				oUi.setProperty(sPath, sValue);
 			}
@@ -1458,6 +2178,10 @@ export default class Main extends BaseController {
 		const sSearch = oUi.getProperty("/searchTerm") as string;
 		if (sSearch) {
 			oQuery.q = sSearch;
+		}
+		const sDay = oUi.getProperty("/selectedDay") as string;
+		if (sDay) {
+			oQuery.dt = sDay;
 		}
 		// ⚠ Geschrieben wird die ABWEICHUNG vom Standard, nicht der wahre
 		// Wert. "o" wurde bis 01.09.2026 GAR NICHT geschrieben, obwohl es in

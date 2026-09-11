@@ -88,10 +88,21 @@
 					items="{detail>/log}"
 					noDataText="{i18n>popNoLog}"
 					showSeparators="Inner">
+					<!--
+						intro traegt seit 11.09.2026 die LAUFENDE NUMMER vor dem
+						Zeitstempel ("3 / 7 · 11.09.2026, 12:23:15"). Die Frage
+						aus der Rueckmeldung lautete "welche Nachricht kam als
+						erstes und letztes" - dafuer will man eine Ordnungszahl
+						finden, ohne Zeitstempel vergleichen zu muessen.
+
+						Sie ist nur haltbar, weil jetzt alle Einstiege dieselbe
+						Reihenfolge zeigen (aufsteigend); vorher sortierte
+						dieselbe Sicht je nach Klick gegenlaeufig.
+					-->
 					<ObjectListItem
 						id="keyPopoverLogItem"
 						title="{detail>message}"
-						intro="{detail>stamp}"
+						intro="{parts: ['detail>no', 'detail>stamp'], formatter: '.formatter.stepIntro'}"
 						type="{= ${detail>payload} ? 'Active' : 'Inactive' }"
 						press=".onKeyPopoverLogPress">
 						<firstStatus>
@@ -117,7 +128,27 @@
 								tooltip="{parts: ['detail>logType', 'i18n>logTypeE', 'i18n>logTypeW', 'i18n>logTypeS'], formatter: '.formatter.logTypeTooltip'}"/>
 						</firstStatus>
 						<attributes>
-							<ObjectAttribute id="keyPopoverLogProcess" text="{detail>process}"/>
+							<!--
+								Der Prozess steht sprechend da, der rohe
+								HISTORY_TYPE im Tooltip: der Klartext ist fuer den
+								Anwender, der Rohwert fuer den, der im Backend
+								nachsieht. Bis 11.09.2026 stand nur der Rohwert da
+								(historyTypeText war gebaut, aber nie aufgerufen).
+							-->
+							<ObjectAttribute
+								id="keyPopoverLogProcess"
+								text="{detail>process}"
+								tooltip="{detail>processRaw}"/>
+							<!--
+								Die Systemseite - "auf welcher Systemseite HiLIS
+								oder SAP". Bleibt LEER, wenn HISTORY_TYPE nicht
+								gefuellt ist (nach O-27 der haeufigste Fall bei den
+								WM-Triggern): lieber keine Angabe als eine geratene.
+							-->
+							<ObjectAttribute
+								id="keyPopoverLogSide"
+								text="{detail>side}"
+								visible="{= !!${detail>side} }"/>
 							<ObjectAttribute id="keyPopoverLogHttp" text="{detail>http}"/>
 							<ObjectAttribute id="keyPopoverLogLine" text="{detail>line}"/>
 							<ObjectAttribute id="keyPopoverLogPayloadHint" text="{i18n>popPayloadHint}" visible="{= !!${detail>payload} }"/>

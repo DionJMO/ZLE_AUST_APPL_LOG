@@ -160,21 +160,15 @@ export function unassignedFilter(): Filter {
 	return new Filter({ filters: aParts, and: true });
 }
 
-/** Dieselben Bedingungen als OData-Ausdruck - fuer die Zaehler. */
-export function odataProcess(sKey: string): string {
-	const oDef = definition(sKey);
-	if (!oDef) {
-		return "";
-	}
-	return [`startswith(HistoryType,'${oDef.prefix}')`]
-		.concat(oDef.markers.map((s) => `contains(Message,'${s}')`))
-		.concat((oDef.msgPrefixes ?? []).map((s) => `startswith(Message,'${s}')`))
-		.join(" or ");
-}
-
-export function odataUnassigned(): string {
-	return ["HistoryType eq ''"]
-		.concat(allMarkers().map((s) => `not contains(Message,'${s}')`))
-		.concat(allMsgPrefixes().map((s) => `not startswith(Message,'${s}')`))
-		.join(" and ");
-}
+/*
+ * ℹ odataProcess( ) und odataUnassigned( ) sind am 11.09.2026 entfallen.
+ *
+ * Sie waren die ZWEITE Fassung derselben Regel - dieselben Praefixe und
+ * Marker noch einmal, nur als roher OData-Text statt als Filter-Objekt -,
+ * und ihr einziger Verbraucher waren die Reiterzaehler in KpiLoader. Seit
+ * die Zaehler dieselbe Filterkette wie die Tabelle benutzen
+ * (Main._loadTabCounts), gibt es hier wieder genau eine Definition je
+ * Prozess. Ein neuer Marker muss damit nur noch an einer Stelle nachgezogen
+ * werden - der Zweck dieses Moduls, der durch die Doppelung stillschweigend
+ * unterlaufen war.
+ */
