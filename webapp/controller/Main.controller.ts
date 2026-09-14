@@ -173,6 +173,15 @@ export default class Main extends BaseController {
 	 */
 	private _bApplyingUrl = true;
 
+	/**
+	 * Laufende Nummer des Filterstands.
+	 *
+	 * Erhoeht sich bei jedem _applyMsgFilter( ). Beide Lader stempeln ihr
+	 * Ergebnis damit, und verglichen wird nur bei gleicher Nummer - sonst
+	 * stellt man Zahlen aus zwei verschiedenen Zustaenden gegeneinander.
+	 */
+	private _iFilterGen = 0;
+
 	public onInit(): void {
 		this.getView()?.setModel(new JSONModel({ days: [] }), "chart");
 
@@ -583,10 +592,22 @@ export default class Main extends BaseController {
 		// Es gibt nur noch die Vorgangssicht (Festlegung Maring, 03.09.2026).
 		// Die flache, serverseitig geblaetterte Meldungstabelle ist entfallen -
 		// ein Ereignis ist eine Zeile, die Einzelschritte stehen dahinter.
-		void this._loadCascades();
+		/*
+		 * 🔴 BEIDE LADER BEKOMMEN DIESELBE GENERATION MIT.
+		 *
+		 * Sie laufen parallel, und ihre Ergebnisse duerfen nur verglichen
+		 * werden, wenn sie zum SELBEN Filterstand gehoeren. Ohne die Marke
+		 * verglich _checkTabCount( ) am 14.09.2026 die frisch gruppierte
+		 * Menge gegen einen Reiterzaehler aus dem VORIGEN Lauf - im Protokoll
+		 * gut zu sehen: "Server 370 / Browser 249", dann "249 / 134", dann
+		 * "134 / 370". Dieselben drei Zahlen, um eins verschoben. Die Warnung
+		 * beschuldigte die Daten, obwohl die Reihenfolge schuld war.
+		 */
+		const iGen = ++this._iFilterGen;
+		void this._loadCascades(iGen);
 		// Die Reiterzahlen gehoeren zum selben Zustand wie die Tabelle: wer
 		// sie hier ausliesse, haette wieder zwei Wahrheiten nebeneinander.
-		void this._loadTabCounts();
+		void this._loadTabCounts(iGen);
 		// Und die sichtbare Fassung desselben Zustands.
 		this._syncFilterChips();
 
@@ -1019,7 +1040,7 @@ export default class Main extends BaseController {
 	 * Bezug her; am Reiter steht nur die eine, deshalb sagt sein Tooltip,
 	 * welche es ist.
 	 */
-	private async _loadTabCounts(): Promise<void> {
+	private async _loadTabCounts(iGen = 0): Promise<void> {
 		// Die Reiter, die eine Meldungsmenge zaehlen. TPA, WACHECK und MATCMP
 		// sind keine - sie haben eigene Quellen und keine Zahl am Reiter.
 		const aKeys = [
@@ -1057,6 +1078,9 @@ export default class Main extends BaseController {
 		}));
 		// Steuert die Beschriftung: zaehlen die Reiter Vorgaenge oder Meldungen?
 		this.getUiModel().setProperty("/tabCountsAreOps", KpiLoader.isApplySupported());
+		// Marke, zu welchem Filterstand diese Zahlen gehoeren.
+		this.getUiModel().setProperty("/kpi/gen", iGen);
+		this._checkTabCount();
 		/*
 		 * Die Zusammenfassung nennt bei gekappter Sicht die Gesamtzahl mit -
 		 * und die steht erst jetzt fest. _loadCascades und _loadTabCounts
@@ -1791,7 +1815,7 @@ export default class Main extends BaseController {
 		this._applyMsgFilter(true);
 	}
 
-	private async _loadCascades(): Promise<void> {
+	private async _loadCascades(iGen = 0): Promise<void> {
 		const oCascade = this._cascadeModel();
 		oCascade.setProperty("/busy", true);
 		try {
@@ -1874,7 +1898,9 @@ export default class Main extends BaseController {
 			oCascade.setProperty("/sourceCount", oResult.sourceCount);
 			oCascade.setProperty("/truncated", bTruncated);
 			this._applyOpenOnly();
-			this._checkTabCount(oResult.rows.length, bTruncated);
+			oCascade.setProperty("/opsCount", oResult.rows.length);
+			oCascade.setProperty("/gen", iGen);
+			this._checkTabCount();
 
 			/*
 			 * Die Obergrenze bekommt einen eigenen Hinweis statt eines Anhangs
@@ -1933,20 +1959,51 @@ export default class Main extends BaseController {
 	 * dann weniger Zeilen gesehen als der Server gezaehlt hat, und eine
 	 * Abweichung waere erwartbar statt aussagekraeftig.
 	 */
-	private _checkTabCount(nBrowserOps: number, bTruncated: boolean): void {
-		if (bTruncated || !KpiLoader.isApplySupported()) {
+	private _checkTabCount(): void {
+		if (!KpiLoader.isApplySupported()) {
 			return;
 		}
-		const sProcess = this.getUiModel().getProperty("/selectedProcess") as string;
-		const sShown = this.getUiModel().getProperty("/kpi/tab" + sProcess) as string;
+		const oUi = this.getUiModel();
+		const oCascade = this._cascadeModel();
+
+		/*
+		 * 🔴 NUR VERGLEICHEN, WENN BEIDE ZAHLEN ZUM SELBEN FILTERSTAND
+		 * GEHOEREN. Ohne diese Pruefung stellte die Warnung am 14.09.2026
+		 * die frisch gruppierte Menge gegen einen Reiterzaehler aus dem
+		 * VORIGEN Lauf - im Protokoll an den Zahlen ablesbar: 370/249,
+		 * dann 249/134, dann 134/370. Dieselben drei Werte, um eins
+		 * verschoben. Die Warnung beschuldigte die Daten, obwohl die
+		 * Reihenfolge schuld war.
+		 */
+		const vCascGen = oCascade.getProperty("/gen") as number | undefined;
+		const vTabGen = oUi.getProperty("/kpi/gen") as number | undefined;
+		if (vCascGen === undefined || vTabGen === undefined || vCascGen !== vTabGen) {
+			return;
+		}
+
+		/*
+		 * ⚠ Bei erreichter Obergrenze wird NICHT verglichen: der Reiter
+		 * zaehlt ueber den ganzen Bestand, der Browser nur ueber das
+		 * geladene Fenster. Eine Abweichung waere dort erwartbar statt
+		 * aussagekraeftig.
+		 */
+		if ((oCascade.getProperty("/truncated") as boolean) === true) {
+			return;
+		}
+
+		const sProcess = oUi.getProperty("/selectedProcess") as string;
+		const sShown = oUi.getProperty("/kpi/tab" + sProcess) as string;
 		const nShown = Number(sShown);
-		if (!sShown || !Number.isFinite(nShown) || nShown === nBrowserOps) {
+		const nBrowserOps = Number(oCascade.getProperty("/opsCount"));
+		if (!sShown || !Number.isFinite(nShown) || !Number.isFinite(nBrowserOps)
+				|| nShown === nBrowserOps) {
 			return;
 		}
+
 		// eslint-disable-next-line no-console
 		console.warn(`[Reiterzaehler] ${sProcess}: Server zaehlt ${String(nShown)} `
-			+ `Vorgaenge, der Browser ${String(nBrowserOps)}. Wahrscheinlich Zeilen `
-			+ "mit initialer CorrUuid, die serverseitig zu einer Gruppe verschmelzen.");
+			+ `Vorgaenge, der Browser ${String(nBrowserOps)}. Beide Zahlen gehoeren `
+			+ "zum selben Filterstand - die Abweichung ist also echt.");
 	}
 
 	/**
