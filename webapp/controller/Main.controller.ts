@@ -139,6 +139,17 @@ export default class Main extends BaseController {
 	private static readonly WA_CHECK_DAYS = 30;
 
 	/**
+	 * Wie viele Zeilen des Stammdatenabgleichs fuer die Befundzaehlung
+	 * gelesen werden. Gelesen wird nur EIN Feld (Hinweis), die Abfrage ist
+	 * also billig; die Grenze schuetzt gegen einen Lauf, der versehentlich
+	 * auch die Nur-SAP-Zeilen fortschreibt (Messung 09.09.2026: 542.840).
+	 */
+	private static readonly MATCMP_FINDING_ROWS = 2000;
+
+	/** Wie viele verschiedene Befundarten die Zusammenfassung nennt. */
+	private static readonly MATCMP_FINDING_MAX = 6;
+
+	/**
 	 * Die Sicht als URL: Reiter, Typfilter, Suche, Gruppierung.
 	 *
 	 * Zweck ist weniger das Ueberleben eines Neuladens als das VERSCHICKEN -
@@ -806,6 +817,7 @@ export default class Main extends BaseController {
 			this._loadChart(),
 			this._loadKpis(),
 			this._loadMatCmpRun(),
+			this._loadMatCmpFindings(),
 			this._loadSapPositions(),
 			this._loadShadowedPicks(),
 			this._loadReprocMap()
@@ -1191,6 +1203,74 @@ export default class Main extends BaseController {
 		} catch (oError) {
 			// eslint-disable-next-line no-console
 			console.error("[Stammdatenabgleich] Laufkopf fehlgeschlagen:", oError);
+		}
+	}
+
+	/**
+	 * Die Befunde des Stammdatenabgleichs ZAEHLEN statt sie zu wiederholen.
+	 *
+	 * 🔴 DER ANLASS STAND AM 14.09.2026 AUF DEM BILDSCHIRM. Die Tabelle zeigte
+	 * 148 Zeilen, und in jeder einzelnen stand derselbe Satz - zweizeilig
+	 * umgebrochen und trotzdem abgeschnitten:
+	 *
+	 *   "Batch Standard <> None; Batch nicht STANDARD; Klasse Standard statt
+	 *    Kroschke-..."
+	 *
+	 * Das ist EIN Befund, nicht 148. Die Spalte war die breiteste der Tabelle
+	 * und trug null unterscheidende Information; die Zeilen, die sich
+	 * tatsaechlich unterscheiden (Material, Mengeneinheit), wurden davon an den
+	 * Rand gedraengt. Genau das meinte die Rueckmeldung "unuebersichtlich".
+	 *
+	 * Gezaehlt wird ueber den WORTLAUT, nicht ueber geparste Bestandteile: die
+	 * Texte baut ZLE_AUST_ITEM_COMPARE zusammen, und ein Parser im Frontend
+	 * waere dieselbe bruechige Textdeutung, die bei messageShort( ) schon als
+	 * Uebergangsloesung markiert ist. Gleicher Text = gleicher Befund, mehr
+	 * muss die Zusammenfassung nicht wissen.
+	 *
+	 * ⚠ Gelesen wird NUR das Hinweisfeld und nur von Zeilen, die ueberhaupt
+	 * einen Hinweis tragen. Ohne diese Einschraenkung zoege ein Lauf ohne
+	 * "nur Abweichungen" die 542.840 Nur-SAP-Zeilen mit herein.
+	 */
+	private async _loadMatCmpFindings(): Promise<void> {
+		try {
+			const oBinding = this.getODataModel("mainModel").bindList(
+				"/MatCompare", undefined, [],
+				[new Filter({ path: "Hinweis", operator: FilterOperator.NE, value1: "" })],
+				{ $select: "Hinweis" });
+			const aContexts = await oBinding.requestContexts(0, Main.MATCMP_FINDING_ROWS);
+
+			const oCounts = new Map<string, number>();
+			aContexts.forEach((oContext) => {
+				const sText = Main._scalarText(oContext.getProperty("Hinweis")).trim();
+				if (sText) {
+					oCounts.set(sText, (oCounts.get(sText) ?? 0) + 1);
+				}
+			});
+
+			const aSorted = [...oCounts.entries()].sort((a, b) => b[1] - a[1]);
+			const oBundle = this._bundle();
+			this.getUiModel().setProperty("/matCmp/findings", aSorted
+				.slice(0, Main.MATCMP_FINDING_MAX)
+				.map(([sText, nCount]) => ({
+					text: oBundle.getText("matCmpFinding",
+						[this.formatter.countText(nCount), sText]) ?? sText
+				})));
+			/*
+			 * Zwei verschiedene Obergrenzen, und sie bedeuten Verschiedenes:
+			 * mehr ARTEN von Befunden als angezeigt (die Liste ist gekuerzt),
+			 * oder mehr ZEILEN als gelesen (die Zaehlungen sind Untergrenzen).
+			 * Das zweite waere die gefaehrlichere Aussage - deshalb faellt es
+			 * nicht unter dieselbe Meldung.
+			 */
+			this.getUiModel().setProperty("/matCmp/findingsMore",
+				Math.max(0, aSorted.length - Main.MATCMP_FINDING_MAX));
+			this.getUiModel().setProperty("/matCmp/findingsCapped",
+				aContexts.length >= Main.MATCMP_FINDING_ROWS);
+		} catch (oError) {
+			// Zugabe, kein Bestandteil: faellt sie aus, bleibt die Tabelle wie
+			// sie war - die Befunde stehen ja weiterhin in ihrer Spalte.
+			// eslint-disable-next-line no-console
+			console.error("[Stammdatenabgleich] Befunde zaehlen fehlgeschlagen:", oError);
 		}
 	}
 

@@ -1134,3 +1134,43 @@ export function tabUnitFallbackVisible(
 ): boolean {
 	return isMessageView(sProcess) && bAreOps === false;
 }
+
+/**
+ * Zustand eines VERGLEICHSPAARES - faerbt nur, was abweicht.
+ *
+ * 🔴 DAS IST DER PUNKT EINER GEGENUEBERSTELLUNG. Im Stammdatenabgleich stehen
+ * SAP und HiLIS nebeneinander (ME, Chargenfuehrung). Am 14.09.2026 waren alle
+ * vier Spalten gleich formatiert, und das Auge musste jede Zeile Zeichen fuer
+ * Zeichen vergleichen - obwohl die Mengeneinheit in ALLEN 148 Zeilen
+ * uebereinstimmte und nur die Chargenfuehrung abwich.
+ *
+ * ⚠ Gleichheit bleibt bewusst NEUTRAL statt gruen. 148 gruene Zellen waeren
+ * dieselbe Sorte Rauschen, nur in einer anderen Farbe - Aufmerksamkeit gehoert
+ * auf den Unterschied.
+ *
+ * ⚠ Ist eine der beiden Seiten leer, wird NICHT gewarnt. "Nicht vorhanden" ist
+ * keine gemessene Abweichung; ein Artikel, den HiLIS gar nicht kennt, erzeugte
+ * sonst in jeder Spalte eine Warnung.
+ */
+export function comparePairState(sOwn?: string | null, sOther?: string | null): string {
+	const a = (sOwn ?? "").trim();
+	const b = (sOther ?? "").trim();
+	if (a === "" || b === "") {
+		return "None";
+	}
+	return a === b ? "None" : "Warning";
+}
+
+/**
+ * "und N weitere Befundarten" - nur wenn die Liste wirklich gekuerzt ist.
+ *
+ * Getrennt vom Kappungshinweis der gelesenen Zeilen: mehr ARTEN als angezeigt
+ * ist harmlos, mehr ZEILEN als gelesen macht die Zaehlungen zu Untergrenzen.
+ */
+export function matCmpMoreText(nMore?: number | null, sPattern?: string | null): string {
+	const n = Number(nMore ?? 0);
+	if (!Number.isFinite(n) || n <= 0) {
+		return "";
+	}
+	return (sPattern ?? "").replace("{0}", String(n));
+}

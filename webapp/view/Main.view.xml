@@ -1242,6 +1242,42 @@
 											visible="{ui>/matCmp/broken}"/>
 									</HBox>
 
+									<!--
+										🔴 DER BEFUND EINMAL STATT 148-MAL.
+										Die Spalte "Abweichung" trug in jeder Zeile denselben Satz.
+										Hier steht er gezaehlt - und die Tabelle darunter ist wieder
+										das, was sie sein soll: die Liste der betroffenen Materialien.
+									-->
+									<VBox
+										id="idMatCmpFindings"
+										visible="{= ${ui>/selectedProcess} === 'MATCMP' &amp;&amp; !!${ui>/matCmp/findings} }"
+										items="{path: 'ui>/matCmp/findings', templateShareable: false}"
+										class="sapUiSmallMarginBegin sapUiTinyMarginBottom">
+										<ObjectStatus
+											id="mcFindingText"
+											icon="sap-icon://alert"
+											state="Warning"
+											text="{ui>text}"
+											tooltip="{ui>text}"/>
+									</VBox>
+									<HBox
+										id="idMatCmpFindingsNote"
+										visible="{= ${ui>/selectedProcess} === 'MATCMP' }"
+										class="sapUiSmallMarginBegin sapUiTinyMarginBottom">
+										<Text
+											id="mcFindingsMore"
+											text="{parts: ['ui>/matCmp/findingsMore', 'i18n>matCmpFindingsMore'], formatter: '.formatter.matCmpMoreText'}"
+											visible="{= ${ui>/matCmp/findingsMore} &gt; 0 }"
+											class="sapUiTinyMarginEnd"/>
+										<ObjectStatus
+											id="mcFindingsCapped"
+											icon="sap-icon://alert"
+											state="Warning"
+											text="{i18n>matCmpFindingsCapped}"
+											tooltip="{i18n>matCmpFindingsCappedTip}"
+											visible="{ui>/matCmp/findingsCapped}"/>
+									</HBox>
+
 									<t:Table
 										id="idMatCmpTable"
 										visible="{= ${ui>/selectedProcess} === 'MATCMP' }"
@@ -1266,13 +1302,21 @@
 												description="{= ${ui>/matCmp/runAt} ? ${i18n>matCmpEmptyText} : ${i18n>matCmpNoRunText} }"/>
 										</t:noData>
 										<t:columns>
-											<t:Column id="idMatCmpStatusCol" width="7rem" sortProperty="Status">
+											<!--
+												Nur Symbol und Farbe, der Wortlaut im Tooltip - dieselbe
+												Entscheidung wie bei der Typ-Spalte der Meldungstabelle
+												(03.09.2026). In einer nach Abweichungen gefilterten Sicht
+												steht in JEDER Zeile derselbe Status; als Text waren das
+												sieben Zeichenbreiten ohne Aussage.
+											-->
+											<t:Column id="idMatCmpStatusCol" width="3.5rem" sortProperty="Status">
 												<Label id="mcLblStatus" text="{i18n>colMatCmpStatus}"/>
 												<t:template>
 													<ObjectStatus
 														id="mcTxtStatus"
-														text="{mainModel>Status}"
-														state="{path: 'mainModel>StatusCriticality', formatter: '.formatter.criticalityState'}"/>
+														icon="{path: 'mainModel>StatusCriticality', formatter: '.formatter.criticalityIcon'}"
+														state="{path: 'mainModel>StatusCriticality', formatter: '.formatter.criticalityState'}"
+														tooltip="{mainModel>Status}"/>
 												</t:template>
 											</t:Column>
 											<t:Column id="idMatCmpMatCol" width="9rem" sortProperty="Matnr">
@@ -1281,34 +1325,45 @@
 													<Link id="mcLnkMat" text="{path: 'mainModel>Matnr', formatter: '.formatter.materialNumber'}" wrapping="false" press=".onMatCmpMaterialPress" tooltip="{i18n>popTooltipItem}"/>
 												</t:template>
 											</t:Column>
-											<t:Column id="idMatCmpHintCol" minWidth="320">
+											<!--
+												EINZEILIG, seit die Zusammenfassung ueber der Tabelle den
+												Befund nennt. Zwei umgebrochene Zeilen verdoppelten die
+												Zeilenhoehe fuer einen Text, der in allen 148 Zeilen
+												derselbe war - und abgeschnitten wurde er trotzdem.
+												Vollstaendig steht er im Tooltip.
+											-->
+											<t:Column id="idMatCmpHintCol" minWidth="240">
 												<Label id="mcLblHint" text="{i18n>colMatCmpHint}"/>
 												<t:template>
-													<Text id="mcTxtHint" text="{mainModel>Hinweis}" wrapping="true" maxLines="2" tooltip="{mainModel>Hinweis}"/>
+													<Text id="mcTxtHint" text="{mainModel>Hinweis}" wrapping="false" tooltip="{mainModel>Hinweis}"/>
 												</t:template>
 											</t:Column>
 											<t:Column id="idMatCmpSapUnitCol" width="6rem">
 												<Label id="mcLblSapUnit" text="{i18n>colSapUnit}"/>
 												<t:template>
-													<Text id="mcTxtSapUnit" text="{mainModel>SapMunit}" wrapping="false"/>
+													<ObjectStatus id="mcTxtSapUnit" text="{mainModel>SapMunit}"
+												state="{parts: ['mainModel>SapMunit', 'mainModel>HilMunit'], formatter: '.formatter.comparePairState'}"/>
 												</t:template>
 											</t:Column>
 											<t:Column id="idMatCmpHilUnitCol" width="6rem">
 												<Label id="mcLblHilUnit" text="{i18n>colHilUnit}"/>
 												<t:template>
-													<Text id="mcTxtHilUnit" text="{mainModel>HilMunit}" wrapping="false"/>
+													<ObjectStatus id="mcTxtHilUnit" text="{mainModel>HilMunit}"
+												state="{parts: ['mainModel>HilMunit', 'mainModel>SapMunit'], formatter: '.formatter.comparePairState'}"/>
 												</t:template>
 											</t:Column>
 											<t:Column id="idMatCmpSapBatchCol" width="7rem">
 												<Label id="mcLblSapBatch" text="{i18n>colSapBatch}"/>
 												<t:template>
-													<Text id="mcTxtSapBatch" text="{mainModel>SapBatch}" wrapping="false"/>
+													<ObjectStatus id="mcTxtSapBatch" text="{mainModel>SapBatch}"
+												state="{parts: ['mainModel>SapBatch', 'mainModel>HilBatch'], formatter: '.formatter.comparePairState'}"/>
 												</t:template>
 											</t:Column>
 											<t:Column id="idMatCmpHilBatchCol" width="7rem">
 												<Label id="mcLblHilBatch" text="{i18n>colHilBatch}"/>
 												<t:template>
-													<Text id="mcTxtHilBatch" text="{mainModel>HilBatch}" wrapping="false"/>
+													<ObjectStatus id="mcTxtHilBatch" text="{mainModel>HilBatch}"
+												state="{parts: ['mainModel>HilBatch', 'mainModel>SapBatch'], formatter: '.formatter.comparePairState'}"/>
 												</t:template>
 											</t:Column>
 											<t:Column id="idMatCmpHilClassCol" width="10rem">
