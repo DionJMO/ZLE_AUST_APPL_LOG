@@ -1049,35 +1049,74 @@ export default class Main extends BaseController {
 			ProcessAxis.KEY_ALL
 		];
 
-		await Promise.all(aKeys.map(async (sKey) => {
+		/*
+		 * 🔴 ALLE REITER IN DERSELBEN EINHEIT - ODER KEINER.
+		 *
+		 * Bis 14.09.2026 entschied jeder Reiter fuer sich, ob er Vorgaenge
+		 * oder Meldungen zaehlt: die fuenf Abfragen laufen parallel, und
+		 * bApplySupported kippt MITTENDRIN. Wer den Eingangstest vorher
+		 * passiert hatte, lieferte weiter Vorgaenge, die uebrigen fielen auf
+		 * Meldungen zurueck - zwei Einheiten nebeneinander in derselben
+		 * Reiterzeile, ohne dass irgendwo stand, welche wo gilt.
+		 *
+		 * Deshalb zwei Stufen: erst alle nach Vorgaengen versuchen, und nur
+		 * wenn das LUECKENLOS gelingt, die Zahlen uebernehmen. Sonst zaehlt
+		 * der zweite Durchgang alle nach Meldungen.
+		 *
+		 * ⚠ Das Flag wird vorher zurueckgesetzt, sonst waere der Rueckfall
+		 * eine Einbahnstrasse ueber die ganze Sitzung.
+		 */
+		KpiLoader.resetApplySupport();
+		const oModel = this.getODataModel("mainModel");
+		const aFilterSets = aKeys.map((sKey) => this._msgFilters(sKey));
+
+		const aOps = await Promise.all(aFilterSets.map(async (aFilters, i) => {
 			try {
-				const aFilters = this._msgFilters(sKey);
-				/*
-				 * VORGAENGE, nicht Meldungen (Festlegung Tolksdorf,
-				 * 11.09.2026). Die Tabelle zeigt Vorgaenge - stand am Reiter
-				 * eine Meldungszahl, war die groessere Zahl die sichtbare und
-				 * die kleinere die wahre.
-				 *
-				 * -1 heisst "der Service kann kein $apply". Dann bleibt es bei
-				 * der Meldungszahl, und der Tooltip sagt es; eine 0
-				 * hinzuschreiben waere eine Behauptung.
-				 */
-				const nOps = await KpiLoader.loadOperationCount(
-					this.getODataModel("mainModel"), "/AppLog", aFilters);
-				const nCount = nOps >= 0
-					? nOps
-					: await KpiLoader.loadCount(
-						this.getODataModel("mainModel"),
-						{ path: "/AppLog", select: "LogUuid" },
-						aFilters);
-				this.getUiModel().setProperty("/kpi/tab" + sKey, String(nCount));
+				return await KpiLoader.loadOperationCount(oModel, "/AppLog", aFilters);
 			} catch (oError) {
 				// eslint-disable-next-line no-console
-				console.error("[Reiterzaehler] " + sKey + " fehlgeschlagen:", oError);
+				console.error("[Reiterzaehler] " + aKeys[i] + " fehlgeschlagen:", oError);
+				return -1;
 			}
 		}));
-		// Steuert die Beschriftung: zaehlen die Reiter Vorgaenge oder Meldungen?
-		this.getUiModel().setProperty("/tabCountsAreOps", KpiLoader.isApplySupported());
+
+		/*
+		 * Ein einziges -1 verwirft den ganzen Durchgang. Die Zahlen der
+		 * anderen waeren zwar richtig, aber sie stuenden neben Meldungszahlen
+		 * und niemand koennte sie auseinanderhalten.
+		 */
+		const bCountedOps = aOps.every((n) => n >= 0);
+		const aCounts = bCountedOps
+			? aOps
+			: await Promise.all(aFilterSets.map(async (aFilters, i) => {
+				try {
+					return await KpiLoader.loadCount(
+						oModel, { path: "/AppLog", select: "LogUuid" }, aFilters);
+				} catch (oError) {
+					// eslint-disable-next-line no-console
+					console.error("[Reiterzaehler] " + aKeys[i] + " fehlgeschlagen:", oError);
+					return -1;
+				}
+			}));
+
+		aKeys.forEach((sKey, i) => {
+			// -1 heisst "keine Antwort". Eine 0 hinzuschreiben waere eine
+			// Behauptung - der alte Wert bleibt lieber stehen.
+			if (aCounts[i] >= 0) {
+				this.getUiModel().setProperty("/kpi/tab" + sKey, String(aCounts[i]));
+			}
+		});
+		/*
+		 * Steuert Etikett, Tooltip und Hinweisstreifen: zaehlen die Reiter
+		 * Vorgaenge oder Meldungen?
+		 *
+		 * ⚠ Aus dem TATSAECHLICHEN Ergebnis dieses Laufs, nicht aus
+		 * isApplySupported( ). Die beiden koennen auseinanderfallen - faengt
+		 * die Schleife oben einen Fehler, der in loadOperationCount nicht
+		 * auftrat, steht das Flag noch auf true, obwohl zurueckgefallen
+		 * wurde. Die Beschriftung muss beschreiben, was in den Zahlen steht.
+		 */
+		this.getUiModel().setProperty("/tabCountsAreOps", bCountedOps);
 		// Marke, zu welchem Filterstand diese Zahlen gehoeren.
 		this.getUiModel().setProperty("/kpi/gen", iGen);
 		this._checkTabCount();

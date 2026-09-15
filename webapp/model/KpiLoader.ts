@@ -153,6 +153,24 @@ export function isApplySupported(): boolean {
 }
 
 /**
+ * Das Flag vor einem neuen Zaehllauf zuruecksetzen.
+ *
+ * 🔴 OHNE DAS VERGIFTET EIN EINZIGER FEHLSCHLAG DIE GANZE SITZUNG.
+ * bApplySupported ist ein Modulzustand und blieb bis 14.09.2026 fuer immer
+ * false, sobald er einmal gekippt war - auch wenn die Ursache eine
+ * voruebergehende war (ein Netzaussetzer, eine Filterkombination, die es
+ * inzwischen nicht mehr gibt). Die Reiter zaehlten danach bis zum Neuladen
+ * der Seite Meldungen, waehrend die Beschriftung Vorgaenge versprach.
+ *
+ * Innerhalb EINES Laufs bleibt das Flag dagegen klebrig, und das ist
+ * gewollt: es spart den uebrigen Reitern die Abfragen, sobald der erste
+ * gezeigt hat, dass der Service nicht mitspielt.
+ */
+export function resetApplySupport(): void {
+	bApplySupported = true;
+}
+
+/**
  * Anzahl verschiedener CorrUuid unter denselben Bedingungen.
  *
  * ⚠ Rückgabe -1 heißt "nicht ermittelbar" - NICHT 0. Eine 0 wäre eine

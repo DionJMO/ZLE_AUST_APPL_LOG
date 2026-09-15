@@ -471,7 +471,7 @@
 										key="ALL"
 										icon="sap-icon://activity-items"
 										design="Horizontal"
-										text="{i18n>tabALL}"
+										text="{parts: ['ui>/tabCountsAreOps', 'i18n>tabALL', 'i18n>tabALLMsg'], formatter: '.formatter.tabAllText'}"
 										count="{path: 'ui>/kpi/tabALL', formatter: '.formatter.tabCount'}"
 										tooltip="{parts: ['ui>/tabCountsAreOps', 'i18n>tabCountTip', 'i18n>tabCountTipMsg'], formatter: '.formatter.tabCountTooltip'}"/>
 									<IconTabFilter
@@ -582,6 +582,22 @@
 											text="{cascade>/cutText}"
 											tooltip="{cascade>/cutTip}"
 											visible="{parts: ['ui>/selectedProcess', 'cascade>/truncated'], formatter: '.formatter.cascadeCutVisible'}"
+											class="sapUiSmallMarginBegin"/>
+										<!--
+											🔴 DIE REITER ZAEHLEN EINE ANDERE EINHEIT ALS DIE
+											TABELLE - und das darf nicht nur im Tooltip stehen.
+											Am 14.09.2026 stand am Reiter "Alle Vorgaenge 19217"
+											ueber einer Tabelle mit 7.369 Vorgaengen; die 19.217
+											waren Meldungen. Sichtbar war davon nichts, weil der
+											Rueckfall ausschliesslich auf der Konsole landete.
+										-->
+										<ObjectStatus
+											id="idTabUnitFallbackObjectStatus"
+											state="Warning"
+											icon="sap-icon://alert"
+											text="{i18n>tabUnitFallback}"
+											tooltip="{i18n>tabUnitFallbackTip}"
+											visible="{parts: ['ui>/selectedProcess', 'ui>/tabCountsAreOps'], formatter: '.formatter.tabUnitFallbackVisible'}"
 											class="sapUiSmallMarginBegin"/>
 										<!--
 											🔴 DER ARBEITSVORRAT IST NICHT LESBAR - und das

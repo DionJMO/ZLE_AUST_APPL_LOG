@@ -1092,3 +1092,45 @@ export function darkModeTooltip(
 ): string {
 	return (bDark === true ? sToLight : sToDark) ?? "";
 }
+
+/**
+ * Beschriftung des Sammelreiters - folgt der EINHEIT, nicht der Absicht.
+ *
+ * 🔴 DER GRUND STAND AM 14.09.2026 AUF DEM BILDSCHIRM. Am Reiter stand
+ * "Alle Vorgaenge" und darunter 19.217, waehrend die Tabelle 7.369 Vorgaenge
+ * zeigte. Die 19.217 waren aber MELDUNGEN: der Zaehler war auf loadCount
+ * zurueckgefallen, weil $apply nicht durchging. Der Tooltip sagte es korrekt -
+ * nur liest niemand einen Tooltip, bevor er sich ueber eine Zahl wundert.
+ *
+ * Dieselbe Regel wie bei tabCountTooltip, nur fuer das sichtbare Etikett:
+ * die Zahl und das Wort daneben muessen dieselbe Einheit meinen.
+ *
+ * ⚠ Nur der Sammelreiter traegt ueberhaupt ein Einheitenwort. Die uebrigen
+ * heissen nach ihrem PROZESS ("Wareneingang", "Materialstamm") und sind von
+ * der Einheit unberuehrt.
+ */
+export function tabAllText(
+	bAreOps?: boolean | null,
+	sOps?: string | null,
+	sMessages?: string | null
+): string {
+	return (bAreOps === false ? (sMessages ?? "") : (sOps ?? "")).trim();
+}
+
+/**
+ * Sichtbarkeit des Hinweises "die Reiter zaehlen Meldungen".
+ *
+ * Nur in den Meldungssichten - in den Reitern TPA, WA-Pruefung und
+ * Stammdaten gibt es keine Reiterzahl dieser Art, dort waere der Hinweis
+ * eine Warnung ohne Gegenstand.
+ *
+ * ⚠ Streng gegen false geprueft, nicht auf "falsy". Vor dem ersten
+ * Ladelauf ist die Eigenschaft undefined - dann steht noch gar keine Zahl
+ * am Reiter, und eine Warnung darueber waere verfrueht.
+ */
+export function tabUnitFallbackVisible(
+	sProcess?: string | null,
+	bAreOps?: boolean | null
+): boolean {
+	return isMessageView(sProcess) && bAreOps === false;
+}
