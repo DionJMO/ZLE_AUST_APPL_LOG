@@ -18,6 +18,8 @@
  * Richtungen.
  */
 
+import * as LogTypeAxis from "./LogTypeAxis";
+
 /* eslint-disable @sap-ux/fiori-tools/sap-no-global-variable */
 
 /**
@@ -26,5 +28,37 @@
  * Wiederanstoss im Hintergrund von selbst erledigt hat, ist Historie.
  */
 export const OPEN_ONLY_DEFAULT = true;
+
+/**
+ * Typfilter beim Start: Fehler und Abbrueche (Festlegung Maring,
+ * 15.09.2026). Wer die Seite oeffnet, sucht das Auffaellige - die
+ * Erfolgsmeldungen sind die grosse Mehrheit und verdecken es.
+ */
+export const TYPE_DEFAULT = LogTypeAxis.KEY_PROBLEM;
+
+/**
+ * Tagesfilter beim Start: heute (Festlegung Maring, 15.09.2026).
+ *
+ * 🔴 ALS FUNKTION UND NICHT ALS KONSTANTE. Der Wert aendert sich taeglich;
+ * eine Konstante waere beim Laden des Moduls eingefroren und zeigte in einer
+ * ueber Nacht offen gebliebenen Sitzung den Vortag.
+ *
+ * ⚠ ORTSZEIT, nicht UTC - "heute" ist, was der Anwender darunter versteht.
+ * CreatedAt leitet der CDS-View dagegen aus einem UTC-Zeitstempel ab. In der
+ * Stunde nach Mitternacht (CEST: bis 02:00) liegt der Tag deshalb bis zu zwei
+ * Stunden auseinander; Saetze aus diesem Fenster tragen noch den Vortag. Das
+ * ist bewusst in Kauf genommen: die Alternative waere ein Filter, der dem
+ * Anwender morgens den falschen Tag anzeigt.
+ *
+ * ⚠ toISOString( ) waere hier FALSCH - das rechnet nach UTC um und kippt
+ * genau in diesem Fenster auf den Vortag. Deshalb von Hand aus den lokalen
+ * Bestandteilen gebaut.
+ */
+export function today(): string {
+	const oNow = new Date();
+	const sMonth = String(oNow.getMonth() + 1).padStart(2, "0");
+	const sDay = String(oNow.getDate()).padStart(2, "0");
+	return `${oNow.getFullYear()}-${sMonth}-${sDay}`;
+}
 
 /* eslint-enable @sap-ux/fiori-tools/sap-no-global-variable */

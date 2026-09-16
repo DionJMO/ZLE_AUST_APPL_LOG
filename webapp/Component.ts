@@ -57,9 +57,10 @@ export default class Component extends UIComponent {
 		// der Meldungssicht; die Reiter selbst kommen aus model/ProcessAxis.
 		this.setModel(new JSONModel({
 			lastRefreshText: "",
-			// Reiterzustand der Meldungssicht. selectedType leer = alle Typen.
+			// Reiterzustand der Meldungssicht. selectedType leer = alle Typen;
+			// der Start steht seit 15.09.2026 auf Fehler+Abbrueche.
 			selectedProcess: ProcessAxis.KEY_DEFAULT,
-			selectedType: "",
+			selectedType: ViewDefaults.TYPE_DEFAULT,
 			/*
 			 * Tagesfilter der Vorgangssicht, ISO-Datum oder leer.
 			 *
@@ -68,7 +69,9 @@ export default class Component extends UIComponent {
 			 * _msgFilters( ) prueft ihn deshalb gegen ein Muster, bevor er in
 			 * einen $filter geht.
 			 */
-			selectedDay: "",
+			// Startwert: heute (Festlegung Maring, 15.09.2026). Der Wert wird
+			// bei jedem Start neu berechnet - siehe ViewDefaults.today( ).
+			selectedDay: ViewDefaults.today(),
 			/*
 			 * Werte der Spaltentrichter. Sie liegen im ui-Modell und nicht in
 			 * der Tabellenbindung, weil sie SERVERSEITIG wirken - der

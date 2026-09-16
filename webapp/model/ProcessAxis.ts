@@ -92,7 +92,13 @@ export const KEY_MATCMP = "MATCMP";
  * heraushaelt. Zwei Kopien wuerden auseinanderlaufen, und dann traege jede
  * URL einen Parameter, der nichts aussagt.
  */
-export const KEY_DEFAULT = "IB";
+/*
+ * 🔴 Seit 15.09.2026 KEY_ALL statt "IB". Der Reiter "Alle Vorgaenge" steht
+ * jetzt ganz links, und der Start filtert auf Fehler von heute
+ * (ViewDefaults.TYPE_DEFAULT / today( )). Die will man prozessuebergreifend
+ * sehen - ein Start im Wareneingang haette zwei Drittel davon versteckt.
+ */
+export const KEY_DEFAULT = KEY_ALL;
 /* eslint-enable @sap-ux/fiori-tools/sap-no-global-variable */
 
 // eslint-disable-next-line @sap-ux/fiori-tools/sap-no-global-variable

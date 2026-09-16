@@ -159,6 +159,22 @@ export default class Main extends BaseController {
 	 * ⚠ Kurze Schluessel, weil sie in der Adresszeile stehen und dort auch
 	 * von Hand gelesen und getippt werden.
 	 */
+	/**
+	 * URL-Vertreter fuer den LEEREN Wert.
+	 *
+	 * 🔴 NOETIG, SEIT DIE STANDARDS NICHT MEHR LEER SIND. _syncUrl schreibt
+	 * nur die Abweichung vom Standard - ein fehlender Parameter heisst also
+	 * "Standard". Mit "Fehler" und "heute" als Startwerten waere "kein
+	 * Typfilter" und "kein Tagesfilter" in der Adresse damit gar nicht mehr
+	 * darstellbar: der Empfaenger eines Links saehe wieder die Startfilter,
+	 * obwohl der Absender sie weggenommen hatte.
+	 *
+	 * Ein leerer Parameter (?t=) taugt dafuer nicht - ob er den Weg durch
+	 * navTo und zurueck uebersteht, ist nicht zugesichert. "-" ist eindeutig
+	 * und in der Adresszeile lesbar.
+	 */
+	private static readonly URL_EMPTY = "-";
+
 	/** Schluessel aus URL_KEYS, die als "1"/"0" statt als Text zu lesen sind. */
 	private static readonly URL_BOOLEANS: string[] = ["/openOnly"];
 
@@ -664,10 +680,25 @@ export default class Main extends BaseController {
 		this._applyMsgFilter();
 	}
 
-	/** Alle Filtermarken auf einmal entfernen. */
+	/**
+	 * Alle Filtermarken auf einmal entfernen - und zurueck auf "Alle
+	 * Vorgaenge".
+	 *
+	 * 🔴 DER REITER GEHOERT DAZU (Festlegung Maring, 15.09.2026). Er ist
+	 * zwar keine Marke - FilterChips.clearAll fasst ihn deshalb bewusst nicht
+	 * an, und das bleibt so -, aber er IST ein Filter. Wer "Alle Filter
+	 * entfernen" drueckt und danach weiter im Wareneingang steht, sieht immer
+	 * noch eine eingeschraenkte Menge und keinen Hinweis darauf, warum.
+	 *
+	 * ⚠ Damit ist der Leerzustand NICHT der Startzustand: der Start zeigt
+	 * Fehler von heute (ViewDefaults), dieser Knopf zeigt alles. Beides ist
+	 * gewollt - der Knopf heisst "entfernen", nicht "zuruecksetzen".
+	 */
 	public onFilterReset(): void {
-		FilterChips.clearAll(this.getUiModel());
-		this._applyMsgFilter();
+		const oUi = this.getUiModel();
+		FilterChips.clearAll(oUi);
+		oUi.setProperty("/selectedProcess", ProcessAxis.KEY_ALL);
+		this._applyMsgFilter(true);
 	}
 
 	/**
@@ -2279,7 +2310,13 @@ export default class Main extends BaseController {
 			if (sValue === undefined) {
 				return;
 			}
-			if (Main.URL_BOOLEANS.includes(sPath)) {
+			if (sValue === Main.URL_EMPTY
+					&& (sPath === "/selectedType" || sPath === "/selectedDay")) {
+				// Bewusst leer gesetzt, nicht "Standard" - siehe URL_EMPTY.
+				// Nur fuer diese zwei Pfade: ein Suchbegriff "-" soll ein
+				// Suchbegriff bleiben.
+				oUi.setProperty(sPath, "");
+			} else if (Main.URL_BOOLEANS.includes(sPath)) {
 				/*
 				 * 🔴 Ausdruecklich boolean, nicht der Rohtext. Bis 01.09.2026
 				 * fiel "/openOnly" in den else-Zweig und landete als STRING im
@@ -2348,17 +2385,23 @@ export default class Main extends BaseController {
 			oQuery.p = sProcess;
 		}
 		const sType = oUi.getProperty("/selectedType") as string;
-		if (sType) {
-			oQuery.t = sType;
+		if (sType !== ViewDefaults.TYPE_DEFAULT) {
+			oQuery.t = sType || Main.URL_EMPTY;
 		}
 		const sSearch = oUi.getProperty("/searchTerm") as string;
 		if (sSearch) {
 			oQuery.q = sSearch;
 		}
+		/*
+		 * 🔴 DER TAG WIRD IMMER GESCHRIEBEN, auch wenn er auf heute steht.
+		 *
+		 * Er ist der einzige Standard, der sich von selbst aendert. Bliebe er
+		 * bei Gleichheit aus der Adresse, meinte ein heute verschickter Link
+		 * morgen einen anderen Tag - still und ohne dass es jemandem auffiele.
+		 * Ein Link muss zeigen, was der Absender gesehen hat.
+		 */
 		const sDay = oUi.getProperty("/selectedDay") as string;
-		if (sDay) {
-			oQuery.dt = sDay;
-		}
+		oQuery.dt = sDay || Main.URL_EMPTY;
 		// ⚠ Geschrieben wird die ABWEICHUNG vom Standard, nicht der wahre
 		// Wert. "o" wurde bis 01.09.2026 GAR NICHT geschrieben, obwohl es in
 		// URL_KEYS steht und gelesen wird - ein Zustand, der nur in eine

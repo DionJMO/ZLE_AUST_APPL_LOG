@@ -158,9 +158,6 @@
 			-->
 			<VBox id="groupContainer" class="zleContentMaxWidth sapUiMediumMarginTop sapUiMediumMarginBottom" renderType="Bare">
 
-				<core:Fragment fragmentName="zui5_zle_aust_mon.view.fragment.KontaktBar" type="XML"/>
-
-				<Title id="overviewHeading" text="{i18n>groupOverview}" level="H2" titleStyle="H2" class="sapUiLargeMarginTop sapUiSmallMarginBottom"/>
 				<!--
 					🔴 SPALTENZAHL JE BREAKPOINT - der Grund steht hier, weil er
 					sonst nicht zu erraten ist.
@@ -187,7 +184,20 @@
 					(340px, passt ab 375px). Damit gibt es keine Kante mehr, an
 					der die Breite auf ein Drittel faellt.
 				-->
-				<f:GridContainer id="overviewGrid" snapToRow="true">
+				<!--
+					🔴 SEITENAUFBAU 16.09.2026 (Festlegung Maring): Verlauf - Tabelle -
+					Kennzahlen - Kontakte. Der Verlauf steht oben, die Tabelle direkt
+					darunter: sie ist der Arbeitsbereich, die Kennzahlen begleiten ihn.
+					
+					⚠ Eigenes Raster, weil Kennzahlen und Verlauf jetzt durch die Tabelle
+					getrennt sind. Eine GridContainerSettings-Instanz laesst sich NICHT
+					fuer zwei Raster wiederverwenden - deshalb steht der Layoutblock
+					bewusst zweimal da und nicht als gemeinsame Definition.
+					
+					Ohne H2-Ueberschrift: die Panel-Kopfzeile traegt den Titel schon,
+					eine Gruppenueberschrift waere dieselbe Beschriftung zweimal.
+				-->
+				<f:GridContainer id="chartGrid" snapToRow="true">
 					<f:layout>
 						<f:GridContainerSettings columns="12" minColumnSize="4rem" maxColumnSize="6rem" rowSize="2rem" gap="1rem"/>
 					</f:layout>
@@ -197,95 +207,6 @@
 					<f:layoutS>
 						<f:GridContainerSettings columns="8" minColumnSize="2rem" maxColumnSize="6rem" rowSize="2rem" gap="0.75rem"/>
 					</f:layoutS>
-
-					<!--
-						BEWUSST OHNE height="100%" - anders als bei allen anderen Panels.
-						Der Default von sap.m.Panel.height ist "auto", damit waechst das
-						Panel mit seinem Inhalt und minRows wirkt wie vorgesehen als
-						Untergrenze ("the MINIMUM number of rows, which the item should
-						take"). Mit height="100%" waere das Panel starr auf die
-						Grid-Item-Hoehe genagelt und die Inhaltsflaeche bekaeme eine
-						Bildlaufleiste, sobald der Inhalt hoeher ist - genau das war hier
-						der Fall, weil sap.m.NumericContent als Tile-Control mit Label
-						rund 85-90px braucht, nicht die von mir angesetzten 60px.
-
-						Bei den Tabellen-Panels ist height="100%" dagegen notwendig: der
-						rowMode Auto berechnet die Zeilenzahl aus der Containerhoehe. Beim
-						chartPanel ebenso, weil der VizFrame einen begrenzten Elternteil
-						braucht.
-					-->
-					<Panel id="kpiPanel">
-						<layoutData>
-							<!--
-								Flache Zeile ueber die volle Breite. minRows ist hier nur der
-								Boden - die tatsaechliche Hoehe ergibt sich aus dem Inhalt.
-							-->
-							<f:GridContainerItemLayoutData columns="12" minRows="4"/>
-						</layoutData>
-						<headerToolbar>
-							<OverflowToolbar id="kpiToolbar" height="3.25rem">
-								<Avatar id="kpiAvatar" src="sap-icon://kpi-corporate-performance" displaySize="XS" backgroundColor="Accent8"/>
-								<Title id="kpiTitle" text="{i18n>kpiPanelTitle}" level="H3" titleStyle="H3"/>
-								<ToolbarSpacer id="kpiSpacer"/>
-							</OverflowToolbar>
-						</headerToolbar>
-						<content>
-							<!--
-								Alle vier Werte in EINER Zeile, gleichmaessig ueber die Breite
-								verteilt. Zahlen kommen aus model/KpiLoader.ts (serverseitiges
-								$count), Filter und Pfade unveraendert aus der frueheren
-								OVP-Karte - damit sich die Werte gegenueber dem alten Stand nicht
-								still aendern. Jede Zahl mit Icon, nicht nur mit Farbe.
-							-->
-							<HBox id="idKpiHBox" justifyContent="SpaceAround" alignItems="Center" class="sapUiSmallMargin">
-								<VBox id="idGesamtVBox" alignItems="Center">
-									<NumericContent
-										id="idGesamtNumericContent"
-										value="{ui>/kpi/gesamt}"
-										icon="sap-icon://sum"
-										withMargin="false"/>
-									<Label id="idGesamtLabel" text="{i18n>kpiGesamt}" design="Bold"/>
-								</VBox>
-								<VBox id="idOffenVBox" alignItems="Center">
-									<NumericContent
-										id="idOffenNumericContent"
-										value="{ui>/kpi/offen}"
-										icon="sap-icon://pending"
-										valueColor="Critical"
-										withMargin="false"/>
-									<Label id="idOffenLabel" text="{i18n>kpiOffen}" design="Bold"/>
-								</VBox>
-								<VBox id="idStorniertVBox" alignItems="Center">
-									<NumericContent
-										id="idStorniertNumericContent"
-										value="{ui>/kpi/storniert}"
-										icon="sap-icon://cancel"
-										valueColor="Critical"
-										withMargin="false"/>
-									<Label id="idStorniertLabel" text="{i18n>kpiStorniert}" design="Bold"/>
-								</VBox>
-								<VBox id="idOhneKeyVBox" alignItems="Center">
-									<NumericContent
-										id="idOhneKeyNumericContent"
-										value="{ui>/kpi/ohneKey}"
-										icon="sap-icon://question-mark"
-										valueColor="Critical"
-										withMargin="false"/>
-									<Label id="idOhneKeyLabel" text="{i18n>kpiOhneKey}" design="Bold"/>
-								</VBox>
-								<VBox id="idFehlerVBox" alignItems="Center">
-									<NumericContent
-										id="idFehlerNumericContent"
-										value="{ui>/kpi/fehler}"
-										icon="sap-icon://error"
-										valueColor="Error"
-										withMargin="false"/>
-									<Label id="idFehlerLabel" text="{i18n>kpiFehler}" design="Bold"/>
-								</VBox>
-							</HBox>
-						</content>
-					</Panel>
-
 					<Panel id="chartPanel" height="100%">
 						<layoutData>
 							<f:GridContainerItemLayoutData columns="12" minRows="12"/>
@@ -435,6 +356,22 @@
 								expandable="false">
 								<items>
 									<IconTabFilter
+										id="idTabALL"
+										key="ALL"
+										icon="sap-icon://activity-items"
+										design="Horizontal"
+										text="{parts: ['ui>/tabCountsAreOps', 'i18n>tabALL', 'i18n>tabALLMsg'], formatter: '.formatter.tabAllText'}"
+										count="{path: 'ui>/kpi/tabALL', formatter: '.formatter.tabCount'}"
+										tooltip="{parts: ['ui>/tabCountsAreOps', 'i18n>tabCountTip', 'i18n>tabCountTipMsg'], formatter: '.formatter.tabCountTooltip'}"/>
+									<IconTabFilter
+										id="idTabNONE"
+										key="NONE"
+										icon="sap-icon://question-mark"
+										design="Horizontal"
+										text="{i18n>tabNONE}"
+										count="{path: 'ui>/kpi/tabNONE', formatter: '.formatter.tabCount'}"
+										tooltip="{parts: ['ui>/tabCountsAreOps', 'i18n>tabCountTip', 'i18n>tabCountTipMsg'], formatter: '.formatter.tabCountTooltip'}"/>
+									<IconTabFilter
 										id="idTabIB"
 										key="IB"
 										icon="sap-icon://download-from-cloud"
@@ -457,22 +394,6 @@
 										design="Horizontal"
 										text="{i18n>tabITEM}"
 										count="{path: 'ui>/kpi/tabITEM', formatter: '.formatter.tabCount'}"
-										tooltip="{parts: ['ui>/tabCountsAreOps', 'i18n>tabCountTip', 'i18n>tabCountTipMsg'], formatter: '.formatter.tabCountTooltip'}"/>
-									<IconTabFilter
-										id="idTabNONE"
-										key="NONE"
-										icon="sap-icon://question-mark"
-										design="Horizontal"
-										text="{i18n>tabNONE}"
-										count="{path: 'ui>/kpi/tabNONE', formatter: '.formatter.tabCount'}"
-										tooltip="{parts: ['ui>/tabCountsAreOps', 'i18n>tabCountTip', 'i18n>tabCountTipMsg'], formatter: '.formatter.tabCountTooltip'}"/>
-									<IconTabFilter
-										id="idTabALL"
-										key="ALL"
-										icon="sap-icon://activity-items"
-										design="Horizontal"
-										text="{parts: ['ui>/tabCountsAreOps', 'i18n>tabALL', 'i18n>tabALLMsg'], formatter: '.formatter.tabAllText'}"
-										count="{path: 'ui>/kpi/tabALL', formatter: '.formatter.tabCount'}"
 										tooltip="{parts: ['ui>/tabCountsAreOps', 'i18n>tabCountTip', 'i18n>tabCountTipMsg'], formatter: '.formatter.tabCountTooltip'}"/>
 									<IconTabFilter
 										id="idTabTPA"
@@ -1494,6 +1415,113 @@
 						</content>
 					</Panel>
 				</f:GridContainer>
+
+				<Title id="overviewHeading" text="{i18n>groupOverview}" level="H2" titleStyle="H2" class="sapUiLargeMarginTop sapUiSmallMarginBottom"/>
+				<!--
+					Kennzahlen UNTER der Tabelle. Sie sind Begleitung, nicht Einstieg.
+				-->
+				<f:GridContainer id="kpiGrid" snapToRow="true">
+					<f:layout>
+						<f:GridContainerSettings columns="12" minColumnSize="4rem" maxColumnSize="6rem" rowSize="2rem" gap="1rem"/>
+					</f:layout>
+					<f:layoutM>
+						<f:GridContainerSettings columns="12" minColumnSize="2rem" maxColumnSize="6rem" rowSize="2rem" gap="0.75rem"/>
+					</f:layoutM>
+					<f:layoutS>
+						<f:GridContainerSettings columns="8" minColumnSize="2rem" maxColumnSize="6rem" rowSize="2rem" gap="0.75rem"/>
+					</f:layoutS>
+
+					<!--
+						BEWUSST OHNE height="100%" - anders als bei allen anderen Panels.
+						Der Default von sap.m.Panel.height ist "auto", damit waechst das
+						Panel mit seinem Inhalt und minRows wirkt wie vorgesehen als
+						Untergrenze ("the MINIMUM number of rows, which the item should
+						take"). Mit height="100%" waere das Panel starr auf die
+						Grid-Item-Hoehe genagelt und die Inhaltsflaeche bekaeme eine
+						Bildlaufleiste, sobald der Inhalt hoeher ist - genau das war hier
+						der Fall, weil sap.m.NumericContent als Tile-Control mit Label
+						rund 85-90px braucht, nicht die von mir angesetzten 60px.
+
+						Bei den Tabellen-Panels ist height="100%" dagegen notwendig: der
+						rowMode Auto berechnet die Zeilenzahl aus der Containerhoehe. Beim
+						chartPanel ebenso, weil der VizFrame einen begrenzten Elternteil
+						braucht.
+					-->
+					<Panel id="kpiPanel">
+						<layoutData>
+							<!--
+								Flache Zeile ueber die volle Breite. minRows ist hier nur der
+								Boden - die tatsaechliche Hoehe ergibt sich aus dem Inhalt.
+							-->
+							<f:GridContainerItemLayoutData columns="12" minRows="4"/>
+						</layoutData>
+						<headerToolbar>
+							<OverflowToolbar id="kpiToolbar" height="3.25rem">
+								<Avatar id="kpiAvatar" src="sap-icon://kpi-corporate-performance" displaySize="XS" backgroundColor="Accent8"/>
+								<Title id="kpiTitle" text="{i18n>kpiPanelTitle}" level="H3" titleStyle="H3"/>
+								<ToolbarSpacer id="kpiSpacer"/>
+							</OverflowToolbar>
+						</headerToolbar>
+						<content>
+							<!--
+								Alle vier Werte in EINER Zeile, gleichmaessig ueber die Breite
+								verteilt. Zahlen kommen aus model/KpiLoader.ts (serverseitiges
+								$count), Filter und Pfade unveraendert aus der frueheren
+								OVP-Karte - damit sich die Werte gegenueber dem alten Stand nicht
+								still aendern. Jede Zahl mit Icon, nicht nur mit Farbe.
+							-->
+							<HBox id="idKpiHBox" justifyContent="SpaceAround" alignItems="Center" class="sapUiSmallMargin">
+								<VBox id="idGesamtVBox" alignItems="Center">
+									<NumericContent
+										id="idGesamtNumericContent"
+										value="{ui>/kpi/gesamt}"
+										icon="sap-icon://sum"
+										withMargin="false"/>
+									<Label id="idGesamtLabel" text="{i18n>kpiGesamt}" design="Bold"/>
+								</VBox>
+								<VBox id="idOffenVBox" alignItems="Center">
+									<NumericContent
+										id="idOffenNumericContent"
+										value="{ui>/kpi/offen}"
+										icon="sap-icon://pending"
+										valueColor="Critical"
+										withMargin="false"/>
+									<Label id="idOffenLabel" text="{i18n>kpiOffen}" design="Bold"/>
+								</VBox>
+								<VBox id="idStorniertVBox" alignItems="Center">
+									<NumericContent
+										id="idStorniertNumericContent"
+										value="{ui>/kpi/storniert}"
+										icon="sap-icon://cancel"
+										valueColor="Critical"
+										withMargin="false"/>
+									<Label id="idStorniertLabel" text="{i18n>kpiStorniert}" design="Bold"/>
+								</VBox>
+								<VBox id="idOhneKeyVBox" alignItems="Center">
+									<NumericContent
+										id="idOhneKeyNumericContent"
+										value="{ui>/kpi/ohneKey}"
+										icon="sap-icon://question-mark"
+										valueColor="Critical"
+										withMargin="false"/>
+									<Label id="idOhneKeyLabel" text="{i18n>kpiOhneKey}" design="Bold"/>
+								</VBox>
+								<VBox id="idFehlerVBox" alignItems="Center">
+									<NumericContent
+										id="idFehlerNumericContent"
+										value="{ui>/kpi/fehler}"
+										icon="sap-icon://error"
+										valueColor="Error"
+										withMargin="false"/>
+									<Label id="idFehlerLabel" text="{i18n>kpiFehler}" design="Bold"/>
+								</VBox>
+							</HBox>
+						</content>
+					</Panel>
+
+				</f:GridContainer>
+
+				<core:Fragment fragmentName="zui5_zle_aust_mon.view.fragment.KontaktBar" type="XML"/>
 
 
 
