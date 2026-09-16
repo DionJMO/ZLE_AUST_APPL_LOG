@@ -754,6 +754,14 @@ const HIST_TEXT: Record<string, string> = {
 	IB_ADDLN:   "Einlagerung Zeile ergänzen",
 	IB_UPDATE:  "Einlagerung ändern",
 	IB_CANCLN:  "Einlagerung Zeile stornieren",
+	/*
+	 * Bewusst NICHT an HiLIS gemeldet: Umlagerung innerhalb des AutoStore
+	 * (VLTYP = NLTYP = 'AS'). Die Ware verlaesst den AutoStore nicht, und
+	 * HiLIS verwaltet die Plaetze selbst - es gibt dort nichts zu tun.
+	 * Die Praefixe IB_/OB_ sind Absicht: so greift die Prozessachse
+	 * (startswith 'IB_'/'OB_') ohne Sonderfall.
+	 */
+	IB_SKIP:    "Einlagerung: AutoStore-intern, nicht gemeldet",
 	// Rueckmeldung von HiLIS auf eine Einlagerung (Provider-Seite).
 	IB_CONFIRM_IN: "Einlagerung: Rückmeldung von HiLIS",
 	OB_CREATE:  "Auslagerung anlegen",
@@ -763,6 +771,7 @@ const HIST_TEXT: Record<string, string> = {
 	OB_STAT:    "Auslagerung Status",
 	OB_UPDATE:  "Auslagerung ändern",
 	OB_CONFIRM_IN: "Auslagerung: Rückmeldung von HiLIS",
+	OB_SKIP:    "Auslagerung: AutoStore-intern, nicht gemeldet",
 	/*
 	 * Die drei Folgeschritte NACH der Quittierung. Sie hiessen bis zur
 	 * Umbenennung PICK-ORDCAT / PICK-WA-BUCHUNG / PICK-TPA-DRUCK - die alten
@@ -803,6 +812,9 @@ const HIST_TEXT: Record<string, string> = {
 const HIST_SIDE: Record<string, "IN" | "SAP"> = {
 	IB_CONFIRM_IN: "IN",
 	OB_CONFIRM_IN: "IN",
+	// Es geht nichts nach HiLIS - der Vorgang bleibt vollstaendig in SAP.
+	IB_SKIP:       "SAP",
+	OB_SKIP:       "SAP",
 	OB_ORDCAT:     "SAP",
 	OB_WA_BUCHUNG: "SAP",
 	OB_TPA_DRUCK:  "SAP",
