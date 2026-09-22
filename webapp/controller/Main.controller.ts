@@ -1559,6 +1559,21 @@ export default class Main extends BaseController {
 	}
 
 	/**
+	 * Detailsicht zu einer TA-Nummer AUS DER WA-PRUEFUNG.
+	 *
+	 * Eigener Handler aus demselben Grund wie beim Stammdatenabgleich: die
+	 * Zeile kommt aus ZLE_AUST_I_TAPOS und heisst anders.
+	 *   - das Feld ist "TransferOrder", nicht "TpaNumber"
+	 *   - "Lgnum" und "BusinessKey" gibt es dort nicht
+	 *
+	 * Bis 16.09.2026 hing der Link an onTpaNumberPress und tat gar nichts -
+	 * das Modell "wacheck" fehlte in der Quellenliste von _openKeyPopover.
+	 */
+	public onWaCheckTaPress(oEvent: Event): void {
+		void this._openKeyPopover(oEvent, "TPA", "TransferOrder", "TransferOrder", false);
+	}
+
+	/**
 	 * JSON-Payload direkt aus der Meldungstabelle.
 	 *
 	 * Bis zum 27.08.2026 fuehrte der einzige Weg dorthin ueber das
@@ -1757,7 +1772,19 @@ export default class Main extends BaseController {
 		const aSources: { model: string; field: string; hasLogFields: boolean }[] = [
 			{ model: "mainModel", field: sMainField, hasLogFields: bMainHasLogFields },
 			{ model: "cascade", field: sMainField, hasLogFields: true },
-			{ model: "tpaModel", field: sTpaField, hasLogFields: false }
+			{ model: "tpaModel", field: sTpaField, hasLogFields: false },
+			/*
+			 * 🔴 ZUM DRITTEN MAL DIESELBE LUECKE (16.09.2026). Der Kommentar
+			 * darueber beschreibt die Faelle von damals - und beim Bau des
+			 * WA-Pruefungs-Reiters wurde die Liste trotzdem nicht erweitert.
+			 * Der Link auf die TA-Nummer sah anklickbar aus und tat nichts.
+			 *
+			 * Die Zeile kommt aus ZLE_AUST_I_TAPOS: Feld "TransferOrder",
+			 * und "Lgnum"/"BusinessKey" gibt es dort NICHT - deshalb
+			 * hasLogFields = false, sonst gaebe es je Klick eine
+			 * Drill-down-Fehlermeldung auf der Konsole.
+			 */
+			{ model: "wacheck", field: sMainField, hasLogFields: false }
 		];
 
 		let sRaw = "";

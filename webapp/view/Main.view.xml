@@ -1059,7 +1059,7 @@
 											<t:Column id="idWaCheckOrderCol" width="10rem" sortProperty="TransferOrder">
 												<Label id="waLblOrder" text="{i18n>colTransferOrder}"/>
 												<t:template>
-													<Link id="waTxtOrder" text="{wacheck>TransferOrder}" wrapping="false" press=".onTpaNumberPress" tooltip="{i18n>popTooltipTpa}"/>
+													<Link id="waTxtOrder" text="{wacheck>TransferOrder}" wrapping="false" press=".onWaCheckTaPress" tooltip="{i18n>popTooltipTpa}"/>
 												</t:template>
 											</t:Column>
 											<t:Column id="idWaCheckDateCol" width="8rem" sortProperty="CreationDate">
