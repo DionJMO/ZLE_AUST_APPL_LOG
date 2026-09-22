@@ -714,18 +714,11 @@ export default class Main extends BaseController {
 	 *        sonst der gewaehlte Reiter. Nur die Zaehler brauchen das: sie
 	 *        fragen dieselbe Kette fuer JEDEN Reiter ab, unter denselben
 	 *        Nebenbedingungen (Typ, Suche, "Nur offene", Tag).
-	 * @param bOmitTypeAndDay Typ- und Tagesfilter weglassen. Genau EIN
-	 *        Aufrufer braucht das: der Verlauf. Der Typ ist dort die eigene
-	 *        Achse (die Stapel E/W/S), und der Tag ist das, was man im
-	 *        Diagramm auswaehlt - beides anzuwenden hiesse, das Diagramm auf
-	 *        das zusammenzuziehen, was man gerade daraus ausgewaehlt hat.
 	 */
-	private _msgFilters(sProcessOverride?: string, bOmitTypeAndDay = false): Filter[] {
+	private _msgFilters(sProcessOverride?: string): Filter[] {
 		const sProcess = sProcessOverride
 			?? (this.getUiModel().getProperty("/selectedProcess") as string);
-		const sType = bOmitTypeAndDay
-			? ""
-			: (this.getUiModel().getProperty("/selectedType") as string);
+		const sType = this.getUiModel().getProperty("/selectedType") as string;
 		const aFilters: Filter[] = [];
 
 		if (sProcess === ProcessAxis.KEY_UNASSIGNED) {
@@ -761,9 +754,7 @@ export default class Main extends BaseController {
 		 * dieselbe Kaskade wie die 404 vom 09.09.2026, bei der die ganze
 		 * Oberflaeche leer blieb.
 		 */
-		const sDay = bOmitTypeAndDay
-			? ""
-			: ((this.getUiModel().getProperty("/selectedDay") as string) ?? "");
+		const sDay = (this.getUiModel().getProperty("/selectedDay") as string) ?? "";
 		if (/^\d{4}-\d{2}-\d{2}$/.test(sDay)) {
 			aFilters.push(new Filter({
 				path: "CreatedAt", operator: FilterOperator.EQ, value1: sDay
@@ -1017,11 +1008,24 @@ export default class Main extends BaseController {
 			const oData = await LogAggregator.loadLastDays(
 				this.getODataModel("mainModel"),
 				Number(this.getUiModel().getProperty("/chartDays")) || Main.CHART_DAYS,
-				// Der Verlauf folgt seit 11.09.2026 der gewaehlten Sicht:
-				// Prozess, Suche, "Nur offene". Vorher zaehlte er ueber ALLE
-				// Reiter, waehrend die Tabelle nur einen zeigte - wer auf
-				// einen Balken mit 40 klickte, bekam sechs Zeilen.
-				this._msgFilters(undefined, true)
+				/*
+				 * 🔴 DER VERLAUF FILTERT NICHT (O-49, 22.09.2026). Er zeigt
+				 * IMMER alle Meldungen - alle Typen, alle Prozesse, alle Tage.
+				 *
+				 * Das dreht die Festlegung vom 11.09.2026 zurueck, die ihn an
+				 * die gewaehlte Sicht band. Die Beobachtung von damals war
+				 * richtig - wer auf einen Balken mit 40 klickte, bekam sechs
+				 * Zeilen -, aber die Ursache lag im KLICK, nicht im Diagramm:
+				 * onChartSelect setzte nur den Tag und liess alles andere
+				 * stehen.
+				 *
+				 * Geloest ist es jetzt dort: der Absprung raeumt die uebrigen
+				 * Filter weg. Balkenhoehe und Zeilenzahl stimmen damit wieder
+				 * ueberein, und der Verlauf bleibt das, was er sein soll - die
+				 * vollstaendige Vorgeschichte, nicht ein zweites Abbild der
+				 * gerade eingestellten Sicht.
+				 */
+				[]
 			);
 			(this.getView()?.getModel("chart") as JSONModel).setData(oData);
 			this.getUiModel().setProperty("/chartTruncated", oData.truncated);
@@ -1354,7 +1358,8 @@ export default class Main extends BaseController {
 	}
 
 	/**
-	 * Klick auf einen Balken: Tag (und ggf. Typ) in den Tabellenfilter.
+	 * Klick auf einen Balken: Tag (und ggf. Typ) in den Tabellenfilter -
+	 * alle uebrigen Filter werden dabei geleert (O-49).
 	 *
 	 * 🔴 DIE NUTZLAST WIRD NICHT GERATEN, SONDERN GEGEN DAS DATASET
 	 * AUFGELOEST. VizFrame liefert die Auswahl je nach Fassung als Liste von
@@ -1399,6 +1404,26 @@ export default class Main extends BaseController {
 		}
 
 		const oUi = this.getUiModel();
+
+		/*
+		 * 🔴 ALLE UEBRIGEN FILTER FALLEN WEG (O-49, 22.09.2026).
+		 *
+		 * Der Verlauf zeigt seit dieser Aenderung ungefiltert alles. Bliebe
+		 * beim Absprung noch ein Reiter, eine Suche oder ein Trichter
+		 * stehen, saehe der Anwender einen Balken mit 40 und darunter sechs
+		 * Zeilen - genau die Diskrepanz, wegen der das Diagramm am
+		 * 11.09.2026 an die Sicht gebunden wurde. Sie wird jetzt hier
+		 * aufgeloest statt dort.
+		 *
+		 * ⚠ "Nur offene" faellt mit, obwohl es ein bewusst gesetzter
+		 * Schalter ist. Anders geht es nicht: der Balken zaehlt Erledigtes
+		 * mit, die Tabelle wuerde es ausblenden. Der Schalter steht
+		 * daneben und ist mit einem Klick zurueck.
+		 */
+		FilterChips.clearAll(oUi);
+		oUi.setProperty("/selectedProcess", ProcessAxis.KEY_ALL);
+		oUi.setProperty("/openOnly", false);
+
 		oUi.setProperty("/selectedDay", sDay);
 		/*
 		 * Nur bei EINDEUTIGEM Typ auch den Typfilter setzen. Traf der Klick
