@@ -918,11 +918,11 @@
 													-->
 													<ObjectStatus
 														id="cscTxtResolved"
-														state="{parts: ['cascade>IsResolved', 'cascade>BusinessKey', 'reproc>/mapDone'], formatter: '.formatter.resolvedState'}"
-														icon="{parts: ['cascade>IsResolved', 'cascade>BusinessKey', 'reproc>/mapDone'], formatter: '.formatter.resolvedIcon'}"
+														state="{parts: ['cascade>IsResolved', 'cascade>BusinessKey', 'reproc>/mapDone', 'cascade>IsResolvedByFollowUp'], formatter: '.formatter.resolvedState'}"
+														icon="{parts: ['cascade>IsResolved', 'cascade>BusinessKey', 'reproc>/mapDone', 'cascade>IsResolvedByFollowUp'], formatter: '.formatter.resolvedIcon'}"
 														active="true"
 														press=".onReprocPress"
-														tooltip="{parts: ['cascade>IsResolved', 'cascade>BusinessKey', 'i18n>resolvedYes', 'i18n>resolvedNo', 'i18n>resolvedUnknown', 'reproc>/map', 'reproc>/mapDone', 'i18n>resolvedByReproc'], formatter: '.formatter.resolvedTooltip'}"/>
+														tooltip="{parts: ['cascade>IsResolved', 'cascade>BusinessKey', 'i18n>resolvedYes', 'i18n>resolvedNo', 'i18n>resolvedUnknown', 'reproc>/map', 'reproc>/mapDone', 'i18n>resolvedByReproc', 'cascade>IsResolvedByFollowUp', 'i18n>resolvedByFollowUp'], formatter: '.formatter.resolvedTooltip'}"/>
 												</t:template>
 											</t:Column>
 											<!--

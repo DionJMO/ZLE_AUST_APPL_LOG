@@ -938,8 +938,20 @@ export function messageDisplay(sMessage?: string | null): string {
 function resolvedKind(
 	sIsResolved?: string | null,
 	sBusinessKey?: string | null,
-	oMapDone?: Record<string, unknown[]> | null
+	oMapDone?: Record<string, unknown[]> | null,
+	sIsResolvedByFollowUp?: string | null
 ): string {
+	/*
+	 * 🔴 VOR dem Leer-Schluessel-Zweig (O-48, 22.09.2026). Die Faelle, fuer
+	 * die IsResolvedByFollowUp gebaut wurde, sind ueberwiegend Meldungen
+	 * OHNE Business-Key (Kommunikationsfehler, Material 5 vom 10.06.) -
+	 * stuende die Pruefung dahinter, liefe sie nie. Das CDS setzt das Feld
+	 * nur, wenn IsResolved selbst nicht greift; die beiden schliessen sich
+	 * also aus, die Reihenfolge untereinander ist gleichgueltig.
+	 */
+	if ((sIsResolvedByFollowUp ?? "").trim().toUpperCase() === "X") {
+		return "doneByFollowUp";
+	}
 	if ((sBusinessKey ?? "").trim() === "") {
 		return "unknown";
 	}
@@ -981,6 +993,8 @@ function resolvedKind(
  *
  * Der Umbruch ist ein echtes \n; ein title-Attribut bricht daran um.
  */
+// Positionsparameter sind durch die parts-Bindung im View vorgegeben.
+// eslint-disable-next-line max-params
 export function resolvedTooltip(
 	sIsResolved?: string | null,
 	sBusinessKey?: string | null,
@@ -989,11 +1003,15 @@ export function resolvedTooltip(
 	sUnknown?: string | null,
 	oMap?: Record<string, { Action?: string; ActionText?: string; Status?: string }[]> | null,
 	oMapDone?: Record<string, { Action?: string; ActionText?: string; Status?: string }[]> | null,
-	sDoneByReproc?: string | null
+	sDoneByReproc?: string | null,
+	sIsResolvedByFollowUp?: string | null,
+	sDoneByFollowUp?: string | null
 ): string {
-	const sKind = resolvedKind(sIsResolved, sBusinessKey, oMapDone);
+	const sKind = resolvedKind(sIsResolved, sBusinessKey, oMapDone, sIsResolvedByFollowUp);
 	let sHead = sUnknown ?? "";
-	if (sKind === "resolved") {
+	if (sKind === "doneByFollowUp") {
+		sHead = sDoneByFollowUp ?? "";
+	} else if (sKind === "resolved") {
 		sHead = sResolved ?? "";
 	} else if (sKind === "doneByReproc") {
 		sHead = sDoneByReproc ?? "";
@@ -1021,10 +1039,11 @@ export function resolvedTooltip(
 export function resolvedState(
 	sIsResolved?: string | null,
 	sBusinessKey?: string | null,
-	oMapDone?: Record<string, unknown[]> | null
+	oMapDone?: Record<string, unknown[]> | null,
+	sIsResolvedByFollowUp?: string | null
 ): string {
-	const sKind = resolvedKind(sIsResolved, sBusinessKey, oMapDone);
-	if (sKind === "resolved" || sKind === "doneByReproc") {
+	const sKind = resolvedKind(sIsResolved, sBusinessKey, oMapDone, sIsResolvedByFollowUp);
+	if (sKind === "resolved" || sKind === "doneByReproc" || sKind === "doneByFollowUp") {
 		return "Success";
 	}
 	return sKind === "open" ? "Warning" : "None";
@@ -1033,9 +1052,10 @@ export function resolvedState(
 export function resolvedIcon(
 	sIsResolved?: string | null,
 	sBusinessKey?: string | null,
-	oMapDone?: Record<string, unknown[]> | null
+	oMapDone?: Record<string, unknown[]> | null,
+	sIsResolvedByFollowUp?: string | null
 ): string {
-	const sKind = resolvedKind(sIsResolved, sBusinessKey, oMapDone);
+	const sKind = resolvedKind(sIsResolved, sBusinessKey, oMapDone, sIsResolvedByFollowUp);
 	if (sKind === "resolved") {
 		return "sap-icon://sys-enter-2";
 	}
@@ -1049,6 +1069,14 @@ export function resolvedIcon(
 	 */
 	if (sKind === "doneByReproc") {
 		return "sap-icon://restart";
+	}
+	/*
+	 * Dritter Erledigt-Zustand, drittes Symbol: der Fehler wurde weder im
+	 * eigenen Vorgang noch ueber den Arbeitsvorrat behoben, sondern durch
+	 * einen SPAETEREN Erfolg zu demselben Material bzw. derselben TA.
+	 */
+	if (sKind === "doneByFollowUp") {
+		return "sap-icon://process";
 	}
 	return sKind === "open" ? "sap-icon://pending" : "sap-icon://question-mark";
 }

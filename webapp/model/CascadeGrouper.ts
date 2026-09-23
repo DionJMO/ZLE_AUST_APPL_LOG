@@ -104,6 +104,8 @@ export interface LogRow {
 	JsonPayload?: string;
 	/** Aus dem Service: 'X' = juengster Satz des Schluessels ist ein Erfolg. */
 	IsResolved?: string;
+	/** Aus dem Service (O-48): 'X' = spaeterer Erfolg zu Material bzw. TA. */
+	IsResolvedByFollowUp?: string;
 }
 
 export interface CascadeRow extends LogRow {

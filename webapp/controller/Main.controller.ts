@@ -794,6 +794,11 @@ export default class Main extends BaseController {
 			aFilters.push(new Filter({
 				path: "IsResolved", operator: FilterOperator.NE, value1: "X"
 			}));
+			// O-48: auch durch einen spaeteren Erfolg zu Material/TA erledigt.
+			// Filterbarkeit am 22.09.2026 gegen den Service geprueft.
+			aFilters.push(new Filter({
+				path: "IsResolvedByFollowUp", operator: FilterOperator.NE, value1: "X"
+			}));
 		}
 
 		/*
@@ -2028,7 +2033,7 @@ export default class Main extends BaseController {
 				this._msgFilters(),
 				{ $select: "LogUuid,CorrUuid,SeqNr,CreatedAtStamp,LogType,HistoryType,Message,"
 					+ "ItemNumber,TpaNumber,OrderLineNr,BusinessKey,KeyType,Lgnum,HttpStatus,"
-					+ "JsonPayload,IsResolved",
+					+ "JsonPayload,IsResolved,IsResolvedByFollowUp",
 					// $count kostet keine zweite Abfrage, macht aber aus der
 					// Heuristik "genau MAX_ROWS gelesen, also wohl gekappt" eine
 					// Tatsache - und liefert die Zahl, die der Anwender wissen
@@ -2232,7 +2237,8 @@ export default class Main extends BaseController {
 		let aRowsOut = aAll;
 		if (this.getUiModel().getProperty("/openOnly") as boolean) {
 			aRowsOut = aAll.filter((oRow) => {
-				if ((oRow.IsResolved ?? "").trim().toUpperCase() === "X") {
+				if ((oRow.IsResolved ?? "").trim().toUpperCase() === "X"
+					|| (oRow.IsResolvedByFollowUp ?? "").trim().toUpperCase() === "X") {
 					return false;
 				}
 				const sKey = (oRow.BusinessKey ?? "").trim();
