@@ -92,3 +92,73 @@ export function readableHttpText(sText: string): string {
 	const sBody = htmlToText(sRaw.slice(iStart));
 	return sPrefix ? `${sPrefix}\n${sBody}` : sBody;
 }
+
+function escapeHtml(sText: string): string {
+	return sText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/**
+ * Baut aus dem inerten Dokument neues, minimales HTML: nur eine feste Liste
+ * von Struktur-Tags, KEINE Attribute (also kein href, kein style, kein on*),
+ * Text immer escaped. Alles andere wird ausgepackt oder verworfen.
+ * sap.m.FormattedText sanitisiert danach zusaetzlich - doppelt haelt besser.
+ */
+function collectHtml(oNode: Node, aOut: string[], bPre: boolean): void {
+	const sKeep = " H1 H2 H3 H4 H5 H6 P STRONG B EM I CODE PRE UL OL LI BR BLOCKQUOTE ";
+	const sDrop = " SCRIPT STYLE NOSCRIPT TEMPLATE LINK META HEAD IFRAME OBJECT EMBED SVG IMG ";
+	if (oNode.nodeType === Node.TEXT_NODE) {
+		const sText = oNode.textContent ?? "";
+		aOut.push(escapeHtml(bPre ? sText : sText.replace(/\s+/g, " ")));
+		return;
+	}
+	if (oNode.nodeType !== Node.ELEMENT_NODE) {
+		return;
+	}
+	const sTag = (oNode as Element).tagName.toUpperCase();
+	if (sDrop.includes(` ${sTag} `)) {
+		return;
+	}
+	if (sTag === "BR") {
+		aOut.push("<br>");
+		return;
+	}
+	const bKeep = sKeep.includes(` ${sTag} `);
+	// Ueberschriften um drei Stufen herabgesetzt: in einem Dialog waere ein
+	// h1 groesser als der Dialogtitel.
+	const sOut = ({ B: "strong", I: "em", H1: "h4", H2: "h5", H3: "h6", H4: "h6", H5: "h6" } as
+		Record<string, string>)[sTag] ?? sTag.toLowerCase();
+	if (bKeep) {
+		aOut.push(`<${sOut}>`);
+	}
+	oNode.childNodes.forEach((oChild) => collectHtml(oChild, aOut, bPre || sTag === "PRE"));
+	if (bKeep) {
+		aOut.push(`</${sOut}>`);
+	}
+}
+
+export interface HttpPayloadParts {
+	/** Text vor dem HTML (Request, JSON eingerueckt) bzw. der ganze Text ohne HTML. */
+	text: string;
+	/** Bereinigtes HTML der Antwort, leer wenn keine HTML-Seite enthalten ist. */
+	html: string;
+}
+
+/** Trennt Request-Text und HTML-Antwort fuer die Anzeige im Payload-Dialog. */
+export function splitHttpPayload(sText: string): HttpPayloadParts {
+	const sRaw = sText ?? "";
+	const iStart = sRaw.search(/<!DOCTYPE\s+html|<html[\s>]/i);
+	if (iStart < 0) {
+		return { text: sRaw, html: "" };
+	}
+	const oDoc = new DOMParser().parseFromString(sRaw.slice(iStart), "text/html");
+	const aParts: string[] = [];
+	if (oDoc.body) {
+		collectHtml(oDoc.body, aParts, false);
+	}
+	const sHtml = aParts.join("").replace(/<(p|li|h\d)>\s*<\/\1>/g, "").trim();
+	const sPrefix = prettyJsonLines(sRaw.slice(0, iStart)).replace(/\s*RESPONSE:\s*$/i, "").trimEnd();
+	if (!sHtml) {
+		return { text: readableHttpText(sRaw), html: "" };
+	}
+	return { text: sPrefix, html: sHtml };
+}

@@ -24,7 +24,7 @@ import * as SapLookup from "../model/SapLookup";
 import * as TaPositions from "../model/TaPositions";
 import * as ReprocLookup from "../model/ReprocLookup";
 import * as BusinessKey from "../model/BusinessKey";
-import { readableHttpText } from "../model/HttpText";
+import { readableHttpText, splitHttpPayload } from "../model/HttpText";
 import { normalizeMaterial as formatterNormalize, timestamp as formatterTimestamp } from "../model/formatter";
 import Sorter from "sap/ui/model/Sorter";
 import Fragment from "sap/ui/core/Fragment";
@@ -1685,7 +1685,9 @@ export default class Main extends BaseController {
 			return;
 		}
 		const oDetail = this._detailModel();
-		oDetail.setProperty("/payload", readableHttpText(sPayload));
+		const oParts = splitHttpPayload(sPayload);
+		oDetail.setProperty("/payload", oParts.text);
+		oDetail.setProperty("/payloadHtml", oParts.html);
 		oDetail.setProperty("/payloadMessage", readableHttpText(sMessage));
 		oDetail.setProperty("/payloadTitle", sTitle);
 

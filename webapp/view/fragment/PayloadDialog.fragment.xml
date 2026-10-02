@@ -29,9 +29,20 @@
 				id="payloadText"
 				value="{detail>/payload}"
 				editable="false"
-				growing="false"
-				height="24rem"
-				width="100%"/>
+				growing="{= !!${detail>/payloadHtml} }"
+				height="{= ${detail>/payloadHtml} ? '' : '24rem' }"
+				width="100%"
+				visible="{= !!${detail>/payload} }"/>
+			<!-- HTML-Fehlerseite aus HiLIS formatiert. Das HTML ist vorher in
+			     model/HttpText.ts auf Struktur-Tags ohne Attribute reduziert,
+			     FormattedText sanitisiert zusaetzlich. -->
+			<Title id="payloadHtmlTitle" text="{i18n>payloadResponse}" level="H5"
+				class="sapUiSmallMarginTop sapUiTinyMarginBottom"
+				visible="{= !!${detail>/payloadHtml} }"/>
+			<!-- Kein eigener Scrollbereich: Request und Antwort wachsen mit dem
+			     Inhalt, gescrollt wird der Dialog als Ganzes. -->
+			<FormattedText id="payloadHtml" htmlText="{detail>/payloadHtml}"
+				visible="{= !!${detail>/payloadHtml} }"/>
 		</VBox>
 
 		<endButton>

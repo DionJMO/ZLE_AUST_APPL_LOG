@@ -772,6 +772,8 @@ const HIST_TEXT: Record<string, string> = {
 	OB_UPDATE:  "Auslagerung ändern",
 	OB_CONFIRM_IN: "Auslagerung: Rückmeldung von HiLIS",
 	OB_SKIP:    "Auslagerung: AutoStore-intern, nicht gemeldet",
+	OB_STOCK_CORR: "Bestandskorrektur aus HiLIS",
+	OB_SHORTAGE:   "Fehlmenge aus HiLIS",
 	/*
 	 * Die drei Folgeschritte NACH der Quittierung. Sie hiessen bis zur
 	 * Umbenennung PICK-ORDCAT / PICK-WA-BUCHUNG / PICK-TPA-DRUCK - die alten
@@ -812,6 +814,11 @@ const HIST_TEXT: Record<string, string> = {
 const HIST_SIDE: Record<string, "IN" | "SAP"> = {
 	IB_CONFIRM_IN: "IN",
 	OB_CONFIRM_IN: "IN",
+	// Callbacks /manual-stock-correction und /pick-order-shortage: HiLIS
+	// meldet, SAP bucht. Das Praefix OB_ sagt nur den Prozess, nicht die
+	// Richtung.
+	OB_STOCK_CORR: "IN",
+	OB_SHORTAGE:   "IN",
 	// Es geht nichts nach HiLIS - der Vorgang bleibt vollstaendig in SAP.
 	IB_SKIP:       "SAP",
 	OB_SKIP:       "SAP",
