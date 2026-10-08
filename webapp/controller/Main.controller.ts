@@ -2025,6 +2025,77 @@ export default class Main extends BaseController {
 		this._applyMsgFilter(true);
 	}
 
+	private static readonly CASCADE_SELECT =
+		"LogUuid,CorrUuid,SeqNr,CreatedAtStamp,LogType,HistoryType,Message,"
+		+ "ItemNumber,TpaNumber,OrderLineNr,BusinessKey,KeyType,Lgnum,HttpStatus,"
+		+ "JsonPayload,IsResolved,IsResolvedByFollowUp";
+
+	/** Vorgaenge je Nachladeanfrage - haelt die URL kurz. */
+	private static readonly COMPLETE_CHUNK = 40;
+
+	/**
+	 * Ergaenzt die geladenen Vorgaenge um ALLE ihre Schritte.
+	 *
+	 * Die Filter (Typ "Fehler", Suche, Tag, Prozess, "Nur offene") wirken
+	 * auf MELDUNGEN. Ohne Nachladen enthielte ein Vorgang dann nur die
+	 * Meldungen, die selbst durch den Filter passen - bei "Fehler" also nur
+	 * die fehlgeschlagenen Schritte, und die Spalte "Schritte" zaehlte nur
+	 * diese (Rueckmeldung 08.10.2026). Der Filter entscheidet deshalb nur
+	 * noch, WELCHE Vorgaenge erscheinen; ihre Schritte kommen vollstaendig
+	 * ueber die Korrelations-ID nach.
+	 *
+	 * Ohne Filter ist nichts zu tun - dann ist jeder Vorgang schon
+	 * vollstaendig geladen. Vorgaenge ohne Korrelations-ID bleiben, wie sie
+	 * sind: sie bestehen ohnehin aus genau einer Meldung.
+	 *
+	 * Scheitert das Nachladen, bleibt die gefilterte Sicht stehen - lieber
+	 * unvollstaendige Schritte als eine leere Tabelle.
+	 */
+	private async _completeCascadeRows(
+		aRows: CascadeGrouper.LogRow[]
+	): Promise<CascadeGrouper.LogRow[]> {
+		if (this._msgFilters().length === 0) {
+			return aRows;
+		}
+		const aCorrs = [...new Set(aRows
+			.map((oRow) => String(oRow.CorrUuid ?? "").trim())
+			.filter((sCorr) => sCorr && !CascadeGrouper.isInitialUuid(sCorr)))];
+		if (aCorrs.length === 0) {
+			return aRows;
+		}
+
+		const oModel = this.getODataModel("mainModel");
+		const aChunks: string[][] = [];
+		for (let i = 0; i < aCorrs.length; i += Main.COMPLETE_CHUNK) {
+			aChunks.push(aCorrs.slice(i, i + Main.COMPLETE_CHUNK));
+		}
+
+		try {
+			const aResults = await Promise.all(aChunks.map(async (aChunk) => {
+				const oBinding = oModel.bindList(
+					"/AppLog",
+					undefined,
+					[new Sorter("SeqNr", false)],
+					[new Filter({
+						filters: aChunk.map((sCorr) => new Filter({
+							path: "CorrUuid", operator: FilterOperator.EQ, value1: sCorr
+						})),
+						and: false
+					})],
+					{ $select: Main.CASCADE_SELECT }
+				);
+				const aContexts = await oBinding.requestContexts(0, CascadeGrouper.MAX_ROWS);
+				return aContexts.map((oCtx) => oCtx.getObject() as CascadeGrouper.LogRow);
+			}));
+			const aSingles = aRows.filter((oRow) => CascadeGrouper.isInitialUuid(oRow.CorrUuid));
+			return [...aSingles, ...aResults.flat()];
+		} catch (oError) {
+			// eslint-disable-next-line no-console
+			console.error("[Vorgaenge] Schritte nachladen fehlgeschlagen:", oError);
+			return aRows;
+		}
+	}
+
 	private async _loadCascades(iGen = 0): Promise<void> {
 		const oCascade = this._cascadeModel();
 		oCascade.setProperty("/busy", true);
@@ -2034,9 +2105,7 @@ export default class Main extends BaseController {
 				undefined,
 				[new Sorter("CreatedAtStamp", true)],
 				this._msgFilters(),
-				{ $select: "LogUuid,CorrUuid,SeqNr,CreatedAtStamp,LogType,HistoryType,Message,"
-					+ "ItemNumber,TpaNumber,OrderLineNr,BusinessKey,KeyType,Lgnum,HttpStatus,"
-					+ "JsonPayload,IsResolved,IsResolvedByFollowUp",
+				{ $select: Main.CASCADE_SELECT,
 					// $count kostet keine zweite Abfrage, macht aber aus der
 					// Heuristik "genau MAX_ROWS gelesen, also wohl gekappt" eine
 					// Tatsache - und liefert die Zahl, die der Anwender wissen
@@ -2093,7 +2162,8 @@ export default class Main extends BaseController {
 
 			const nTotal = oBinding.getCount() ?? aRows.length;
 			const bTruncated = nTotal > aRows.length;
-			const oResult = CascadeGrouper.group(aRows, bTruncated);
+			const aComplete = await this._completeCascadeRows(aRows);
+			const oResult = CascadeGrouper.group(aComplete, bTruncated);
 			oCascade.setProperty("/rowLimit", bRowLimit);
 
 			/*
