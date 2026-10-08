@@ -762,6 +762,9 @@ const HIST_TEXT: Record<string, string> = {
 	 * (startswith 'IB_'/'OB_') ohne Sonderfall.
 	 */
 	IB_SKIP:    "Einlagerung: AutoStore-intern, nicht gemeldet",
+	// Punkt 35: Sperren/Entsperren im AutoStore, geht nicht an HiLIS.
+	IB_STATUS:      "Sperr-Umbuchung im AutoStore",
+	IB_STATUS_CONF: "Sperr-Umbuchung quittiert",
 	// Rueckmeldung von HiLIS auf eine Einlagerung (Provider-Seite).
 	IB_CONFIRM_IN: "Einlagerung: Rückmeldung von HiLIS",
 	OB_CREATE:  "Auslagerung anlegen",
@@ -821,6 +824,8 @@ const HIST_SIDE: Record<string, "IN" | "SAP"> = {
 	OB_SHORTAGE:   "IN",
 	// Es geht nichts nach HiLIS - der Vorgang bleibt vollstaendig in SAP.
 	IB_SKIP:       "SAP",
+	IB_STATUS:      "SAP",
+	IB_STATUS_CONF: "SAP",
 	OB_SKIP:       "SAP",
 	OB_ORDCAT:     "SAP",
 	OB_WA_BUCHUNG: "SAP",
