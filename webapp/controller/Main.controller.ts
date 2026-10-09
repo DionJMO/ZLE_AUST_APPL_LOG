@@ -23,6 +23,7 @@ import * as ViewDefaults from "../model/ViewDefaults";
 import * as SapLookup from "../model/SapLookup";
 import * as TaPositions from "../model/TaPositions";
 import * as ReprocLookup from "../model/ReprocLookup";
+import * as HilisConnection from "../model/HilisConnection";
 import * as BusinessKey from "../model/BusinessKey";
 import { readableHttpText, splitHttpPayload } from "../model/HttpText";
 import { normalizeMaterial as formatterNormalize, timestamp as formatterTimestamp } from "../model/formatter";
@@ -82,6 +83,15 @@ export default class Main extends BaseController {
 
 	/** Arbeitsvorrats-Popover, einmalig erzeugt. */
 	private _pReprocPopover?: Promise<Popover>;
+
+	/** HiLIS-Verbindungs-Popover, einmalig erzeugt. */
+	private _pHilisPopover?: Promise<Popover>;
+
+	/** Zeitpunkt der letzten HiLIS-Pruefung (ms), fuer den Mindestabstand. */
+	private _iHilisCheckedAt = 0;
+
+	/** Laufende HiLIS-Pruefung - verhindert zwei gleichzeitige. */
+	private _pHilisCheck?: Promise<void>;
 	private _pPayloadDialog?: Promise<Dialog>;
 
 	/**
@@ -240,6 +250,7 @@ export default class Main extends BaseController {
 			this._applyChartProperties();
 		});
 		this._applyMsgFilter();
+		this._jsonModel("conn", HilisConnection.emptyState());
 		void this._loadData();
 
 		// Bei verstecktem Tab wird nicht gesondet. Das ist der wichtigste der
@@ -848,7 +859,8 @@ export default class Main extends BaseController {
 			this._loadMatCmpFindings(),
 			this._loadSapPositions(),
 			this._loadShadowedPicks(),
-			this._loadReprocMap()
+			this._loadReprocMap(),
+			this._loadHilisConnection()
 		]);
 	}
 
@@ -2401,6 +2413,69 @@ export default class Main extends BaseController {
 
 	public onInfoClose(): void {
 		void this._pInfoPopover?.then((oPopover) => oPopover.close());
+	}
+
+	/**
+	 * HiLIS-Verbindung pruefen - hoechstens alle MIN_AGE_MS, ausser erzwungen.
+	 *
+	 * Haengt am normalen Ladezyklus, also auch am 30-Sekunden-Takt des
+	 * Live-Modus. Der Mindestabstand sorgt dafuer, dass HiLIS trotzdem nur
+	 * alle paar Minuten eine Anmeldung und sechs Leseaufrufe sieht.
+	 */
+	private _loadHilisConnection(bForce = false): Promise<void> {
+		if (this._pHilisCheck) {
+			return this._pHilisCheck;
+		}
+		if (!bForce && Date.now() - this._iHilisCheckedAt < HilisConnection.MIN_AGE_MS) {
+			return Promise.resolve();
+		}
+		this._pHilisCheck = this._doLoadHilisConnection().finally(() => {
+			this._pHilisCheck = undefined;
+		});
+		return this._pHilisCheck;
+	}
+
+	private async _doLoadHilisConnection(): Promise<void> {
+		const oModel = this._jsonModel("conn", HilisConnection.emptyState());
+		oModel.setProperty("/busy", true);
+		const [oResult, oLast] = await Promise.all([
+			HilisConnection.load(this.getODataModel("lookupModel")),
+			HilisConnection.loadLastCallback(this.getODataModel("mainModel"))
+		]);
+		this._iHilisCheckedAt = Date.now();
+		oModel.setData({ ...oResult, lastCallback: oLast, busy: false });
+	}
+
+	/** Statuskennzeichen der Kopfzeile: Details oeffnen, bei altem Stand neu pruefen. */
+	public async onHilisStatusPress(oEvent: Event): Promise<void> {
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+		await this._openHilisPopover(oEvent.getSource() as Control);
+		void this._loadHilisConnection();
+	}
+
+	/** Link im roten Hinweisband - oeffnet dieselben Details am Statuskennzeichen. */
+	public async onHilisStripDetails(): Promise<void> {
+		const oAnchor = this.byId("hilisStatus") as Control | undefined;
+		if (oAnchor) {
+			await this._openHilisPopover(oAnchor);
+		}
+	}
+
+	/** Knopf "Erneut pruefen" im Popover - ohne Mindestabstand. */
+	public onHilisRecheck(): void {
+		void this._loadHilisConnection(true);
+	}
+
+	private async _openHilisPopover(oSource: Control): Promise<void> {
+		if (!this._pHilisPopover) {
+			this._pHilisPopover = Fragment.load({
+				id: this.getView()?.getId(),
+				name: "zui5_zle_aust_mon.view.fragment.HilisPopover",
+				controller: this
+			}) as Promise<Popover>;
+			void this._pHilisPopover.then((oPopover) => this.getView()?.addDependent(oPopover));
+		}
+		(await this._pHilisPopover).openBy(oSource);
 	}
 
 	/** Erzeugt das Detail-Popover einmalig und oeffnet es am geklickten Element. */

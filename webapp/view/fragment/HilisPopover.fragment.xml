@@ -1,0 +1,125 @@
+<!--
+	HiLIS-Verbindung im Detail, geoeffnet ueber das Statuskennzeichen der
+	Kopfzeile und den Link im Hinweisband (Anstoss Gollmer/Tolksdorf,
+	09.10.2026).
+
+	Drei Gruppen, weil es drei verschiedene Fragen sind:
+	  Verbindung (SAP -> HiLIS)   Konfiguration, Destination, Anmeldung
+	  HiLIS-Endpunkte             je API-Pfad ein lesender Aufruf
+	  Rueckmeldungen (HiLIS -> SAP)  nur indirekt: juengster *_CONFIRM_IN
+
+	Details je Schritt stehen im Hinweis unter dem Namen und - fuer den
+	geprueften Pfad - im Tooltip der Zeile.
+-->
+<core:FragmentDefinition
+	xmlns="sap.m"
+	xmlns:core="sap.ui.core">
+
+	<Popover
+		id="hilisPopover"
+		title="{i18n>hilisPopTitle}"
+		placement="Bottom"
+		contentWidth="30rem"
+		horizontalScrolling="false"
+		class="sapUiContentPadding">
+
+		<endButton>
+			<Button
+				id="hilisPopRecheck"
+				icon="sap-icon://refresh"
+				tooltip="{i18n>hilisPopRecheck}"
+				type="Transparent"
+				enabled="{= !${conn>/busy} }"
+				press=".onHilisRecheck"/>
+		</endButton>
+
+		<VBox id="hilisPopBox">
+			<Text
+				id="hilisPopChecked"
+				class="sapUiTinyMarginBottom"
+				text="{parts: ['i18n>hilisPopChecked', 'conn>/checkedAt'], formatter: '.formatter.labelledTimestamp'}"/>
+
+			<MessageStrip
+				id="hilisPopUnreadable"
+				type="Warning"
+				showIcon="true"
+				class="sapUiTinyMarginBottom"
+				text="{parts: ['i18n>hilisCheckUnreadable', 'conn>/error'], formatter: '.formatter.chartTitle'}"
+				visible="{= ${conn>/ok} === false &amp;&amp; ${conn>/busy} !== true }"/>
+
+			<Title
+				id="hilisBaseTitle"
+				level="H6"
+				class="sapUiSmallMarginTop sapUiTinyMarginBottom"
+				text="{i18n>hilisGroupBase}"/>
+			<List
+				id="hilisBaseList"
+				showNoData="false"
+				items="{path: 'conn>/base', templateShareable: false}">
+				<CustomListItem id="hilisBaseItem" tooltip="{conn>Target}">
+					<HBox id="hilisBaseRow" justifyContent="SpaceBetween" alignItems="Start" class="sapUiTinyMargin">
+						<VBox id="hilisBaseText">
+							<ObjectStatus
+								id="hilisBaseStatus"
+								text="{conn>StepName}"
+								state="{path: 'conn>ResultCriticality', formatter: '.formatter.criticalityState'}"
+								icon="{path: 'conn>ResultCriticality', formatter: '.formatter.criticalityIcon'}"/>
+							<Text
+								id="hilisBaseHint"
+								text="{conn>Hint}"
+								wrapping="true"
+								visible="{= !!${conn>Hint} }"/>
+						</VBox>
+						<Text
+							id="hilisBaseMeta"
+							class="sapUiTinyMarginBegin"
+							text="{parts: ['conn>DurationMs', 'conn>HttpStatus', 'i18n>hilisStepMeta'], formatter: '.formatter.connStepMeta'}"/>
+					</HBox>
+				</CustomListItem>
+			</List>
+
+			<Title
+				id="hilisEndpointTitle"
+				level="H6"
+				class="sapUiSmallMarginTop sapUiTinyMarginBottom"
+				text="{i18n>hilisGroupEndpoint}"
+				visible="{= ${conn>/endpoints}.length > 0 }"/>
+			<List
+				id="hilisEndpointList"
+				showNoData="false"
+				visible="{= ${conn>/endpoints}.length > 0 }"
+				items="{path: 'conn>/endpoints', templateShareable: false}">
+				<CustomListItem id="hilisEndpointItem" tooltip="{conn>Target}">
+					<HBox id="hilisEndpointRow" justifyContent="SpaceBetween" alignItems="Start" class="sapUiTinyMargin">
+						<VBox id="hilisEndpointText">
+							<ObjectStatus
+								id="hilisEndpointStatus"
+								text="{conn>StepName}"
+								state="{path: 'conn>ResultCriticality', formatter: '.formatter.criticalityState'}"
+								icon="{path: 'conn>ResultCriticality', formatter: '.formatter.criticalityIcon'}"/>
+							<Text
+								id="hilisEndpointHint"
+								text="{conn>Hint}"
+								wrapping="true"
+								visible="{= !!${conn>Hint} }"/>
+						</VBox>
+						<Text
+							id="hilisEndpointMeta"
+							class="sapUiTinyMarginBegin"
+							text="{parts: ['conn>DurationMs', 'conn>HttpStatus', 'i18n>hilisStepMeta'], formatter: '.formatter.connStepMeta'}"/>
+					</HBox>
+				</CustomListItem>
+			</List>
+
+			<Title
+				id="hilisCallbackTitle"
+				level="H6"
+				class="sapUiSmallMarginTop sapUiTinyMarginBottom"
+				text="{i18n>hilisGroupCallback}"/>
+			<Text
+				id="hilisCallbackText"
+				wrapping="true"
+				text="{parts: ['conn>/lastCallback', 'i18n>hilisLastCallback', 'i18n>hilisNoCallback'], formatter: '.formatter.connLastCallback'}"/>
+		</VBox>
+	</Popover>
+</core:FragmentDefinition>

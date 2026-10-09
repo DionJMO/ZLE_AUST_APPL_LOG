@@ -1226,3 +1226,92 @@ export function matCmpMoreText(nMore?: number | null, sPattern?: string | null):
 	}
 	return (sPattern ?? "").replace("{0}", String(n));
 }
+
+/*
+ * HiLIS-Verbindungsstatus (model/HilisConnection.ts).
+ *
+ * Wortlaut kommt aus i18n und wird als Bindungsteil hereingereicht - die
+ * Formatter waehlen nur aus. Dieselbe Bauform wie darkModeTooltip.
+ */
+
+/**
+ * Text des Statuskennzeichens in der Kopfzeile.
+ *
+ * ⚠ "Pruefung nicht lesbar" ist ein eigener Text und nicht "unbekannt":
+ * ein Ausfall des Pruefservice darf weder wie Entwarnung noch wie ein
+ * HiLIS-Ausfall aussehen. Dieselbe Regel wie beim Arbeitsvorrat.
+ */
+export function connStateText(
+	sState?: string | null,
+	bBusy?: boolean | null,
+	sOk?: string | null,
+	sWarning?: string | null,
+	sError?: string | null,
+	sUnknown?: string | null,
+	sBusy?: string | null,
+	sUnreadable?: string | null
+): string {
+	if (bBusy === true && sState !== "ok" && sState !== "warning" && sState !== "error") {
+		return sBusy ?? "";
+	}
+	switch (sState) {
+		case "ok": return sOk ?? "";
+		case "warning": return sWarning ?? "";
+		case "error": return sError ?? "";
+		case "unreadable": return sUnreadable ?? "";
+		default: return sUnknown ?? "";
+	}
+}
+
+/** Hinweisband bei Stoerung: {0} Zeitpunkt der Pruefung, {1} erster gestoerter Schritt. */
+export function connStripText(
+	sPattern?: string | null,
+	vCheckedAt?: string | Date | null,
+	sProblem?: string | null
+): string {
+	return (sPattern ?? "")
+		.replace("{0}", timestamp(vCheckedAt))
+		.replace("{1}", (sProblem ?? "").trim() || DASH);
+}
+
+/**
+ * Laufzeit und HTTP-Status eines Pruefschritts, rechtsbuendig in der Zeile.
+ *
+ * Schritte ohne Netzaufruf (Konfiguration, Destination) tragen weder Dauer
+ * noch Status - dort bleibt die Zeile leer statt "0 ms · HTTP 0".
+ */
+export function connStepMeta(
+	vMs?: number | string | null,
+	vStatus?: number | string | null,
+	sPattern?: string | null
+): string {
+	const nMs = Number(vMs) || 0;
+	const nStatus = Number(vStatus) || 0;
+	if (!nMs && !nStatus) {
+		return "";
+	}
+	if (!nStatus) {
+		return `${nMs} ms`;
+	}
+	return (sPattern ?? "").replace("{0}", String(nMs)).replace("{1}", String(nStatus));
+}
+
+/**
+ * Juengste Rueckmeldung von HiLIS - die einzige Sicht auf HiLIS -> SAP.
+ *
+ * Ohne Eintrag ein eigener Satz und kein Strich: "noch nie etwas
+ * angekommen" ist eine Aussage, die man lesen koennen muss.
+ */
+export function connLastCallback(
+	oLast?: { at?: string; historyType?: string; key?: string } | null,
+	sPattern?: string | null,
+	sNone?: string | null
+): string {
+	if (!oLast?.at) {
+		return sNone ?? "";
+	}
+	return (sPattern ?? "")
+		.replace("{0}", timestamp(oLast.at))
+		.replace("{1}", historyTypeText(oLast.historyType))
+		.replace("{2}", (oLast.key ?? "").trim() || DASH);
+}

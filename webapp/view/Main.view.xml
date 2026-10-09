@@ -29,6 +29,20 @@
 					</HBox>
 				</f:heading>
 				<f:actions>
+					<!--
+						HiLIS-Verbindung (model/HilisConnection.ts). Zustand mit
+						Symbol, Farbe UND Wort - eine Farbe allein uebersieht man,
+						und Rot/Gruen ist fuer viele schlecht zu unterscheiden.
+						Klick oeffnet die Details je Pruefschritt.
+					-->
+					<ObjectStatus
+						id="hilisStatus"
+						active="true"
+						press=".onHilisStatusPress"
+						text="{parts: ['conn>/state', 'conn>/busy', 'i18n>hilisConnOk', 'i18n>hilisConnWarning', 'i18n>hilisConnError', 'i18n>hilisConnUnknown', 'i18n>hilisConnBusy', 'i18n>hilisConnUnreadable'], formatter: '.formatter.connStateText'}"
+						state="{path: 'conn>/criticality', formatter: '.formatter.criticalityState'}"
+						icon="{path: 'conn>/criticality', formatter: '.formatter.criticalityIcon'}"
+						tooltip="{parts: ['i18n>hilisConnTooltip', 'conn>/checkedAt'], formatter: '.formatter.labelledTimestamp'}"/>
 					<ObjectStatus
 						id="idLastRefreshObjectStatus"
 						icon="sap-icon://history"
@@ -157,6 +171,24 @@
 					minRows-Rechnung der Panels weiter gilt.
 			-->
 			<VBox id="groupContainer" class="zleContentMaxWidth sapUiMediumMarginTop sapUiMediumMarginBottom" renderType="Bare">
+
+				<!--
+					Bei gestoerter HiLIS-Verbindung zusaetzlich ueber der Tabelle:
+					ein Kennzeichen in der Kopfzeile uebersieht man, wenn man auf
+					die Liste schaut. Verschwindet von selbst, sobald die naechste
+					Pruefung gruen ist.
+				-->
+				<MessageStrip
+					id="hilisStrip"
+					type="Error"
+					showIcon="true"
+					class="sapUiSmallMarginBottom"
+					visible="{= ${conn>/state} === 'error' }"
+					text="{parts: ['i18n>hilisStripError', 'conn>/checkedAt', 'conn>/firstProblem'], formatter: '.formatter.connStripText'}">
+					<link>
+						<Link id="hilisStripLink" text="{i18n>hilisStripDetails}" press=".onHilisStripDetails"/>
+					</link>
+				</MessageStrip>
 
 				<!--
 					🔴 SPALTENZAHL JE BREAKPOINT - der Grund steht hier, weil er
