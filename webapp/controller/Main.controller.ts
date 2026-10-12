@@ -929,10 +929,11 @@ export default class Main extends BaseController {
 		const oModel = this._jsonModel("wacheck", { rows: [] });
 		const oFrom = new Date();
 		oFrom.setDate(oFrom.getDate() - Main.WA_CHECK_DAYS);
+		oModel.setProperty("/busy", true);
 		const oResult = await TaPositions.loadAutoStore(
 			this.getODataModel("lookupModel"),
 			oFrom.toISOString().slice(0, 10)
-		);
+		).finally(() => oModel.setProperty("/busy", false));
 		const aShadowed = TaPositions.shadowedPicks(oResult.rows);
 		oModel.setProperty("/rows", aShadowed);
 		this.getUiModel().setProperty("/waCheckCount", aShadowed.length);
@@ -2229,7 +2230,12 @@ export default class Main extends BaseController {
 			oCascade.setProperty("/truncated", false);
 			oCascade.setProperty("/summary", this._bundle().getText("popLoadFailed") ?? "");
 		} finally {
-			oCascade.setProperty("/busy", false);
+			// Nur der juengste Lauf beendet die Ladeanzeige: bei schnellem
+			// Umschalten endet sonst ein ueberholter Lauf zuerst und die
+			// Tabelle wirkt fertig, waehrend die richtige Abfrage noch laeuft.
+			if (iGen === this._iFilterGen) {
+				oCascade.setProperty("/busy", false);
+			}
 		}
 	}
 

@@ -659,6 +659,8 @@
 										id="idCascadeTable"
 										visible="{path: 'ui>/selectedProcess', formatter: '.formatter.isMessageView'}"
 										rows="{cascade>/rows}"
+										busy="{= ${cascade>/busy} === true }"
+										busyIndicatorDelay="0"
 										selectionMode="None"
 										ariaLabelledBy="msgHeading">
 										<t:rowMode>
@@ -1070,6 +1072,8 @@
 										id="idWaCheckTable"
 										visible="{= ${ui>/selectedProcess} === 'WACHECK' }"
 										rows="{path: 'wacheck>/rows'}"
+										busy="{= ${wacheck>/busy} === true }"
+										busyIndicatorDelay="0"
 										selectionMode="None"
 										ariaLabelledBy="msgHeading">
 										<t:rowMode>
@@ -1235,6 +1239,8 @@
 										id="idMatCmpTable"
 										visible="{= ${ui>/selectedProcess} === 'MATCMP' }"
 										rows="{path: 'mainModel>/MatCompare', parameters: {$count: true}, sorter: {path: 'Matnr'}}"
+										enableBusyIndicator="true"
+										busyIndicatorDelay="0"
 										selectionMode="None"
 										ariaLabelledBy="msgHeading">
 										<t:rowMode>
@@ -1333,6 +1339,8 @@
 																	id="idTpaTable"
 																			visible="{= ${ui>/selectedProcess} === 'TPA' }"
 																	rows="{path: 'tpaModel>/Tpa', parameters: {$count: true}, sorter: {path: 'OrderNumber'}}"
+																	enableBusyIndicator="true"
+																	busyIndicatorDelay="0"
 																	selectionMode="None"
 																	ariaLabelledBy="msgHeading">
 																	<t:rowMode>
