@@ -170,6 +170,30 @@ function seq(oRow: LogRow): number {
 }
 
 /** Erster nicht-leerer Wert einer Eigenschaft über alle Schritte. */
+/**
+ * Business-Key und Schluesseltyp des Vorgangs - immer als PAAR aus EINEM
+ * Schritt.
+ *
+ * 🔴 Nicht firstFilled( ) und nicht die Leitzeile: in einem Auftragsvorgang
+ * steckt oft ein Stammdaten-Abruf der Consumer-Schicht, und der traegt den
+ * MATERIALschluessel. Beispiel 12.10.2026, 50527: Schritt 1
+ * "GET /api/items/50527" (E, MATNR 50527), Schritt 2 "Pos 0001 … nicht
+ * uebertragen" (W, PUT 00062827xx0001001). Erster Schritt und Leitzeile sind
+ * beide der GET - der Arbeitsvorrat fuehrt den Satz aber unter dem
+ * PUT-Schluessel, die Zeile fand also nichts.
+ *
+ * Regel: ein Auftragsschluessel (PUT, PICK, ADVICE …) geht vor MATNR; bei
+ * mehreren der LETZTE, weil die aeussere Schicht nach der inneren
+ * protokolliert. Ein reiner Materialsync hat nur MATNR und bleibt unberuehrt.
+ */
+function keyPair(aSteps: LogRow[]): { key: string; type: string } {
+	const aKeyed = aSteps.filter((o) =>
+		typeof o.BusinessKey === "string" && o.BusinessKey.trim() !== "");
+	const oSource = [...aKeyed].reverse().find((o) => (o.KeyType ?? "").trim() !== "MATNR")
+		?? aKeyed[aKeyed.length - 1];
+	return { key: oSource?.BusinessKey ?? "", type: oSource?.KeyType ?? "" };
+}
+
 function firstFilled(aSteps: LogRow[], sKey: keyof LogRow): string {
 	for (const oStep of aSteps) {
 		const vValue = oStep[sKey];
@@ -275,6 +299,7 @@ export function group(aRows: LogRow[], bTruncated = false): CascadeResult {
 		const oLead = leadRow(aSteps);
 
 		const bBulk = aSteps.length > MAX_STEPS;
+		const oKey = keyPair(aSteps);
 
 		aResult.push({
 			...oLead,
@@ -287,8 +312,8 @@ export function group(aRows: LogRow[], bTruncated = false): CascadeResult {
 			ItemNumber:  firstFilled(aSteps, "ItemNumber"),
 			TpaNumber:   firstFilled(aSteps, "TpaNumber"),
 			OrderLineNr: firstFilled(aSteps, "OrderLineNr"),
-			BusinessKey: firstFilled(aSteps, "BusinessKey"),
-			KeyType:     firstFilled(aSteps, "KeyType"),
+			BusinessKey: oKey.key,
+			KeyType:     oKey.type,
 			HistoryType: firstFilled(aSteps, "HistoryType"),
 			Lgnum:       firstFilled(aSteps, "Lgnum"),
 			StepCount:   aSteps.length,
