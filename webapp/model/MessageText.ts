@@ -47,6 +47,18 @@ const RULES: Rule[] = [
 	// --- WM-Trigger, fachliche Abbrueche (Typ W) --------------------------
 	{ key: "msgNoMasterData",
 	  pattern: /^Pos (\d+) Material (\d+): HiLIS-Stammdaten nicht lesbar/ },
+	/*
+	 * ME-Abweichung in drei Stufen, speziell vor allgemein. Seit Punkt 46
+	 * wird umgerechnet; die Meldung kommt nur noch, wenn das scheitert, und
+	 * der Grund steht hinter "nicht uebertragen:". Haeufigster Grund:
+	 * das Ergebnis hat Nachkommastellen (100 ST = 0,1 KAR, Tolksdorf
+	 * 15.10.2026) - HiLIS fuehrt nur ganze Einheiten. Die alte Regel
+	 * schnitt den Grund ab, die Meldung las sich wie fehlende Stammdaten.
+	 */
+	{ key: "msgUomFraction",
+	  pattern: /^Pos (\d+) Material (\d+): ME-Abweichung SAP '([^']*)' <> HiLIS '([^']*)', nicht uebertragen: Umrechnung \S+ -> \S+ ergibt (.+), nicht ganzzahlig/ },
+	{ key: "msgUomNoConversion",
+	  pattern: /^Pos (\d+) Material (\d+): ME-Abweichung SAP '([^']*)' <> HiLIS '([^']*)', nicht uebertragen: (.+)$/ },
 	{ key: "msgUomMismatch",
 	  pattern: /^Pos (\d+) Material (\d+): ME-Abweichung SAP '([^']*)' <> HiLIS '([^']*)'/ },
 
@@ -185,7 +197,13 @@ export function translate(sMessage?: string | null): string {
 		}
 		return sPattern.replace(/\{(\d)\}/g, (sWhole, sIndex: string) => {
 			const sGroup = aMatch[Number(sIndex) + 1];
-			return sGroup === undefined ? sWhole : innerText(sGroup);
+			if (sGroup === undefined) {
+				return sWhole;
+			}
+			// 18-stellige Materialnummer ohne fuehrende Nullen, wie in der
+			// Spalte Material daneben. Kuerzere Nummern (Position, TA,
+			// Auftrag) bleiben unangetastet.
+			return /^\d{18}$/.test(sGroup) ? sGroup.replace(/^0+(?=\d)/, "") : innerText(sGroup);
 		});
 	}
 	return "";
