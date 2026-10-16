@@ -947,11 +947,40 @@ export function messageDisplay(sMessage?: string | null): string {
  * Die Luecke ist bekannt und wird ueber die Kennzahl "Ohne Business-Key"
  * gemessen (Michaels P17) - sie soll sichtbar bleiben, nicht verschwinden.
  */
+/**
+ * Erledigte Arbeitsvorrats-Saetze, die NACH dem Beginn des Vorgangs liefen.
+ *
+ * 🔴 Ein D-Satz zum selben Schluessel heisst nicht, dass DIESER Fehler
+ * behoben ist (16.10.2026, TA 6283203): PICK_CREATE stand auf D, weil die
+ * Anlage um 06:45 gelungen war - der Warenausgang scheiterte erst um 07:05.
+ * Der Satz zaehlt deshalb nur, wenn sein letzter Versuch nach dem Vorgang
+ * lag, also ein Wiederanstoss nach dem Fehler gewirkt hat. Ohne
+ * auswertbaren Zeitstempel zaehlt er nicht - lieber offen als falsch
+ * erledigt.
+ */
+export function doneAfter<T extends { LastTryAt?: string }>(
+	aEntries: T[],
+	sSince?: string | null
+): T[] {
+	if (!sSince) {
+		return aEntries;
+	}
+	const nSince = Date.parse(sSince);
+	if (Number.isNaN(nSince)) {
+		return aEntries;
+	}
+	return aEntries.filter((o) => {
+		const nTry = Date.parse(o.LastTryAt ?? "");
+		return !Number.isNaN(nTry) && nTry > nSince;
+	});
+}
+
 function resolvedKind(
 	sIsResolved?: string | null,
 	sBusinessKey?: string | null,
-	oMapDone?: Record<string, unknown[]> | null,
-	sIsResolvedByFollowUp?: string | null
+	oMapDone?: Record<string, { LastTryAt?: string }[]> | null,
+	sIsResolvedByFollowUp?: string | null,
+	sSince?: string | null
 ): string {
 	/*
 	 * 🔴 VOR dem Leer-Schluessel-Zweig (O-48, 22.09.2026). Die Faelle, fuer
@@ -985,7 +1014,7 @@ function resolvedKind(
 	 * "erledigt". Das ist der Fall, den die App bis 11.09.2026 gar nicht
 	 * zeigen KONNTE, weil erledigte Saetze nie geladen wurden.
 	 */
-	if (reprocEntries(sBusinessKey, oMapDone).length > 0) {
+	if (doneAfter(reprocEntries(sBusinessKey, oMapDone), sSince).length > 0) {
 		return "doneByReproc";
 	}
 	return "open";
@@ -1014,12 +1043,13 @@ export function resolvedTooltip(
 	sOpen?: string | null,
 	sUnknown?: string | null,
 	oMap?: Record<string, { Action?: string; ActionText?: string; Status?: string }[]> | null,
-	oMapDone?: Record<string, { Action?: string; ActionText?: string; Status?: string }[]> | null,
+	oMapDone?: Record<string, { Action?: string; ActionText?: string; Status?: string; LastTryAt?: string }[]> | null,
 	sDoneByReproc?: string | null,
 	sIsResolvedByFollowUp?: string | null,
-	sDoneByFollowUp?: string | null
+	sDoneByFollowUp?: string | null,
+	sSince?: string | null
 ): string {
-	const sKind = resolvedKind(sIsResolved, sBusinessKey, oMapDone, sIsResolvedByFollowUp);
+	const sKind = resolvedKind(sIsResolved, sBusinessKey, oMapDone, sIsResolvedByFollowUp, sSince);
 	let sHead = sUnknown ?? "";
 	if (sKind === "doneByFollowUp") {
 		sHead = sDoneByFollowUp ?? "";
@@ -1051,10 +1081,11 @@ export function resolvedTooltip(
 export function resolvedState(
 	sIsResolved?: string | null,
 	sBusinessKey?: string | null,
-	oMapDone?: Record<string, unknown[]> | null,
-	sIsResolvedByFollowUp?: string | null
+	oMapDone?: Record<string, { LastTryAt?: string }[]> | null,
+	sIsResolvedByFollowUp?: string | null,
+	sSince?: string | null
 ): string {
-	const sKind = resolvedKind(sIsResolved, sBusinessKey, oMapDone, sIsResolvedByFollowUp);
+	const sKind = resolvedKind(sIsResolved, sBusinessKey, oMapDone, sIsResolvedByFollowUp, sSince);
 	if (sKind === "resolved" || sKind === "doneByReproc" || sKind === "doneByFollowUp") {
 		return "Success";
 	}
@@ -1064,10 +1095,11 @@ export function resolvedState(
 export function resolvedIcon(
 	sIsResolved?: string | null,
 	sBusinessKey?: string | null,
-	oMapDone?: Record<string, unknown[]> | null,
-	sIsResolvedByFollowUp?: string | null
+	oMapDone?: Record<string, { LastTryAt?: string }[]> | null,
+	sIsResolvedByFollowUp?: string | null,
+	sSince?: string | null
 ): string {
-	const sKind = resolvedKind(sIsResolved, sBusinessKey, oMapDone, sIsResolvedByFollowUp);
+	const sKind = resolvedKind(sIsResolved, sBusinessKey, oMapDone, sIsResolvedByFollowUp, sSince);
 	if (sKind === "resolved") {
 		return "sap-icon://sys-enter-2";
 	}

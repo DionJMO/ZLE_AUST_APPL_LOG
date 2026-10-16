@@ -26,7 +26,7 @@ import * as ReprocLookup from "../model/ReprocLookup";
 import * as HilisConnection from "../model/HilisConnection";
 import * as BusinessKey from "../model/BusinessKey";
 import { readableHttpText, splitHttpPayload } from "../model/HttpText";
-import { normalizeMaterial as formatterNormalize, timestamp as formatterTimestamp } from "../model/formatter";
+import { doneAfter as formatterDoneAfter, normalizeMaterial as formatterNormalize, timestamp as formatterTimestamp } from "../model/formatter";
 import Sorter from "sap/ui/model/Sorter";
 import Fragment from "sap/ui/core/Fragment";
 import Popover from "sap/m/Popover";
@@ -2323,7 +2323,7 @@ export default class Main extends BaseController {
 		const oCascade = this._cascadeModel();
 		const aAll = (oCascade.getProperty("/allRows") ?? []) as CascadeGrouper.CascadeRow[];
 		const oDone = (this._jsonModel("reproc", { map: {} }).getProperty("/mapDone")
-			?? {}) as Record<string, unknown[]>;
+			?? {}) as Record<string, ReprocLookup.ReprocEntry[]>;
 
 		let aRowsOut = aAll;
 		if (this.getUiModel().getProperty("/openOnly") as boolean) {
@@ -2333,7 +2333,7 @@ export default class Main extends BaseController {
 					return false;
 				}
 				const sKey = (oRow.BusinessKey ?? "").trim();
-				return !(sKey && (oDone[sKey]?.length ?? 0) > 0);
+				return !(sKey && formatterDoneAfter(oDone[sKey] ?? [], oRow.CreatedAtStamp).length > 0);
 			});
 		}
 
